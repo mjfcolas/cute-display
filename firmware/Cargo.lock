@@ -356,6 +356,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "domain"
+version = "0.1.0"
+
+[[package]]
 name = "drivers"
 version = "0.1.0"
 dependencies = [
@@ -662,12 +666,15 @@ checksum = "26b73573e6edcd2af0cdf47bd6cb58f0b3839491263c314eaad1ccf24430e1de"
 name = "firmware"
 version = "0.1.0"
 dependencies = [
+ "domain",
  "drivers",
+ "embedded-graphics",
  "embuild",
  "esp-idf-svc",
  "hal",
  "hwtest",
  "log",
+ "ui",
 ]
 
 [[package]]
@@ -1453,6 +1460,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d38ac1cf9b95face32296c0a3ede1fdc270627c9d9c02a7274dd6d960dc4d56"
 dependencies = [
  "winnow",
+]
+
+[[package]]
+name = "ui"
+version = "0.1.0"
+dependencies = [
+ "domain",
+ "embedded-graphics",
 ]
 
 [[package]]

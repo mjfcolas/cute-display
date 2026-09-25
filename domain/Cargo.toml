@@ -1,0 +1,8 @@
+[package]
+name = "domain"
+version = "0.1.0"
+edition = "2021"
+description = "What the product does, in its own words: concepts, rules, and the contracts it needs from the outside world."
+
+[lints]
+workspace = true

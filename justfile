@@ -4,7 +4,7 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 app_bin := justfile_directory() / "firmware/target/cute-display-app.bin"
-elf := "firmware/target/xtensa-esp32s3-espidf/release/hwtest"
+elf_dir := "firmware/target/xtensa-esp32s3-espidf/release"
 app1 := "0x820000"
 otadata := "0x19000"
 backup_dir := justfile_directory() / "backup"
@@ -23,29 +23,34 @@ lint:
     cargo clippy --workspace --all-targets
     cd firmware && source ~/export-esp.sh && cargo clippy --release
 
-# render the hardware test's report page to a PNG (`pattern` for the checkerboard)
-preview page="" zoom="2":
-    cargo run --quiet -p hwtest --example preview -- /tmp/cute-display.fb {{page}}
+# render an app screen to a PNG: switcher, counter, echo or ping
+preview screen="switcher" zoom="2":
+    cargo run --quiet -p ui --example app_screen -- /tmp/cute-display.fb {{screen}}
     python3 tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
     xdg-open /tmp/cute-display.png >/dev/null 2>&1 &
 
+# render the hardware test's report page to a PNG (`pattern` for the checkerboard)
+preview-hwtest page="" zoom="2":
+    cargo run --quiet -p hwtest --example report_page -- /tmp/cute-display.fb {{page}}
+    python3 tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
+    xdg-open /tmp/cute-display.png >/dev/null 2>&1 &
 
-# build + flash + monitor the hardware test firmware, in one go
-fw: fw-build (fw-flash "monitor")
+# build + flash + monitor an image: `app` (default) or `hwtest`
+fw bin="app": (fw-build bin) (fw-flash bin "monitor")
 
-# build the hardware test firmware (release)
-fw-build:
-    cd firmware && source ~/export-esp.sh && cargo build --release --bin hwtest
+# build an image (release): `app` or `hwtest`
+fw-build bin="app":
+    cd firmware && source ~/export-esp.sh && cargo build --release --bin {{bin}}
 
-# flash the firmware into the spare OTA slot (app1) and boot it
-fw-flash monitor="": _check-partitions _save-otadata
-    espflash save-image --chip esp32s3 {{elf}} {{app_bin}}
+# flash an image into the spare OTA slot (app1) and boot it
+fw-flash bin="app" monitor="": _check-partitions _save-otadata
+    espflash save-image --chip esp32s3 {{elf_dir}}/{{bin}} {{app_bin}}
     espflash write-bin --baud 921600 {{app1}} {{app_bin}}
-    just _otadata "{{monitor}}"
+    just _otadata {{bin}} "{{monitor}}"
 
-# attach to the serial log (ctrl-C to quit)
-fw-monitor:
-    espflash monitor --baud 115200 --elf {{elf}}
+# attach to the serial log of an image (ctrl-C to quit)
+fw-monitor bin="app":
+    espflash monitor --baud 115200 --elf {{elf_dir}}/{{bin}}
 
 # Refuses a partition table other than the expected one, and a stock image in app1.
 _check-partitions:
@@ -109,7 +114,7 @@ _save-otadata:
     print(f'saved the stock otadata to {dst} ({"factory" if not live else f"ota_{(max(live) - 1) % 2}"})')
 
 # ota_seq 2 selects ota_1. Written last so --monitor catches the boot from its start.
-_otadata monitor="":
+_otadata bin monitor="":
     #!/usr/bin/env python3
     import struct, zlib, subprocess, tempfile, os
     seq, state = 2, 2  # (seq-1) % 2 == 1 -> ota_1 ; ESP_OTA_IMG_VALID
@@ -121,7 +126,7 @@ _otadata monitor="":
     cmd = ['espflash', 'write-bin', '--baud', '921600', '{{otadata}}', path]
     if '{{monitor}}':
         cmd += ['--after', 'hard-reset', '--monitor', '--monitor-baud', '115200',
-                '--elf', '{{elf}}']
+                '--elf', '{{elf_dir}}/{{bin}}']
         # espflash exits non-zero when the monitor is closed.
         rc = subprocess.run(cmd).returncode
         if rc:

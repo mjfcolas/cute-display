@@ -8,26 +8,24 @@ speaker, a reading lamp and a front light.
 - [`DESIGN.md`](DESIGN.md) — its architecture.
 - [`docs/hardware.md`](docs/hardware.md) — the board: pin map, panel controller, flash layout.
 
-## Status: hardware test
+## Status
 
-The only image so far checks the board and shows what each part says:
+**The app image** is the base of the real firmware: small apps, one in front at a time.
+Hold the long button for a second to open the switcher, turn the wheel to choose, press
+it to open. The apps are placeholders for now: Counter, Echo, and Ping, which exercises
+the domain layer.
 
-| Control       | Exercises                                   |
-| ------------- | ------------------------------------------- |
-| Wheel         | the front light, 10 % per detent            |
-| Wheel press   | the speaker, with a chime                   |
-| Yellow button | the reading lamp: off, 10, 50, 100 %        |
-| Long button   | the panel, swapping the report for a checkerboard |
+**The hardware test image** checks the board and shows what each part says: the panel,
+the RTC, the temperature, the I2C bus, the SD card, a Wi-Fi scan, USB power, the battery
+sense and the free heap. The wheel steers the front light, a wheel press plays a chime,
+the yellow button cycles the reading lamp, and the long button swaps in a checkerboard.
 
-The report, refreshed every second, covers the panel, the RTC (time, oscillator, alarm line), the
-temperature, the I2C bus, the SD card, a Wi-Fi scan, USB power, the battery sense and the free
-heap. A filled square passes, a crossed one fails, a hollow one has not been exercised yet.
-
-It writes nothing to the RTC, the SD card or NVS, and lives in `app1` next to the untouched
-stock firmware.
+Both write nothing to the RTC, the SD card or NVS, and live in `app1` next to the
+untouched stock firmware.
 
 ```sh
-just fw          # build, flash into app1, watch the log
+just fw          # build the app image, flash it into app1, watch the log
+just fw hwtest   # the same with the hardware test
 just fw-stock    # back to the stock firmware
 just backup      # dump the whole flash to backup/ (gitignored)
 ```

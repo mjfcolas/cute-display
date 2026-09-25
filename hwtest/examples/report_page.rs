@@ -1,6 +1,6 @@
 //! Writes the report page, filled with plausible checks, as a raw frame:
 //!
-//!   cargo run -p hwtest --example preview -- out.fb [pattern]
+//!   cargo run -p hwtest --example report_page -- out.fb [pattern]
 
 use hwtest::report::{Check, Report, Verdict};
 use hwtest::screen::{self, Legend, Page};

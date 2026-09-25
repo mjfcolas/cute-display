@@ -1,6 +1,5 @@
-# In tests a panic IS the failure report — unwrap freely there.
-# (Clippy finds this file by walking up from each crate's manifest dir, so it
-# will cover the firmware crate too once that exists outside the workspace.)
+# In tests a panic is the failure report. Clippy finds this file from every crate,
+# the firmware included.
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true

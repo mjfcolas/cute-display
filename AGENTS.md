@@ -53,10 +53,11 @@ the device keeps running.
 ## Commands
 
 ```sh
-just test        # host tests (hal, drivers, hwtest)
+just test        # host tests
 just lint        # clippy, host and ESP32
-just preview     # render the hardware test's report page to a PNG
-just fw          # build the hardware test, flash it into app1, watch the log
+just preview     # render an app screen to a PNG (switcher, counter, echo, ping)
+just fw          # build the app image, flash it into app1, watch the log
+just fw hwtest   # the same with the hardware test image
 just fw-stock    # boot the stock firmware again
 ```
 

@@ -19,6 +19,11 @@ indexing_slicing = "warn"
 string_slice = "warn"
 
 [[bin]]
+name = "app"
+path = "src/bin/app.rs"
+harness = false
+
+[[bin]]
 name = "hwtest"
 path = "src/bin/hwtest.rs"
 harness = false
@@ -29,6 +34,9 @@ esp-idf-svc = "0.52.1"
 hal = { path = "../hal" }
 drivers = { path = "../drivers" }
 hwtest = { path = "../hwtest" }
+domain = { path = "../domain" }
+ui = { path = "../ui" }
+embedded-graphics = "0.8"
 
 [build-dependencies]
 embuild = "0.33"
