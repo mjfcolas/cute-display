@@ -1,0 +1,13 @@
+[package]
+name = "infrastructure"
+version = "0.1.0"
+edition = "2021"
+description = "The domain's contracts, implemented on the HAL."
+
+[lints]
+workspace = true
+
+[dependencies]
+domain = { path = "../domain" }
+hal = { path = "../hal" }
+log = "0.4"

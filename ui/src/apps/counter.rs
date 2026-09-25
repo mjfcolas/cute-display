@@ -23,9 +23,6 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for CounterScreen {
         App::Counter
     }
 
-    fn title(&self) -> &str {
-        "Counter"
-    }
 
     fn on_input(&mut self, input: Input) {
         match input {

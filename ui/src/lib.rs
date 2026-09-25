@@ -1,4 +1,4 @@
-//! The presentation: a screen per app, and a switcher between them.
+//! The presentation: a screen per app, the system app's among them.
 //!
 //! It knows no hardware. Controls come in as a [`controls::ControlsSample`], and screens
 //! go out through any embedded-graphics `DrawTarget`. Which app is in front, and every
@@ -10,7 +10,6 @@ pub mod controls;
 pub mod gestures;
 pub mod shell;
 
-mod switcher;
 mod text;
 
 pub use app_screen::AppScreen;

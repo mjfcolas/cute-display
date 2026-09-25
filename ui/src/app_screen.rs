@@ -9,8 +9,19 @@ use crate::controls::Input;
 /// the domain and draws what the domain says; holding the long button never reaches it.
 pub trait AppScreen<D: DrawTarget<Color = BinaryColor>> {
     fn app(&self) -> App;
-    fn title(&self) -> &str;
+    /// The app just came to the front.
+    fn entered(&mut self) {}
     fn on_input(&mut self, input: Input);
     /// Draws within `area`, on paper.
     fn draw(&self, target: &mut D, area: Rectangle);
+}
+
+/// What an app is called on the glass.
+pub fn title(app: App) -> &'static str {
+    match app {
+        App::System => "System",
+        App::Counter => "Counter",
+        App::Echo => "Echo",
+        App::Ping => "Ping",
+    }
 }

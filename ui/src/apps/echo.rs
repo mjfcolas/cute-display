@@ -29,9 +29,6 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for EchoScreen {
         App::Echo
     }
 
-    fn title(&self) -> &str {
-        "Echo"
-    }
 
     fn on_input(&mut self, input: Input) {
         self.last = Some(input);

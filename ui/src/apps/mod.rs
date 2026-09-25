@@ -1,12 +1,15 @@
-//! The screen of each app. Placeholders, until the real apps arrive.
+//! The screen of each app. All but the system app are placeholders, until the real
+//! apps arrive.
 
 mod counter;
 mod echo;
 mod ping;
+mod system;
 
 pub use counter::CounterScreen;
 pub use echo::EchoScreen;
 pub use ping::PingScreen;
+pub use system::SystemScreen;
 
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;

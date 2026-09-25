@@ -35,6 +35,7 @@ hal = { path = "../hal" }
 drivers = { path = "../drivers" }
 hwtest = { path = "../hwtest" }
 domain = { path = "../domain" }
+infrastructure = { path = "../infrastructure" }
 ui = { path = "../ui" }
 embedded-graphics = "0.8"
 

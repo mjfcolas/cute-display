@@ -2,6 +2,8 @@
 
 pub mod apps;
 pub mod counter;
+pub mod lighting;
 pub mod ping;
+pub mod settings;
 
 mod shared;

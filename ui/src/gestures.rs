@@ -1,4 +1,4 @@
-//! Holding the long button is the system's: it opens the switcher. So a press of the long
+//! Holding the long button is the system's: it opens the system app. So a press of the long
 //! button only reaches an app once it is released early enough to be a press.
 
 use core::time::Duration;

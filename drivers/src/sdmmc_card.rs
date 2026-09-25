@@ -32,6 +32,18 @@ impl FileStorage for SdmmcCard {
         Ok(entries.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect())
     }
 
+    fn read(&self, path: &str) -> Result<Option<Vec<u8>>, Fault> {
+        match std::fs::read(format!("{MOUNT_POINT}/{path}")) {
+            Ok(contents) => Ok(Some(contents)),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(Fault::new(format!("reading {path} on the SD card: {e}"))),
+        }
+    }
+
+    fn write(&self, path: &str, contents: &[u8]) -> Result<(), Fault> {
+        std::fs::write(format!("{MOUNT_POINT}/{path}"), contents).or_fault("writing on the SD card")
+    }
+
     fn capacity_bytes(&self) -> Result<u64, Fault> {
         let (mut total, mut free) = (0, 0);
         // SAFETY: a NUL-terminated path and two valid out-pointers.

@@ -23,7 +23,7 @@
 | `infrastructure` | Implementations of the domain's contracts: settings on the SD card, time from the RTC and NTP…  | `domain`, `hal`  |
 | `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, storage, radio, power | nothing          |
 | `drivers`        | Implementations of `hal` on the board's chips                                                  | `hal`            |
-| `ui`             | The apps and the switcher between them: reads the controls, turns them into domain intents, renders domain state. Runs on its own thread | `domain`         |
+| `ui`             | A screen per app, the system app's included: reads the controls, turns them into domain intents, renders domain state. Runs on its own thread | `domain`         |
 | `firmware`       | Composition roots: builds the drivers from the pin map (`board`), wires the layers, runs them  | everything       |
 
 The arrows are the only allowed dependencies. In particular the domain never sees a HAL
@@ -66,7 +66,7 @@ a "latest value" out:
 
 | Thread   | Owns                   | Why                                               |
 | -------- | ---------------------- | ------------------------------------------------- |
-| main     | domain services        | they must keep running whatever is on screen      |
+| main     | domain services (lighting) | they must keep running whatever is on screen  |
 | ui       | controls, apps, display | a refresh blocks for 0.35 to 3 s                 |
 | painter  | the e-paper display (hwtest) | a refresh blocks for 0.35 to 3 s            |
 | chimes   | the speaker            | playback blocks until the sound ends              |
@@ -76,8 +76,10 @@ a "latest value" out:
 ## Where things live
 
 ```
-domain/     what the product does: the apps, the one in front, Counter, Ping (an example)
-ui/         app screens, the switcher, gestures; host-tested with hal's Frame as a dev-dependency
+domain/     what the product does: the apps, the one in front, settings, lighting, Counter, Ping
+infrastructure/ the domain's contracts on the HAL: the settings file, the lights
+ui/         app screens (the system app's among them), gestures; host-tested with hal's
+            Frame as a dev-dependency
 hal/        contracts with the hardware, and the Frame the display shows
 drivers/    ESP32-S3 implementations of hal; chip logic that needs no ESP32 is host-tested
 hwtest/     the hardware test bench (see below)
@@ -96,22 +98,39 @@ one is in front; anything may bring an app forward, not only the person at the c
 (when an alarm rings, the alarm's own service will). Each app's state and rules are domain
 concepts too (`Counter`, `Ping`), shared with whoever needs them.
 
+**The system app is an app with a special status.** It lists the other apps and holds the
+device's settings. It is not in the list (`App::LAUNCHABLE`), only the system gesture
+reaches it, and leaving it goes back to the app it was opened from, which `Foreground`
+remembers. Its settings are domain concepts:
+
+- `domain::settings`: the backlight duration and the reading lamp's level (off, 10, 30,
+  50, 100 %), kept by
+  a `SettingsStore` on every change. `infrastructure::settings_file` keeps them as a few
+  lines of text, `cute-display.conf` at the root of the SD card; without a card they last
+  until the power goes.
+- `domain::lighting`: the light over the screen comes up when the controls are touched
+  and goes out once the backlight duration has passed; the reading lamp shines at its
+  setting. The domain decides every level, the screen's 20 % included; lights are a
+  `Light` contract taking a level, which `infrastructure::hal_light` implements on the
+  HAL's `DimmableLight`. The main thread refreshes it ten times a second.
+
 **The UI owns how they are seen and steered.**
 
-- `ui::AppScreen`: one per app. Turns the controls into intents on the domain
-  (`counter.add`, `ping.trigger`) and draws what the domain says. `Echo` is the exception:
-  a diagnostic about the controls themselves, with nothing to say to the domain.
-- `ui::gestures`: holding the long button for a second is the system's, and opens the
-  switcher. A shorter press of the long button reaches the app, on release; every other
-  control reaches it at once.
-- `ui::switcher`: the list of apps, open over the app in front. The wheel moves its dot,
-  a wheel press brings the chosen app to the front of the domain, the long button closes
-  it. Where the dot stands is screen state: nothing changes in the domain until a choice
-  is made.
-- `ui::Shell`: shows the screen of the app in front, under its title, or the switcher.
+- `ui::AppScreen`: one per app, the system app's included. Turns the controls into
+  intents on the domain and draws what the domain says. `Echo` is the exception: a
+  diagnostic about the controls themselves, with nothing to say to the domain.
+- `ui::apps::SystemScreen`: one list, the apps then the settings. The wheel moves the dot,
+  which starts on the app the system app was opened from; a press opens an app or moves a
+  setting to its next value; the long button goes back.
+- `ui::gestures`: holding the long button for a second is the system's: it opens the
+  system app, or closes it. A shorter press of the long button reaches the app, on
+  release; every other control reaches it at once. Any control used also tells
+  `Lighting` that the device was touched.
+- `ui::Shell`: shows the screen of the app in front under its title, and tells a screen
+  when it comes to the front.
 
 **Refreshing**: the UI thread redraws after any input, and whenever the app in front is
-not the one on the glass. A new screen in front is a whole, clean redraw; anything else
+not the one on the glass. A new app in front is a whole, clean redraw; anything else
 only redraws what changed. Controls keep counting during a refresh (PCNT, the buttons'
 thread), and what piled up is handled in one go before the next refresh. A change in the
 domain that nobody made through the controls, inside the app in front, is not noticed

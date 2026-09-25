@@ -24,9 +24,6 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for PingScreen {
         App::Ping
     }
 
-    fn title(&self) -> &str {
-        "Ping"
-    }
 
     fn on_input(&mut self, input: Input) {
         if input == Input::Press(Control::Wheel) {

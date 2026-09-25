@@ -3,7 +3,9 @@ use std::time::{Duration, Instant};
 
 use domain::apps::{App, Foreground};
 use domain::counter::Counter;
+use domain::lighting::Lighting;
 use domain::ping::Ping;
+use domain::settings::{Settings, SettingsStore};
 use drivers::button::Button;
 use drivers::pcnt_encoder::PcntEncoder;
 use drivers::uc8253::Uc8253;
@@ -13,9 +15,10 @@ use embedded_graphics::primitives::Rectangle;
 use esp_idf_svc::hal::delay::FreeRtos;
 use hal::display::{EpaperDisplay, Frame, Redraw, HEIGHT, VISIBLE_WIDTH};
 use hal::input::{PushButton, RotaryEncoder};
-use hal::light::{Brightness, DimmableLight};
 use hal::Fault;
-use ui::apps::{CounterScreen, EchoScreen, PingScreen};
+use infrastructure::hal_light::HalLight;
+use infrastructure::settings_file::{SettingsFile, Unkept};
+use ui::apps::{CounterScreen, EchoScreen, PingScreen, SystemScreen};
 use ui::controls::{ButtonSample, ControlsSample};
 use ui::{AppScreen, ScreenChange, Shell};
 
@@ -23,12 +26,13 @@ use firmware::board::Board;
 
 const BUILD: &str = concat!("build ", env!("BUILD_TIME"), " @", env!("BUILD_GIT"));
 const CONTROLS_PERIOD: Duration = Duration::from_millis(20);
-/// Until the front light has an owner of its own, enough to read the glass in the dark.
-const FRONT_LIGHT: Brightness = Brightness::percent(20);
+const LIGHTING_PERIOD: Duration = Duration::from_millis(100);
 
 /// Everything the domain is made of, shared by the threads that use it.
 struct Domain {
     foreground: Foreground,
+    settings: Settings,
+    lighting: Lighting,
     counter: Counter,
     ping: Ping,
 }
@@ -59,10 +63,29 @@ fn main() -> Result<(), Fault> {
     FreeRtos::delay_ms(1500);
     log::info!("cute-display, {BUILD}");
 
-    let mut board = Board::bring_up()?;
-    board.front_light.set_brightness(FRONT_LIGHT)?;
-    let domain = Domain { foreground: Foreground::new(App::Counter), counter: Counter::new(), ping: Ping::new() };
+    let board = Board::bring_up()?;
+    let settings_store: Box<dyn SettingsStore> = match board.sd_card {
+        Ok(card) => Box::new(SettingsFile::new(card)),
+        Err(fault) => {
+            log::warn!("settings: no SD card ({fault}); they will not survive a power cut");
+            Box::new(Unkept)
+        }
+    };
+    let settings = Settings::load(settings_store);
+    let lighting = Lighting::new(
+        Box::new(HalLight::new(board.front_light)),
+        Box::new(HalLight::new(board.reading_lamp)),
+        settings.clone(),
+    );
+    lighting.touched(Instant::now());
 
+    let domain = Domain {
+        foreground: Foreground::new(App::Counter),
+        settings,
+        lighting: lighting.clone(),
+        counter: Counter::new(),
+        ping: Ping::new(),
+    };
     let controls = Controls {
         wheel: board.wheel,
         wheel_button: board.wheel_button,
@@ -77,12 +100,14 @@ fn main() -> Result<(), Fault> {
         .map_err(Fault::new)?;
 
     loop {
-        thread::sleep(Duration::from_secs(60));
+        lighting.refresh(Instant::now());
+        thread::sleep(LIGHTING_PERIOD);
     }
 }
 
 fn run_ui(mut controls: Controls, mut display: Uc8253, domain: Domain) {
     let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
+        Box::new(SystemScreen::new(domain.foreground.clone(), domain.settings)),
         Box::new(CounterScreen::new(domain.counter)),
         Box::new(EchoScreen::default()),
         Box::new(PingScreen::new(domain.ping)),
@@ -96,8 +121,12 @@ fn run_ui(mut controls: Controls, mut display: Uc8253, domain: Domain) {
     let started = Instant::now();
 
     loop {
-        let touched = shell.on_sample(&controls.sample(), started.elapsed());
-        if touched || shell.is_outdated() {
+        let sample = controls.sample();
+        if sample.is_touch() {
+            domain.lighting.touched(Instant::now());
+        }
+        let changed = shell.on_sample(&sample, started.elapsed());
+        if changed || shell.is_outdated() {
             let _ = frame.clear(BinaryColor::Off);
             let redraw = match shell.draw(&mut frame, visible) {
                 ScreenChange::NewScreen => Redraw::Whole,

@@ -23,8 +23,8 @@ lint:
     cargo clippy --workspace --all-targets
     cd firmware && source ~/export-esp.sh && cargo clippy --release
 
-# render an app screen to a PNG: switcher, counter, echo or ping
-preview screen="switcher" zoom="2":
+# render an app screen to a PNG: system, counter, echo or ping
+preview screen="system" zoom="2":
     cargo run --quiet -p ui --example app_screen -- /tmp/cute-display.fb {{screen}}
     python3 tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
     xdg-open /tmp/cute-display.png >/dev/null 2>&1 &

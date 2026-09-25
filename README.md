@@ -11,17 +11,18 @@ speaker, a reading lamp and a front light.
 ## Status
 
 **The app image** is the base of the real firmware: small apps, one in front at a time.
-Hold the long button for a second to open the switcher, turn the wheel to choose, press
-it to open. The apps are placeholders for now: Counter, Echo, and Ping, which exercises
-the domain layer.
+Hold the long button for a second to open the system app: turn the wheel to choose an app
+and press to open it, or change a setting (how long the screen stays lit after a touch,
+and the reading lamp: off, 10, 30, 50 or 100 %). Settings are kept on the SD card. The other apps are placeholders
+for now: Counter, Echo, and Ping.
 
 **The hardware test image** checks the board and shows what each part says: the panel,
 the RTC, the temperature, the I2C bus, the SD card, a Wi-Fi scan, USB power, the battery
 sense and the free heap. The wheel steers the front light, a wheel press plays a chime,
 the yellow button cycles the reading lamp, and the long button swaps in a checkerboard.
 
-Both write nothing to the RTC, the SD card or NVS, and live in `app1` next to the
-untouched stock firmware.
+Neither writes to the RTC or NVS; on the SD card, only the app writes, one settings file.
+Both live in `app1` next to the untouched stock firmware.
 
 ```sh
 just fw          # build the app image, flash it into app1, watch the log
