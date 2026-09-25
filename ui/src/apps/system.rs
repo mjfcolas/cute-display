@@ -137,16 +137,26 @@ mod tests {
         AppScreen::<Frame>::on_input(screen, input);
     }
 
+    /// Turns the wheel until the dot is on `row`.
+    fn move_to(screen: &mut SystemScreen, row: Row) {
+        let target = rows().iter().position(|&r| r == row).unwrap() as i32;
+        input(screen, Input::Turn(target - screen.dot as i32));
+    }
+
+    fn row_under_dot(screen: &SystemScreen) -> Option<Row> {
+        rows().get(screen.dot).copied()
+    }
+
     #[test]
     fn the_dot_starts_on_the_app_it_was_opened_from() {
         let (screen, _, _) = opened_from(App::Echo);
-        assert_eq!(rows().get(screen.dot).copied(), Some(Row::App(App::Echo)));
+        assert_eq!(row_under_dot(&screen), Some(Row::App(App::Echo)));
     }
 
     #[test]
     fn pressing_on_an_app_brings_it_to_the_front() {
         let (mut screen, foreground, _) = opened_from(App::Counter);
-        input(&mut screen, Input::Turn(2));
+        move_to(&mut screen, Row::App(App::Ping));
         input(&mut screen, Input::Press(Control::Wheel));
         assert_eq!(foreground.app(), App::Ping);
     }
@@ -154,10 +164,10 @@ mod tests {
     #[test]
     fn pressing_on_a_setting_changes_it_and_stays_in_the_system_app() {
         let (mut screen, foreground, settings) = opened_from(App::Counter);
-        input(&mut screen, Input::Turn(3));
+        move_to(&mut screen, Row::Backlight);
         input(&mut screen, Input::Press(Control::Wheel));
         assert_eq!(settings.backlight(), BacklightDuration::ThirtySeconds);
-        input(&mut screen, Input::Turn(1));
+        move_to(&mut screen, Row::ReadingLamp);
         input(&mut screen, Input::Press(Control::Wheel));
         assert_eq!(settings.reading_lamp(), ReadingLamp::TenPercent);
         assert_eq!(foreground.app(), App::System);
@@ -173,11 +183,19 @@ mod tests {
     }
 
     #[test]
+    fn every_app_offered_is_listed_before_the_settings() {
+        let listed: Vec<Row> = rows();
+        let apps: Vec<Row> = App::LAUNCHABLE.iter().map(|&a| Row::App(a)).collect();
+        assert_eq!(listed[..apps.len()], apps[..]);
+        assert_eq!(listed[apps.len()..], [Row::Backlight, Row::ReadingLamp]);
+    }
+
+    #[test]
     fn the_dot_wraps_around_both_ways() {
-        let (mut screen, _, _) = opened_from(App::Counter);
+        let (mut screen, _, _) = opened_from(App::LAUNCHABLE[0]);
         input(&mut screen, Input::Turn(-1));
-        assert_eq!(rows().get(screen.dot).copied(), Some(Row::ReadingLamp));
+        assert_eq!(row_under_dot(&screen), rows().last().copied());
         input(&mut screen, Input::Turn(1));
-        assert_eq!(rows().get(screen.dot).copied(), Some(Row::App(App::Counter)));
+        assert_eq!(row_under_dot(&screen), rows().first().copied());
     }
 }

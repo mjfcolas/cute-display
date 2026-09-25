@@ -5,16 +5,32 @@
 //! reading_lamp = 30%
 //! ```
 //!
-//! A line per setting, so a damaged line loses that setting and not the others. Unknown
-//! lines are ignored; a setting that is missing or unreadable takes its default.
+//! A setting that is missing or unreadable takes its default.
 
 use domain::settings::{BacklightDuration, ReadingLamp, SettingsRecord, SettingsStore};
 use hal::storage::FileStorage;
+
+use crate::conf_text::ConfText;
 
 pub const FILE_NAME: &str = "cute-display/settings.conf";
 
 const BACKLIGHT: &str = "backlight";
 const READING_LAMP: &str = "reading_lamp";
+
+const BACKLIGHT_VALUES: [(BacklightDuration, &str); 4] = [
+    (BacklightDuration::FiveSeconds, "5s"),
+    (BacklightDuration::TenSeconds, "10s"),
+    (BacklightDuration::ThirtySeconds, "30s"),
+    (BacklightDuration::Always, "always"),
+];
+
+const READING_LAMP_VALUES: [(ReadingLamp, &str); 5] = [
+    (ReadingLamp::Off, "off"),
+    (ReadingLamp::TenPercent, "10%"),
+    (ReadingLamp::ThirtyPercent, "30%"),
+    (ReadingLamp::FiftyPercent, "50%"),
+    (ReadingLamp::Full, "100%"),
+];
 
 pub struct SettingsFile<S> {
     storage: S,
@@ -28,8 +44,8 @@ impl<S: FileStorage> SettingsFile<S> {
 
 impl<S: FileStorage + Send> SettingsStore for SettingsFile<S> {
     fn load(&mut self) -> Option<SettingsRecord> {
-        match self.storage.read(FILE_NAME) {
-            Ok(contents) => contents.map(|bytes| decode(&String::from_utf8_lossy(&bytes))),
+        match ConfText::read(&self.storage, FILE_NAME) {
+            Ok(conf) => conf.map(|conf| decode(&conf)),
             Err(fault) => {
                 log::warn!("settings: {fault}; starting on the defaults");
                 None
@@ -55,92 +71,39 @@ impl SettingsStore for Unkept {
     fn save(&mut self, _: &SettingsRecord) {}
 }
 
-fn encode(record: &SettingsRecord) -> String {
-    let backlight = match record.backlight {
-        BacklightDuration::FiveSeconds => "5s",
-        BacklightDuration::TenSeconds => "10s",
-        BacklightDuration::ThirtySeconds => "30s",
-        BacklightDuration::Always => "always",
-    };
-    let reading_lamp = match record.reading_lamp {
-        ReadingLamp::Off => "off",
-        ReadingLamp::TenPercent => "10%",
-        ReadingLamp::ThirtyPercent => "30%",
-        ReadingLamp::FiftyPercent => "50%",
-        ReadingLamp::Full => "100%",
-    };
-    format!("{BACKLIGHT} = {backlight}\n{READING_LAMP} = {reading_lamp}\n")
+fn name_of<T: PartialEq + Copy>(values: &[(T, &'static str)], value: T) -> &'static str {
+    values.iter().find(|(v, _)| *v == value).map_or("", |(_, name)| name)
 }
 
-fn decode(text: &str) -> SettingsRecord {
-    let mut record = SettingsRecord::default();
-    for (key, value) in text.lines().filter_map(|line| line.split_once('=')) {
-        match (key.trim(), value.trim()) {
-            (BACKLIGHT, "5s") => record.backlight = BacklightDuration::FiveSeconds,
-            (BACKLIGHT, "10s") => record.backlight = BacklightDuration::TenSeconds,
-            (BACKLIGHT, "30s") => record.backlight = BacklightDuration::ThirtySeconds,
-            (BACKLIGHT, "always") => record.backlight = BacklightDuration::Always,
-            (READING_LAMP, "off") => record.reading_lamp = ReadingLamp::Off,
-            (READING_LAMP, "10%") => record.reading_lamp = ReadingLamp::TenPercent,
-            (READING_LAMP, "30%") => record.reading_lamp = ReadingLamp::ThirtyPercent,
-            (READING_LAMP, "50%") => record.reading_lamp = ReadingLamp::FiftyPercent,
-            (READING_LAMP, "100%") => record.reading_lamp = ReadingLamp::Full,
-            _ => {}
-        }
+fn value_of<T: Copy>(values: &[(T, &str)], name: Option<&str>) -> Option<T> {
+    values.iter().find(|(_, n)| Some(*n) == name).map(|(value, _)| *value)
+}
+
+fn encode(record: &SettingsRecord) -> String {
+    ConfText::render(&[
+        (BACKLIGHT, name_of(&BACKLIGHT_VALUES, record.backlight)),
+        (READING_LAMP, name_of(&READING_LAMP_VALUES, record.reading_lamp)),
+    ])
+}
+
+fn decode(conf: &ConfText) -> SettingsRecord {
+    let defaults = SettingsRecord::default();
+    SettingsRecord {
+        backlight: value_of(&BACKLIGHT_VALUES, conf.get(BACKLIGHT)).unwrap_or(defaults.backlight),
+        reading_lamp: value_of(&READING_LAMP_VALUES, conf.get(READING_LAMP)).unwrap_or(defaults.reading_lamp),
     }
-    record
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-    use std::sync::{Arc, Mutex};
-
-    use hal::storage::Entry;
-    use hal::Fault;
-
     use super::*;
-
-    #[derive(Clone, Default)]
-    struct FakeStorage(Arc<Mutex<HashMap<String, Vec<u8>>>>);
-
-    impl FileStorage for FakeStorage {
-        fn entries(&self, _: &str) -> Result<Vec<Entry>, Fault> {
-            Ok(vec![])
-        }
-        fn capacity_bytes(&self) -> Result<u64, Fault> {
-            Ok(0)
-        }
-        fn read(&self, path: &str) -> Result<Option<Vec<u8>>, Fault> {
-            Ok(self.0.lock().unwrap().get(path).cloned())
-        }
-        fn write(&self, path: &str, contents: &[u8]) -> Result<(), Fault> {
-            self.0.lock().unwrap().insert(path.into(), contents.to_vec());
-            Ok(())
-        }
-        fn remove(&self, path: &str) -> Result<(), Fault> {
-            self.0.lock().unwrap().remove(path);
-            Ok(())
-        }
-    }
+    use crate::test_storage::MemoryStorage;
 
     #[test]
     fn every_record_comes_back_as_it_was_saved() {
-        let storage = FakeStorage::default();
-        let mut file = SettingsFile::new(storage.clone());
-        for backlight in [
-            BacklightDuration::FiveSeconds,
-            BacklightDuration::TenSeconds,
-            BacklightDuration::ThirtySeconds,
-            BacklightDuration::Always,
-        ] {
-            for reading_lamp in [
-                ReadingLamp::Off,
-                ReadingLamp::TenPercent,
-                ReadingLamp::ThirtyPercent,
-                ReadingLamp::FiftyPercent,
-                ReadingLamp::Full,
-            ] {
+        let mut file = SettingsFile::new(MemoryStorage::default());
+        for (backlight, _) in BACKLIGHT_VALUES {
+            for (reading_lamp, _) in READING_LAMP_VALUES {
                 let record = SettingsRecord { backlight, reading_lamp };
                 file.save(&record);
                 assert_eq!(file.load(), Some(record));
@@ -150,20 +113,21 @@ mod tests {
 
     #[test]
     fn the_file_lives_in_the_devices_own_directory() {
-        let storage = FakeStorage::default();
+        let storage = MemoryStorage::default();
         SettingsFile::new(storage.clone()).save(&SettingsRecord::default());
-        assert!(storage.0.lock().unwrap().contains_key("cute-display/settings.conf"));
+        assert!(storage.contains("cute-display/settings.conf"));
     }
 
     #[test]
     fn no_file_is_no_record() {
-        assert_eq!(SettingsFile::new(FakeStorage::default()).load(), None);
+        assert_eq!(SettingsFile::new(MemoryStorage::default()).load(), None);
     }
 
     #[test]
     fn a_damaged_line_loses_only_its_own_setting() {
-        let record = decode("backlight = forever\n# a comment\nreading_lamp = 50%\nvolume = 11\n");
-        assert_eq!(record, SettingsRecord { backlight: BacklightDuration::default(), reading_lamp: ReadingLamp::FiftyPercent });
+        let storage = MemoryStorage::with(FILE_NAME, "backlight = forever\n# a comment\nreading_lamp = 50%\nvolume = 11\n");
+        let record = SettingsFile::new(storage).load();
+        assert_eq!(record, Some(SettingsRecord { backlight: BacklightDuration::default(), reading_lamp: ReadingLamp::FiftyPercent }));
     }
 
     #[test]

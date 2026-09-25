@@ -10,3 +10,9 @@ pub struct AccessPoint {
 pub trait WifiScanner {
     fn scan(&mut self) -> Result<Vec<AccessPoint>, Fault>;
 }
+
+/// Joins and leaves a network. Joining blocks until the network gives an address.
+pub trait WifiStation {
+    fn connect(&mut self, ssid: &str, password: &str) -> Result<(), Fault>;
+    fn disconnect(&mut self) -> Result<(), Fault>;
+}

@@ -33,7 +33,8 @@ pub struct Shell<D> {
     screens: Vec<Box<dyn AppScreen<D>>>,
     /// The app whose screen was last told it came to the front.
     entered: Option<App>,
-    drawn: Option<App>,
+    /// The app last drawn, and its version then.
+    drawn: Option<(App, u64)>,
 }
 
 impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
@@ -52,10 +53,11 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
         touched
     }
 
-    /// The glass shows another app than the one in front: something brought an app
-    /// forward, or nothing has been drawn yet.
+    /// The glass no longer shows what it should: something brought another app forward,
+    /// the app in front changed on its own, or nothing has been drawn yet.
     pub fn is_outdated(&self) -> bool {
-        self.drawn != Some(self.foreground.app())
+        let front = self.foreground.app();
+        self.drawn != Some((front, self.version_of(front)))
     }
 
     pub fn draw(&mut self, target: &mut D, area: Rectangle) -> ScreenChange {
@@ -75,9 +77,9 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
             screen.draw(target, body);
         }
 
-        let change = if self.drawn == Some(front) { ScreenChange::SameScreen } else { ScreenChange::NewScreen };
-        self.drawn = Some(front);
-        change
+        let same_app = self.drawn.is_some_and(|(app, _)| app == front);
+        self.drawn = Some((front, self.version_of(front)));
+        if same_app { ScreenChange::SameScreen } else { ScreenChange::NewScreen }
     }
 
     fn follow(&mut self, gesture: Gesture) -> bool {
@@ -96,6 +98,10 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
         };
         screen.on_input(input);
         true
+    }
+
+    fn version_of(&self, app: App) -> u64 {
+        self.screens.iter().find(|s| s.app() == app).map_or(0, |s| s.version())
     }
 
     /// Tells a screen it came to the front before it is given anything else.
@@ -264,6 +270,32 @@ mod tests {
         let (before, _) = render(&mut shell);
         counter.add(7);
         assert!(render(&mut shell).0 != before);
+    }
+
+    /// Its version is whatever the test says.
+    struct Changing(Rc<RefCell<u64>>);
+
+    impl AppScreen<Frame> for Changing {
+        fn app(&self) -> App {
+            App::Weather
+        }
+        fn version(&self) -> u64 {
+            *self.0.borrow()
+        }
+        fn on_input(&mut self, _: Input) {}
+        fn draw(&self, _: &mut Frame, _: Rectangle) {}
+    }
+
+    #[test]
+    fn an_app_that_changed_on_its_own_is_redrawn_as_the_same_screen() {
+        let version = Rc::new(RefCell::new(1));
+        let mut shell = with_system(&Foreground::new(App::Weather), vec![Box::new(Changing(Rc::clone(&version)))]);
+        render(&mut shell);
+        assert!(!shell.is_outdated());
+        *version.borrow_mut() = 2;
+        assert!(shell.is_outdated());
+        assert_eq!(render(&mut shell).1, ScreenChange::SameScreen);
+        assert!(!shell.is_outdated());
     }
 
     #[test]

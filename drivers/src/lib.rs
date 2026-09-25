@@ -14,6 +14,8 @@ mod or_fault;
 #[cfg(target_os = "espidf")]
 pub mod adc_power;
 #[cfg(target_os = "espidf")]
+pub mod esp_http;
+#[cfg(target_os = "espidf")]
 pub mod esp_system;
 #[cfg(target_os = "espidf")]
 pub mod esp_wifi;

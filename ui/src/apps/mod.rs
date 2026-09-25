@@ -5,11 +5,13 @@ mod counter;
 mod echo;
 mod ping;
 mod system;
+mod weather;
 
 pub use counter::CounterScreen;
 pub use echo::EchoScreen;
 pub use ping::PingScreen;
 pub use system::SystemScreen;
+pub use weather::WeatherScreen;
 
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;

@@ -73,12 +73,15 @@ a "latest value" out:
 | survey   | the Wi-Fi radio        | a scan blocks for seconds                         |
 | buttons  | the button pins        | presses must be counted while everyone else is busy |
 | maintenance | the USB console's input | it waits for lines from a computer            |
+| weather  | the Wi-Fi and HTTPS client | a fetch waits on the network for seconds     |
 
 ## Where things live
 
 ```
-domain/     what the product does: the apps, the one in front, settings, lighting, Counter, Ping
-infrastructure/ the domain's contracts on the HAL: the settings file, the lights
+domain/     what the product does: the apps, the one in front, settings, lighting, weather,
+            Counter, Ping
+infrastructure/ the domain's contracts on the HAL: conf files, lights, Internet on demand,
+            Open-Meteo
 ui/         app screens (the system app's among them), gestures; host-tested with hal's
             Frame as a dev-dependency
 hal/        contracts with the hardware, and the Frame the display shows
@@ -131,12 +134,31 @@ remembers. Its settings are domain concepts:
 - `ui::Shell`: shows the screen of the app in front under its title, and tells a screen
   when it comes to the front.
 
-**Refreshing**: the UI thread redraws after any input, and whenever the app in front is
-not the one on the glass. A new app in front is a whole, clean redraw; anything else
-only redraws what changed. Controls keep counting during a refresh (PCNT, the buttons'
-thread), and what piled up is handled in one go before the next refresh. A change in the
-domain that nobody made through the controls, inside the app in front, is not noticed
-yet: the first app that needs it decides how.
+**Refreshing**: the UI thread redraws after any input; whenever the app in front is not
+the one on the glass; and whenever the app in front says it changed on its own, by moving
+its `AppScreen::version` on (the weather screen does, when a fetch lands and every minute
+for its "updated … ago"). A new app in front is a whole, clean redraw; anything else only
+redraws what changed. Controls keep counting during a refresh (PCNT, the buttons'
+thread), and what piled up is handled in one go before the next refresh.
+
+### Weather
+
+The first real app: today's weather and the week's, at one place.
+
+- `domain::weather`: `Location`, `Sky`, `Forecast` (today, then the week), and `Weather`,
+  which fetches once at start, every hour and on request, retries ten minutes after a
+  failure, and keeps the last forecast through failures. It needs a `LocationSource` and
+  a `ForecastSource`; `domain::calendar` gives a date its weekday.
+- `infrastructure::location_file` reads `cute-display/weather.conf` (`place`, `latitude`,
+  `longitude`), and `infrastructure::open_meteo` asks Open-Meteo (free, no key, dates in
+  the place's own time zone, so no clock is needed to know which day it is).
+- `infrastructure::internet::OnDemandInternet` joins the Wi-Fi in `cute-display/wifi.conf`
+  for one request and always leaves it: the radio is on for seconds an hour. Both files
+  are read again at every fetch, so a file dropped with `just sd-put` needs no restart.
+- `ui::apps::WeatherScreen`: the wheel turns to the week and back, a press asks for an
+  update; the foot of the screen says how fresh the forecast is, or what is missing.
+  `ui::weather_icons` draws each sky from shapes, at any size.
+- `firmware`: the `weather` thread calls `refresh_if_due` every second.
 
 ## Maintenance console
 

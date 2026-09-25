@@ -7,7 +7,9 @@ use domain::counter::Counter;
 use domain::lighting::Lighting;
 use domain::ping::Ping;
 use domain::settings::{Settings, SettingsStore};
+use domain::weather::Weather;
 use drivers::button::Button;
+use drivers::esp_system::EspSystem;
 use drivers::pcnt_encoder::PcntEncoder;
 use drivers::sdmmc_card::SdmmcCard;
 use drivers::usb_console;
@@ -18,11 +20,15 @@ use embedded_graphics::primitives::Rectangle;
 use esp_idf_svc::hal::delay::FreeRtos;
 use hal::display::{EpaperDisplay, Frame, Redraw, HEIGHT, VISIBLE_WIDTH};
 use hal::input::{PushButton, RotaryEncoder};
+use hal::system::SystemMonitor;
 use hal::Fault;
 use infrastructure::hal_light::HalLight;
+use infrastructure::internet::{NoInternet, OnDemandInternet};
+use infrastructure::location_file::{LocationFile, NoPlace};
+use infrastructure::open_meteo::OpenMeteo;
 use infrastructure::settings_file::{SettingsFile, Unkept};
 use maintenance::MaintenanceConsole;
-use ui::apps::{CounterScreen, EchoScreen, PingScreen, SystemScreen};
+use ui::apps::{CounterScreen, EchoScreen, PingScreen, SystemScreen, WeatherScreen};
 use ui::controls::{ButtonSample, ControlsSample};
 use ui::{AppScreen, ScreenChange, Shell};
 
@@ -31,12 +37,14 @@ use firmware::board::Board;
 const BUILD: &str = concat!("build ", env!("BUILD_TIME"), " @", env!("BUILD_GIT"));
 const CONTROLS_PERIOD: Duration = Duration::from_millis(20);
 const LIGHTING_PERIOD: Duration = Duration::from_millis(100);
+const WEATHER_PERIOD: Duration = Duration::from_secs(1);
 
 /// Everything the domain is made of, shared by the threads that use it.
 struct Domain {
     foreground: Foreground,
     settings: Settings,
     lighting: Lighting,
+    weather: Weather,
     counter: Counter,
     ping: Ping,
 }
@@ -86,10 +94,20 @@ fn main() -> Result<(), Fault> {
     );
     lighting.touched(Instant::now());
 
+    let weather = match &board.sd_card {
+        Ok(card) => Weather::new(
+            Box::new(LocationFile::new(card.clone())),
+            Box::new(OpenMeteo::new(OnDemandInternet::new(board.wifi, board.https, card.clone()))),
+        ),
+        Err(_) => Weather::new(Box::new(NoPlace), Box::new(OpenMeteo::new(NoInternet("no SD card")))),
+    };
+    start_weather(weather.clone())?;
+
     let domain = Domain {
-        foreground: Foreground::new(App::Counter),
+        foreground: Foreground::new(App::Weather),
         settings,
         lighting: lighting.clone(),
+        weather,
         counter: Counter::new(),
         ping: Ping::new(),
     };
@@ -110,6 +128,29 @@ fn main() -> Result<(), Fault> {
         lighting.refresh(Instant::now());
         thread::sleep(LIGHTING_PERIOD);
     }
+}
+
+/// Fetches the forecast whenever it is due. On a thread of its own, since a fetch joins
+/// Wi-Fi and waits on a server for seconds; the stack is for TLS.
+fn start_weather(weather: Weather) -> Result<(), Fault> {
+    thread::Builder::new()
+        .name("weather".into())
+        .stack_size(24 * 1024)
+        .spawn(move || loop {
+            let now = Instant::now();
+            if weather.is_due(now) {
+                let system = EspSystem;
+                log::info!(
+                    "weather: updating, {} KiB free, largest block {} KiB",
+                    system.free_heap_bytes() / 1024,
+                    system.largest_free_block() / 1024
+                );
+            }
+            weather.refresh_if_due(now);
+            thread::sleep(WEATHER_PERIOD);
+        })
+        .map_err(Fault::new)?;
+    Ok(())
 }
 
 /// Serves the SD card to a computer on the USB cable; see `tools/sd.py`.
@@ -140,6 +181,7 @@ fn start_maintenance(card: SdmmcCard) -> Result<(), Fault> {
 fn run_ui(mut controls: Controls, mut display: Uc8253, domain: Domain) {
     let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
         Box::new(SystemScreen::new(domain.foreground.clone(), domain.settings)),
+        Box::new(WeatherScreen::new(domain.weather)),
         Box::new(CounterScreen::new(domain.counter)),
         Box::new(EchoScreen::default()),
         Box::new(PingScreen::new(domain.ping)),

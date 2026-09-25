@@ -11,6 +11,11 @@ pub trait AppScreen<D: DrawTarget<Color = BinaryColor>> {
     fn app(&self) -> App;
     /// The app just came to the front.
     fn entered(&mut self) {}
+    /// Changes whenever what the screen shows changed without an input: the screen is
+    /// redrawn then. Screens that only change on input keep the default.
+    fn version(&self) -> u64 {
+        0
+    }
     fn on_input(&mut self, input: Input);
     /// Draws within `area`, on paper.
     fn draw(&self, target: &mut D, area: Rectangle);
@@ -20,6 +25,7 @@ pub trait AppScreen<D: DrawTarget<Color = BinaryColor>> {
 pub fn title(app: App) -> &'static str {
     match app {
         App::System => "System",
+        App::Weather => "Weather",
         App::Counter => "Counter",
         App::Echo => "Echo",
         App::Ping => "Ping",

@@ -11,6 +11,7 @@ pub mod gestures;
 pub mod shell;
 
 mod text;
+mod weather_icons;
 
 pub use app_screen::AppScreen;
 pub use shell::{ScreenChange, Shell};

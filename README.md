@@ -13,8 +13,25 @@ speaker, a reading lamp and a front light.
 **The app image** is the base of the real firmware: small apps, one in front at a time.
 Hold the long button for a second to open the system app: turn the wheel to choose an app
 and press to open it, or change a setting (how long the screen stays lit after a touch,
-and the reading lamp: off, 10, 30, 50 or 100 %). Settings are kept on the SD card. The other apps are placeholders
-for now: Counter, Echo, and Ping.
+and the reading lamp: off, 10, 30, 50 or 100 %). Settings are kept on the SD card.
+
+**Weather**, the first real app, shows today's weather and the week's at one place, from
+Open-Meteo: turn the wheel for the week, press it to update. It needs two files on the SD
+card, put there with `just sd-put`:
+
+```text
+# cute-display/weather.conf
+place = Paris
+latitude = 48.85
+longitude = 2.35
+
+# cute-display/wifi.conf
+ssid = MyNetwork
+password = secret
+```
+
+The Wi-Fi is joined for each update (at start, then every hour) and left right after. The
+other apps are placeholders for now: Counter, Echo, and Ping.
 
 **The hardware test image** checks the board and shows what each part says: the panel,
 the RTC, the temperature, the I2C bus, the SD card, a Wi-Fi scan, USB power, the battery

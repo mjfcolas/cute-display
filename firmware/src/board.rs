@@ -15,7 +15,8 @@ use drivers::adc_power::{AdcPowerMonitor, SharedAdc};
 use drivers::button::{self, Button};
 use drivers::ds3231::{Ds3231Clock, Ds3231Thermometer};
 use drivers::esp_system::EspSystem;
-use drivers::esp_wifi::EspWifiScanner;
+use drivers::esp_http::EspHttpsClient;
+use drivers::esp_wifi::EspWifiRadio;
 use drivers::i2c::I2cMaster;
 use drivers::i2s_speaker::I2sSpeaker;
 use drivers::ledc_light::{self, LedcLight};
@@ -43,7 +44,8 @@ pub struct Board {
     /// What answered on the I2C bus at power-up.
     pub i2c_devices: Vec<u8>,
     pub sd_card: Result<SdmmcCard, Fault>,
-    pub wifi: EspWifiScanner,
+    pub wifi: EspWifiRadio,
+    pub https: EspHttpsClient,
     pub power: AdcPowerMonitor<ADCCH1<ADCU1>>,
     pub system: EspSystem,
 }
@@ -119,7 +121,8 @@ impl Board {
             thermometer: Ds3231Thermometer::new(i2c),
             i2c_devices,
             sd_card: SdmmcCard::mount(sd_host),
-            wifi: EspWifiScanner::new(peripherals.modem, EspSystemEventLoop::take().map_err(fault("event loop"))?)?,
+            wifi: EspWifiRadio::new(peripherals.modem, EspSystemEventLoop::take().map_err(fault("event loop"))?)?,
+            https: EspHttpsClient,
             power: AdcPowerMonitor::new(
                 // Fed through ~340 kOhm: any internal pull would swamp it.
                 PinDriver::input(pins.gpio1, Pull::Floating).map_err(fault("USB detect"))?,

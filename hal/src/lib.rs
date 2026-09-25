@@ -7,6 +7,7 @@ pub mod audio;
 pub mod bus;
 pub mod clock;
 pub mod display;
+pub mod http;
 pub mod input;
 pub mod light;
 pub mod power;

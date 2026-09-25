@@ -7,6 +7,7 @@ use crate::shared::Shared;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum App {
     System,
+    Weather,
     Counter,
     Echo,
     Ping,
@@ -14,7 +15,7 @@ pub enum App {
 
 impl App {
     /// Every app but the system one, in the order they are offered.
-    pub const LAUNCHABLE: [App; 3] = [App::Counter, App::Echo, App::Ping];
+    pub const LAUNCHABLE: [App; 4] = [App::Weather, App::Counter, App::Echo, App::Ping];
 }
 
 #[derive(Clone, Copy, Debug)]
