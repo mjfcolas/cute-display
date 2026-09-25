@@ -1,0 +1,13 @@
+[package]
+name = "maintenance"
+version = "0.1.0"
+edition = "2021"
+description = "A console on the serial line to read the SD card and put files on it from a computer."
+
+[lints]
+workspace = true
+
+[dependencies]
+hal = { path = "../hal" }
+base64 = "0.22"
+crc32fast = "1"

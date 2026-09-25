@@ -3,6 +3,7 @@
 use hal::clock::ClockReading;
 use hal::display::Refreshed;
 use hal::light::Brightness;
+use hal::storage::Entry;
 use hal::thermometer::Temperature;
 use hal::Fault;
 
@@ -82,7 +83,7 @@ pub fn i2c(devices: &[u8], expected: u8) -> Check {
     Check::new("I2C", verdict, if list.is_empty() { "nothing".into() } else { list.join(" ") })
 }
 
-pub fn storage(entries: &Result<Vec<String>, Fault>, capacity_bytes: &Result<u64, Fault>) -> Check {
+pub fn storage(entries: &Result<Vec<Entry>, Fault>, capacity_bytes: &Result<u64, Fault>) -> Check {
     match (entries, capacity_bytes) {
         (Err(fault), _) => Check::fault("SD card", fault),
         (Ok(entries), Ok(bytes)) => {
@@ -174,7 +175,8 @@ mod tests {
 
     #[test]
     fn storage_capacity_reads_in_gigabytes() {
-        let check = storage(&Ok(vec!["a".into(), "b".into()]), &Ok(31_914_983_424));
+        let file = |name: &str| Entry { name: name.into(), size_bytes: 1, is_dir: false };
+        let check = storage(&Ok(vec![file("a"), file("b")]), &Ok(31_914_983_424));
         assert_eq!(check.reading, "2 ent 29.7 GB");
     }
 }

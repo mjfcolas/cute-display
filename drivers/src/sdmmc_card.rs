@@ -3,7 +3,10 @@ use esp_idf_svc::hal::sd::mmc::SdMmcHostDriver;
 use esp_idf_svc::hal::sd::{SdCardConfiguration, SdCardDriver};
 use esp_idf_svc::io::vfs::MountedFatfs;
 use esp_idf_svc::sys::{esp_vfs_fat_info, ESP_OK};
-use hal::storage::FileStorage;
+use std::io::ErrorKind;
+use std::path::PathBuf;
+
+use hal::storage::{Entry, FileStorage};
 use hal::Fault;
 
 use crate::or_fault::OrFault;
@@ -12,7 +15,9 @@ const MOUNT_POINT: &str = "/sdcard";
 const MOUNT_POINT_C: &core::ffi::CStr = c"/sdcard";
 const MAX_OPEN_FILES: usize = 4;
 
-/// A FAT-formatted SD card, mounted for the life of the device.
+/// A FAT-formatted SD card, mounted for the life of the device. Every clone is the same
+/// card, and may be used from any thread: FatFs locks the volume itself.
+#[derive(Clone)]
 pub struct SdmmcCard(());
 
 impl SdmmcCard {
@@ -26,22 +31,47 @@ impl SdmmcCard {
     }
 }
 
+fn on_card(path: &str) -> PathBuf {
+    PathBuf::from(MOUNT_POINT).join(path)
+}
+
 impl FileStorage for SdmmcCard {
-    fn root_entries(&self) -> Result<Vec<String>, Fault> {
-        let entries = std::fs::read_dir(MOUNT_POINT).or_fault("listing the SD card")?;
-        Ok(entries.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect())
+    fn entries(&self, dir: &str) -> Result<Vec<Entry>, Fault> {
+        let entries = std::fs::read_dir(on_card(dir)).or_fault("listing the SD card")?;
+        Ok(entries
+            .flatten()
+            .map(|e| {
+                let metadata = e.metadata().ok();
+                Entry {
+                    name: e.file_name().to_string_lossy().into_owned(),
+                    size_bytes: metadata.as_ref().map_or(0, |m| m.len()),
+                    is_dir: metadata.is_some_and(|m| m.is_dir()),
+                }
+            })
+            .collect())
     }
 
     fn read(&self, path: &str) -> Result<Option<Vec<u8>>, Fault> {
-        match std::fs::read(format!("{MOUNT_POINT}/{path}")) {
+        match std::fs::read(on_card(path)) {
             Ok(contents) => Ok(Some(contents)),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) if e.kind() == ErrorKind::NotFound => Ok(None),
             Err(e) => Err(Fault::new(format!("reading {path} on the SD card: {e}"))),
         }
     }
 
     fn write(&self, path: &str, contents: &[u8]) -> Result<(), Fault> {
-        std::fs::write(format!("{MOUNT_POINT}/{path}"), contents).or_fault("writing on the SD card")
+        let file = on_card(path);
+        if let Some(dir) = file.parent() {
+            std::fs::create_dir_all(dir).or_fault("creating a directory on the SD card")?;
+        }
+        std::fs::write(file, contents).or_fault("writing on the SD card")
+    }
+
+    fn remove(&self, path: &str) -> Result<(), Fault> {
+        match std::fs::remove_file(on_card(path)) {
+            Err(e) if e.kind() != ErrorKind::NotFound => Err(Fault::new(format!("removing {path} from the SD card: {e}"))),
+            _ => Ok(()),
+        }
     }
 
     fn capacity_bytes(&self) -> Result<u64, Fault> {

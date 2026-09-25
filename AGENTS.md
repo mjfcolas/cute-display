@@ -47,8 +47,8 @@ the device keeps running.
 - Flash only through the `just` recipes: they write `app1` and `otadata` and nothing
   else, after checking the partition table.
 - Never write `nvs` (the stock Wi-Fi credentials), `factory`, `app0` (the stock
-  firmware) or the RTC. On the SD card, the app writes `cute-display.conf` and nothing
-  else; the hardware test writes nothing.
+  firmware) or the RTC. On the SD card, the app and its maintenance console write only
+  under `cute-display/`; the hardware test writes nothing.
 - `just fw-stock` must always bring the stock firmware back.
 
 ## Commands
@@ -59,6 +59,7 @@ just lint        # clippy, host and ESP32
 just preview     # render an app screen to a PNG (system, counter, echo, ping)
 just fw          # build the app image, flash it into app1, watch the log
 just fw hwtest   # the same with the hardware test image
+just sd-ls       # list the SD card; also sd-get, sd-put, sd-rm (monitor closed)
 just fw-stock    # boot the stock firmware again
 ```
 

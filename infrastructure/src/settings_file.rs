@@ -1,4 +1,4 @@
-//! The settings as a few lines of text at the root of a storage:
+//! The settings as a few lines of text, in the device's own directory of a storage:
 //!
 //! ```text
 //! backlight = 10s
@@ -11,7 +11,7 @@
 use domain::settings::{BacklightDuration, ReadingLamp, SettingsRecord, SettingsStore};
 use hal::storage::FileStorage;
 
-pub const FILE_NAME: &str = "cute-display.conf";
+pub const FILE_NAME: &str = "cute-display/settings.conf";
 
 const BACKLIGHT: &str = "backlight";
 const READING_LAMP: &str = "reading_lamp";
@@ -96,6 +96,7 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
+    use hal::storage::Entry;
     use hal::Fault;
 
     use super::*;
@@ -104,8 +105,8 @@ mod tests {
     struct FakeStorage(Arc<Mutex<HashMap<String, Vec<u8>>>>);
 
     impl FileStorage for FakeStorage {
-        fn root_entries(&self) -> Result<Vec<String>, Fault> {
-            Ok(self.0.lock().unwrap().keys().cloned().collect())
+        fn entries(&self, _: &str) -> Result<Vec<Entry>, Fault> {
+            Ok(vec![])
         }
         fn capacity_bytes(&self) -> Result<u64, Fault> {
             Ok(0)
@@ -115,6 +116,10 @@ mod tests {
         }
         fn write(&self, path: &str, contents: &[u8]) -> Result<(), Fault> {
             self.0.lock().unwrap().insert(path.into(), contents.to_vec());
+            Ok(())
+        }
+        fn remove(&self, path: &str) -> Result<(), Fault> {
+            self.0.lock().unwrap().remove(path);
             Ok(())
         }
     }
@@ -141,6 +146,13 @@ mod tests {
                 assert_eq!(file.load(), Some(record));
             }
         }
+    }
+
+    #[test]
+    fn the_file_lives_in_the_devices_own_directory() {
+        let storage = FakeStorage::default();
+        SettingsFile::new(storage.clone()).save(&SettingsRecord::default());
+        assert!(storage.0.lock().unwrap().contains_key("cute-display/settings.conf"));
     }
 
     #[test]

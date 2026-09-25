@@ -134,6 +134,22 @@ _otadata bin monitor="":
     else:
         subprocess.run(cmd, check=True)
 
+# list a directory of the SD card (the root without one); close the monitor first
+sd-ls dir="":
+    python3 tools/sd.py ls {{dir}}
+
+# copy a file off the SD card (to the terminal without a destination)
+sd-get path dest="":
+    python3 tools/sd.py get {{path}} {{dest}}
+
+# put a local file on the SD card, somewhere under cute-display/
+sd-put file path:
+    python3 tools/sd.py put {{file}} {{path}}
+
+# remove a file from the SD card, somewhere under cute-display/
+sd-rm path:
+    python3 tools/sd.py rm {{path}}
+
 # boot the stock Habity firmware again (writes the saved stock otadata back)
 fw-stock:
     #!/usr/bin/env python3

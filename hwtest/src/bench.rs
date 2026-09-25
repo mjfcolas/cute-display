@@ -114,7 +114,7 @@ impl Bench {
         let front_light = set(lights.front.as_mut(), FRONT_LIGHT_AT_START);
         let reading_lamp = set(lights.reading_lamp.as_mut(), Brightness::OFF);
         let storage = match &sensors.storage {
-            Ok(card) => report::storage(&card.root_entries(), &card.capacity_bytes()),
+            Ok(card) => report::storage(&card.entries(""), &card.capacity_bytes()),
             Err(fault) => report::storage(&Err(fault.clone()), &Err(fault.clone())),
         };
         let chimes = Chimes::spawn(blocking.speaker)?;

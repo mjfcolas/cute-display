@@ -20,7 +20,7 @@ this project's unit.
 | Amplifier enable            | 41                      | high = on                                                       |
 | Reading lamp                | 17                      | LEDC, 1 kHz, 10-bit                                             |
 | Front light (over the panel)| 18                      | LEDC, 1 kHz, 10-bit                                             |
-| SD CMD / CLK / D0–D3        | 5 / 6 / 7, 8, 14, 13    | SDMMC 4-bit, FAT. The card does not come out of the case. It holds the stock sounds; the app adds `cute-display.conf` |
+| SD CMD / CLK / D0–D3        | 5 / 6 / 7, 8, 14, 13    | SDMMC 4-bit, FAT. The card does not come out of the case. It holds the stock sounds; the app writes only under `cute-display/` |
 | USB present                 | 1                       | ~3.2 V plugged, tens of mV not, through ~340 kΩ: read floating  |
 | Battery sense               | 2                       | ADC1 channel 1, divider with ~31 nF; ratio unknown (~0.9 V seen) |
 

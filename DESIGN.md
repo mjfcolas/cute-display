@@ -72,6 +72,7 @@ a "latest value" out:
 | chimes   | the speaker            | playback blocks until the sound ends              |
 | survey   | the Wi-Fi radio        | a scan blocks for seconds                         |
 | buttons  | the button pins        | presses must be counted while everyone else is busy |
+| maintenance | the USB console's input | it waits for lines from a computer            |
 
 ## Where things live
 
@@ -82,6 +83,7 @@ ui/         app screens (the system app's among them), gestures; host-tested wit
             Frame as a dev-dependency
 hal/        contracts with the hardware, and the Frame the display shows
 drivers/    ESP32-S3 implementations of hal; chip logic that needs no ESP32 is host-tested
+maintenance/ the console that serves the SD card on the USB cable
 hwtest/     the hardware test bench (see below)
 firmware/   board pin map + one binary per image (`app`, `hwtest`); the only crate built
             for the ESP32 only
@@ -106,7 +108,7 @@ remembers. Its settings are domain concepts:
 - `domain::settings`: the backlight duration and the reading lamp's level (off, 10, 30,
   50, 100 %), kept by
   a `SettingsStore` on every change. `infrastructure::settings_file` keeps them as a few
-  lines of text, `cute-display.conf` at the root of the SD card; without a card they last
+  lines of text, `cute-display/settings.conf` on the SD card; without a card they last
   until the power goes.
 - `domain::lighting`: the light over the screen comes up when the controls are touched
   and goes out once the backlight duration has passed; the reading lamp shines at its
@@ -135,6 +137,28 @@ only redraws what changed. Controls keep counting during a refresh (PCNT, the bu
 thread), and what piled up is handled in one go before the next refresh. A change in the
 domain that nobody made through the controls, inside the app in front, is not noticed
 yet: the first app that needs it decides how.
+
+## Maintenance console
+
+The SD card does not come out of the case, so the app serves it on the USB cable: a
+`maintenance` thread reads the console line by line, and `tools/sd.py` (`just sd-ls`,
+`sd-get`, `sd-put`, `sd-rm`) is the other end. It is how configuration prepared on a
+computer (Wi-Fi, a place for a weather app…) reaches the device: a file dropped in
+`cute-display/`, read by whoever needs it.
+
+- **Everything may be read; only `cute-display/` may be written or removed.** The stock
+  firmware's sounds are out of reach of a mistyped command. The device's own settings
+  live there too, in `cute-display/settings.conf`.
+- **The protocol** (`maintenance::protocol`): every line starts with `@@ <id>`, and both
+  ends ignore every other line, since the device's log shares the console. `ls`, `get`
+  and `rm` are one request and their replies; a `put` announces its size and CRC32, gets
+  `ready`, then sends 48 bytes of base64 per `data` line and waits for each `ack`,
+  because the console drops what arrives faster than it reads. Nothing is written until
+  the whole file arrived with the right CRC.
+- **In the layers**, it is a second way into the device beside the UI, working on files
+  rather than on the domain: `maintenance` depends on `hal` alone, like `hwtest`.
+- `drivers::usb_console` makes stdin wait for a line. Output never waits for a computer:
+  with nobody reading, it is dropped after one 50 ms wait.
 
 ## The hardware test
 

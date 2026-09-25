@@ -1,3 +1,4 @@
+use std::io::{self, BufRead};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -8,6 +9,8 @@ use domain::ping::Ping;
 use domain::settings::{Settings, SettingsStore};
 use drivers::button::Button;
 use drivers::pcnt_encoder::PcntEncoder;
+use drivers::sdmmc_card::SdmmcCard;
+use drivers::usb_console;
 use drivers::uc8253::Uc8253;
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
@@ -18,6 +21,7 @@ use hal::input::{PushButton, RotaryEncoder};
 use hal::Fault;
 use infrastructure::hal_light::HalLight;
 use infrastructure::settings_file::{SettingsFile, Unkept};
+use maintenance::MaintenanceConsole;
 use ui::apps::{CounterScreen, EchoScreen, PingScreen, SystemScreen};
 use ui::controls::{ButtonSample, ControlsSample};
 use ui::{AppScreen, ScreenChange, Shell};
@@ -64,8 +68,11 @@ fn main() -> Result<(), Fault> {
     log::info!("cute-display, {BUILD}");
 
     let board = Board::bring_up()?;
-    let settings_store: Box<dyn SettingsStore> = match board.sd_card {
-        Ok(card) => Box::new(SettingsFile::new(card)),
+    let settings_store: Box<dyn SettingsStore> = match &board.sd_card {
+        Ok(card) => {
+            start_maintenance(card.clone())?;
+            Box::new(SettingsFile::new(card.clone()))
+        }
         Err(fault) => {
             log::warn!("settings: no SD card ({fault}); they will not survive a power cut");
             Box::new(Unkept)
@@ -103,6 +110,31 @@ fn main() -> Result<(), Fault> {
         lighting.refresh(Instant::now());
         thread::sleep(LIGHTING_PERIOD);
     }
+}
+
+/// Serves the SD card to a computer on the USB cable; see `tools/sd.py`.
+fn start_maintenance(card: SdmmcCard) -> Result<(), Fault> {
+    usb_console::listen()?;
+    thread::Builder::new()
+        .name("maintenance".into())
+        .stack_size(16 * 1024)
+        .spawn(move || {
+            let mut console = MaintenanceConsole::new(card);
+            let mut line = String::new();
+            loop {
+                line.clear();
+                let replied = io::stdin()
+                    .lock()
+                    .read_line(&mut line)
+                    .and_then(|_| console.on_line(&line, &mut io::stdout().lock()));
+                if let Err(e) = replied {
+                    log::warn!("maintenance: {e}");
+                    thread::sleep(Duration::from_secs(1));
+                }
+            }
+        })
+        .map_err(Fault::new)?;
+    Ok(())
 }
 
 fn run_ui(mut controls: Controls, mut display: Uc8253, domain: Domain) {

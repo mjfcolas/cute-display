@@ -21,12 +21,16 @@ the RTC, the temperature, the I2C bus, the SD card, a Wi-Fi scan, USB power, the
 sense and the free heap. The wheel steers the front light, a wheel press plays a chime,
 the yellow button cycles the reading lamp, and the long button swaps in a checkerboard.
 
-Neither writes to the RTC or NVS; on the SD card, only the app writes, one settings file.
+Neither writes to the RTC or NVS; on the SD card, only the app writes, and only under
+`cute-display/`.
 Both live in `app1` next to the untouched stock firmware.
 
 ```sh
 just fw          # build the app image, flash it into app1, watch the log
 just fw hwtest   # the same with the hardware test
+just sd-ls       # list the SD card, over the USB cable (monitor closed)
+just sd-get cute-display/settings.conf
+just sd-put wifi.conf cute-display/wifi.conf
 just fw-stock    # back to the stock firmware
 just backup      # dump the whole flash to backup/ (gitignored)
 ```
