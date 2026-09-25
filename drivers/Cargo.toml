@@ -1,0 +1,15 @@
+[package]
+name = "drivers"
+version = "0.1.0"
+edition = "2021"
+description = "The HAL implemented on the Habity board's chips. Chip-level logic that needs no ESP32 builds and tests on the host."
+
+[lints]
+workspace = true
+
+[dependencies]
+hal = { path = "../hal" }
+
+[target.'cfg(target_os = "espidf")'.dependencies]
+esp-idf-svc = "0.52.1"
+log = "0.4"

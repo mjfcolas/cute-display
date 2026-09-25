@@ -1,0 +1,42 @@
+[package]
+name = "firmware"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+description = "The images flashed on the device: the board's pin map, and one binary per image."
+
+# Outside the host workspace: this crate only builds for xtensa-esp32s3-espidf.
+
+[lints.clippy]
+unwrap_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+unreachable = "warn"
+exit = "warn"
+panic_in_result_fn = "warn"
+indexing_slicing = "warn"
+string_slice = "warn"
+
+[[bin]]
+name = "hwtest"
+path = "src/bin/hwtest.rs"
+harness = false
+
+[dependencies]
+log = "0.4"
+esp-idf-svc = "0.52.1"
+hal = { path = "../hal" }
+drivers = { path = "../drivers" }
+hwtest = { path = "../hwtest" }
+
+[build-dependencies]
+embuild = "0.33"
+
+[profile.release]
+opt-level = "s"
+overflow-checks = true
+
+[profile.dev]
+debug = true
+opt-level = "z"

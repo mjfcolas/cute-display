@@ -1,0 +1,17 @@
+# Host workspace: every crate that builds and tests on a stock toolchain.
+# `firmware` targets xtensa-esp32s3-espidf and is excluded; it depends on these by path.
+[workspace]
+resolver = "2"
+members = ["hal", "drivers", "hwtest"]
+exclude = ["firmware"]
+
+[workspace.lints.clippy]
+unwrap_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+unreachable = "warn"
+exit = "warn"
+panic_in_result_fn = "warn"
+indexing_slicing = "warn"
+string_slice = "warn"

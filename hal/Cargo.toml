@@ -1,0 +1,11 @@
+[package]
+name = "hal"
+version = "0.1.0"
+edition = "2021"
+description = "Contracts between the application and the hardware of the Habity bedside clock."
+
+[lints]
+workspace = true
+
+[dependencies]
+embedded-graphics-core = "0.4"

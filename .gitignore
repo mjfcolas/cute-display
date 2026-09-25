@@ -1,0 +1,8 @@
+.idea/
+/target
+**/target
+__pycache__/
+
+# Flash dumps are secret: they carry nvs (the stock firmware's Wi-Fi credentials).
+*.bin
+backup/

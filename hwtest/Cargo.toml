@@ -1,0 +1,13 @@
+[package]
+name = "hwtest"
+version = "0.1.0"
+edition = "2021"
+description = "The hardware test bench: exercises every part of the board through the HAL and reports on the panel."
+
+[lints]
+workspace = true
+
+[dependencies]
+hal = { path = "../hal" }
+embedded-graphics = "0.8"
+log = "0.4"
