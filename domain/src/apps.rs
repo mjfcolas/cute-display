@@ -8,14 +8,12 @@ use crate::shared::Shared;
 pub enum App {
     System,
     Weather,
-    Counter,
-    Echo,
-    Ping,
+    Radar,
 }
 
 impl App {
     /// Every app but the system one, in the order they are offered.
-    pub const LAUNCHABLE: [App; 4] = [App::Weather, App::Counter, App::Echo, App::Ping];
+    pub const LAUNCHABLE: [App; 2] = [App::Weather, App::Radar];
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -32,7 +30,7 @@ pub struct Foreground(Shared<Front>);
 
 impl Foreground {
     pub fn new(app: App) -> Self {
-        let before_system = if app == App::System { App::Counter } else { app };
+        let before_system = if app == App::System { App::Weather } else { app };
         Self(Shared::new(Front { app, before_system }))
     }
 
@@ -78,30 +76,30 @@ mod tests {
 
     #[test]
     fn an_app_brought_to_the_front_is_in_front_for_everyone() {
-        let foreground = Foreground::new(App::Counter);
+        let foreground = Foreground::new(App::Weather);
         let service = foreground.clone();
-        thread::spawn(move || service.bring_to_front(App::Ping)).join().unwrap();
-        assert_eq!(foreground.app(), App::Ping);
+        thread::spawn(move || service.bring_to_front(App::Radar)).join().unwrap();
+        assert_eq!(foreground.app(), App::Radar);
     }
 
     #[test]
     fn leaving_the_system_app_goes_back_where_it_was_opened_from() {
-        let foreground = Foreground::new(App::Echo);
+        let foreground = Foreground::new(App::Radar);
         foreground.open_system();
         assert_eq!(foreground.app(), App::System);
         foreground.open_system();
         foreground.close_system();
-        assert_eq!(foreground.app(), App::Echo);
+        assert_eq!(foreground.app(), App::Radar);
     }
 
     #[test]
     fn choosing_an_app_from_the_system_app_leaves_it() {
-        let foreground = Foreground::new(App::Echo);
+        let foreground = Foreground::new(App::Weather);
         foreground.open_system();
-        foreground.bring_to_front(App::Ping);
-        assert_eq!(foreground.app(), App::Ping);
+        foreground.bring_to_front(App::Radar);
+        assert_eq!(foreground.app(), App::Radar);
         foreground.open_system();
-        assert_eq!(foreground.before_system(), App::Ping);
+        assert_eq!(foreground.before_system(), App::Radar);
     }
 
     #[test]

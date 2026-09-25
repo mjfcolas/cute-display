@@ -26,8 +26,6 @@ pub fn title(app: App) -> &'static str {
     match app {
         App::System => "System",
         App::Weather => "Weather",
-        App::Counter => "Counter",
-        App::Echo => "Echo",
-        App::Ping => "Ping",
+        App::Radar => "Radar",
     }
 }

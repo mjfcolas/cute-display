@@ -30,8 +30,25 @@ ssid = MyNetwork
 password = secret
 ```
 
-The Wi-Fi is joined for each update (at start, then every hour) and left right after. The
-other apps are placeholders for now: Counter, Echo, and Ping.
+**Radar** shows the aircraft around a place, from adsb.fi: north up, a triangle per
+aircraft pointing where it flies, the five nearest listed with their altitude and distance.
+Turn the wheel for the range (5 to 100 km), press it to update. It updates every 15 s while
+it is on screen, and needs its own place:
+
+```text
+# cute-display/radar.conf
+place = Notre-Dame
+latitude = 48.8530
+longitude = 2.3499
+airport_labels = LFPG, LFPO, LFPB
+```
+
+Aircraft carry the last two letters of their registration, placed so that no two labels
+cover each other. Airports and airfields are dots, and those listed in `airport_labels`
+carry their code: `just radar-airports` finds them within 100 km of the radar's place (from
+OurAirports) and puts them on the device.
+
+The Wi-Fi is joined when something needs it and left a minute after the last request.
 
 **The hardware test image** checks the board and shows what each part says: the panel,
 the RTC, the temperature, the I2C bus, the SD card, a Wi-Fi scan, USB power, the battery

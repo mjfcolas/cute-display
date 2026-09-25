@@ -1,4 +1,5 @@
 use core::time::Duration;
+use std::io::{self, Read};
 
 use esp_idf_svc::http::client::{Configuration, EspHttpConnection};
 use esp_idf_svc::http::Method;
@@ -9,13 +10,20 @@ use hal::Fault;
 use crate::or_fault::OrFault;
 
 const TIMEOUT: Duration = Duration::from_secs(15);
-const MAX_BODY_BYTES: usize = 32 * 1024;
 
 /// HTTP and HTTPS, trusting the certificate authorities ESP-IDF bundles.
 pub struct EspHttpsClient;
 
+struct Body<'a>(&'a mut EspHttpConnection);
+
+impl Read for Body<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.read(buf).map_err(io::Error::other)
+    }
+}
+
 impl HttpClient for EspHttpsClient {
-    fn get(&mut self, url: &str) -> Result<Vec<u8>, Fault> {
+    fn fetch(&mut self, url: &str, read: &mut dyn FnMut(&mut dyn Read) -> Result<(), Fault>) -> Result<(), Fault> {
         let configuration = Configuration {
             timeout: Some(TIMEOUT),
             crt_bundle_attach: Some(esp_crt_bundle_attach),
@@ -28,18 +36,6 @@ impl HttpClient for EspHttpsClient {
         if !(200..300).contains(&status) {
             return Err(Fault::new(format!("the server answered {status}")));
         }
-
-        let mut body = Vec::new();
-        let mut chunk = [0u8; 1024];
-        loop {
-            let read = connection.read(&mut chunk).or_fault("reading the answer")?;
-            if read == 0 {
-                return Ok(body);
-            }
-            body.extend_from_slice(chunk.get(..read).unwrap_or_default());
-            if body.len() > MAX_BODY_BYTES {
-                return Err(Fault::new(format!("the answer is larger than {MAX_BODY_BYTES} bytes")));
-            }
-        }
+        read(&mut Body(&mut connection))
     }
 }

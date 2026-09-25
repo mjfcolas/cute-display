@@ -2,9 +2,10 @@
 
 pub mod apps;
 pub mod calendar;
-pub mod counter;
+pub mod fetch;
 pub mod lighting;
-pub mod ping;
+pub mod place;
+pub mod radar;
 pub mod settings;
 pub mod weather;
 

@@ -3,12 +3,13 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use domain::apps::{App, Foreground};
-use domain::counter::Counter;
 use domain::lighting::Lighting;
-use domain::ping::Ping;
 use domain::settings::{Settings, SettingsStore};
+use domain::radar::Radar;
 use domain::weather::Weather;
 use drivers::button::Button;
+use drivers::esp_http::EspHttpsClient;
+use drivers::esp_wifi::EspWifiRadio;
 use drivers::esp_system::EspSystem;
 use drivers::pcnt_encoder::PcntEncoder;
 use drivers::sdmmc_card::SdmmcCard;
@@ -23,12 +24,14 @@ use hal::input::{PushButton, RotaryEncoder};
 use hal::system::SystemMonitor;
 use hal::Fault;
 use infrastructure::hal_light::HalLight;
-use infrastructure::internet::{NoInternet, OnDemandInternet};
-use infrastructure::location_file::{LocationFile, NoPlace};
+use infrastructure::adsb_fi::AdsbFi;
+use infrastructure::airports_file::{AirportsFile, NoAirports};
+use infrastructure::internet::{NoInternet, OnDemandInternet, SharedInternet};
+use infrastructure::place_file::{NoPlace, PlaceFile, RADAR_FILE, WEATHER_FILE};
 use infrastructure::open_meteo::OpenMeteo;
 use infrastructure::settings_file::{SettingsFile, Unkept};
 use maintenance::MaintenanceConsole;
-use ui::apps::{CounterScreen, EchoScreen, PingScreen, SystemScreen, WeatherScreen};
+use ui::apps::{RadarScreen, SystemScreen, WeatherScreen};
 use ui::controls::{ButtonSample, ControlsSample};
 use ui::{AppScreen, ScreenChange, Shell};
 
@@ -37,7 +40,9 @@ use firmware::board::Board;
 const BUILD: &str = concat!("build ", env!("BUILD_TIME"), " @", env!("BUILD_GIT"));
 const CONTROLS_PERIOD: Duration = Duration::from_millis(20);
 const LIGHTING_PERIOD: Duration = Duration::from_millis(100);
-const WEATHER_PERIOD: Duration = Duration::from_secs(1);
+const NETWORK_PERIOD: Duration = Duration::from_secs(1);
+
+type Internet = SharedInternet<EspWifiRadio, EspHttpsClient, SdmmcCard>;
 
 /// Everything the domain is made of, shared by the threads that use it.
 struct Domain {
@@ -45,8 +50,7 @@ struct Domain {
     settings: Settings,
     lighting: Lighting,
     weather: Weather,
-    counter: Counter,
-    ping: Ping,
+    radar: Radar,
 }
 
 struct Controls {
@@ -94,22 +98,41 @@ fn main() -> Result<(), Fault> {
     );
     lighting.touched(Instant::now());
 
-    let weather = match &board.sd_card {
-        Ok(card) => Weather::new(
-            Box::new(LocationFile::new(card.clone())),
-            Box::new(OpenMeteo::new(OnDemandInternet::new(board.wifi, board.https, card.clone()))),
+    let foreground = Foreground::new(App::Weather);
+    let (weather, radar, internet) = match &board.sd_card {
+        Ok(card) => {
+            let internet = SharedInternet::new(OnDemandInternet::new(board.wifi, board.https, card.clone()));
+            let weather = Weather::new(
+                Box::new(PlaceFile::new(card.clone(), WEATHER_FILE)),
+                Box::new(OpenMeteo::new(internet.clone())),
+            );
+            let radar = Radar::new(
+                Box::new(PlaceFile::new(card.clone(), RADAR_FILE)),
+                Box::new(AdsbFi::new(internet.clone())),
+                Box::new(AirportsFile::new(card.clone())),
+                foreground.clone(),
+            );
+            (weather, radar, Some(internet))
+        }
+        Err(_) => (
+            Weather::new(Box::new(NoPlace), Box::new(OpenMeteo::new(NoInternet("no SD card")))),
+            Radar::new(
+                Box::new(NoPlace),
+                Box::new(AdsbFi::new(NoInternet("no SD card"))),
+                Box::new(NoAirports),
+                foreground.clone(),
+            ),
+            None,
         ),
-        Err(_) => Weather::new(Box::new(NoPlace), Box::new(OpenMeteo::new(NoInternet("no SD card")))),
     };
-    start_weather(weather.clone())?;
+    start_network(weather.clone(), radar.clone(), internet)?;
 
     let domain = Domain {
-        foreground: Foreground::new(App::Weather),
+        foreground,
         settings,
         lighting: lighting.clone(),
         weather,
-        counter: Counter::new(),
-        ping: Ping::new(),
+        radar,
     };
     let controls = Controls {
         wheel: board.wheel,
@@ -130,24 +153,34 @@ fn main() -> Result<(), Fault> {
     }
 }
 
-/// Fetches the forecast whenever it is due. On a thread of its own, since a fetch joins
-/// Wi-Fi and waits on a server for seconds; the stack is for TLS.
-fn start_weather(weather: Weather) -> Result<(), Fault> {
+/// Everything that fetches, on one thread: the requests share one Wi-Fi and take turns
+/// anyway, and each thread's stack is heap that TLS needs. The stack is for TLS too.
+fn start_network(weather: Weather, radar: Radar, internet: Option<Internet>) -> Result<(), Fault> {
+    let log_heap = |what: &str| {
+        let system = EspSystem;
+        log::info!(
+            "{what}: updating, {} KiB free, largest block {} KiB",
+            system.free_heap_bytes() / 1024,
+            system.largest_free_block() / 1024
+        );
+    };
     thread::Builder::new()
-        .name("weather".into())
+        .name("network".into())
         .stack_size(24 * 1024)
         .spawn(move || loop {
             let now = Instant::now();
             if weather.is_due(now) {
-                let system = EspSystem;
-                log::info!(
-                    "weather: updating, {} KiB free, largest block {} KiB",
-                    system.free_heap_bytes() / 1024,
-                    system.largest_free_block() / 1024
-                );
+                log_heap("weather");
+                weather.refresh_if_due(now);
             }
-            weather.refresh_if_due(now);
-            thread::sleep(WEATHER_PERIOD);
+            if radar.is_due(now) {
+                log_heap("radar");
+                radar.refresh_if_due(now);
+            }
+            if let Some(internet) = &internet {
+                internet.release_if_idle(Instant::now());
+            }
+            thread::sleep(NETWORK_PERIOD);
         })
         .map_err(Fault::new)?;
     Ok(())
@@ -182,9 +215,7 @@ fn run_ui(mut controls: Controls, mut display: Uc8253, domain: Domain) {
     let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
         Box::new(SystemScreen::new(domain.foreground.clone(), domain.settings)),
         Box::new(WeatherScreen::new(domain.weather)),
-        Box::new(CounterScreen::new(domain.counter)),
-        Box::new(EchoScreen::default()),
-        Box::new(PingScreen::new(domain.ping)),
+        Box::new(RadarScreen::new(domain.radar)),
     ];
     let Some(mut shell) = Shell::new(domain.foreground, screens) else {
         log::error!("ui: no app to show");

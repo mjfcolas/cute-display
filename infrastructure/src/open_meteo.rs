@@ -2,7 +2,9 @@
 //! days in one call, with dates already in the place's own time zone.
 
 use domain::calendar::Date;
-use domain::weather::{DayForecast, Degrees, Forecast, ForecastSource, Location, Sky, Today, Unavailable};
+use domain::fetch::Unavailable;
+use domain::place::Place;
+use domain::weather::{DayForecast, Degrees, Forecast, ForecastSource, Sky, Today};
 use serde::Deserialize;
 
 use crate::internet::Internet;
@@ -20,19 +22,19 @@ impl<I: Internet> OpenMeteo<I> {
 }
 
 impl<I: Internet> ForecastSource for OpenMeteo<I> {
-    fn fetch(&mut self, location: &Location) -> Result<Forecast, Unavailable> {
-        let body = self.internet.get(&url(location))?;
+    fn fetch(&mut self, place: &Place) -> Result<Forecast, Unavailable> {
+        let body = self.internet.get(&url(place))?;
         read_forecast(&body)
     }
 }
 
-fn url(location: &Location) -> String {
+fn url(place: &Place) -> String {
     format!(
         "https://api.open-meteo.com/v1/forecast?latitude={:.4}&longitude={:.4}\
          &current=temperature_2m,weather_code\
          &daily=weather_code,temperature_2m_max,temperature_2m_min\
          &timezone=auto&forecast_days={DAYS}",
-        location.latitude, location.longitude
+        place.point.latitude, place.point.longitude
     )
 }
 
@@ -110,8 +112,10 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use domain::calendar::Weekday;
+    use domain::place::GeoPoint;
 
     use super::*;
+    use crate::internet::BodyReader;
 
     /// Shaped like a real answer, trimmed of the fields not asked for.
     const ANSWER: &str = r#"{
@@ -130,14 +134,14 @@ mod tests {
     struct Canned(Arc<Mutex<Vec<String>>>, Result<Vec<u8>, Unavailable>);
 
     impl Internet for Canned {
-        fn get(&mut self, url: &str) -> Result<Vec<u8>, Unavailable> {
+        fn fetch(&mut self, url: &str, read: &mut BodyReader<'_>) -> Result<(), Unavailable> {
             self.0.lock().unwrap().push(url.into());
-            self.1.clone()
+            read(&mut self.1.clone()?.as_slice())
         }
     }
 
-    fn paris() -> Location {
-        Location { place: "Paris".into(), latitude: 48.8566, longitude: 2.3522 }
+    fn paris() -> Place {
+        Place { name: "Paris".into(), point: GeoPoint { latitude: 48.8566, longitude: 2.3522 } }
     }
 
     #[test]

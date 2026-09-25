@@ -56,7 +56,7 @@ the device keeps running.
 ```sh
 just test        # host tests
 just lint        # clippy, host and ESP32
-just preview     # render an app screen to a PNG (system, counter, echo, ping)
+just preview     # render an app screen to a PNG (system, weather, weather-week, radar)
 just fw          # build the app image, flash it into app1, watch the log
 just fw hwtest   # the same with the hardware test image
 just sd-ls       # list the SD card; also sd-get, sd-put, sd-rm (monitor closed)

@@ -1,4 +1,4 @@
-//! Shows the screen of the app in front, under its title. Which app is in front is the
+//! Shows the screen of the app in front, on the whole glass. Which app is in front is the
 //! domain's; the shell follows it, and turns the system gesture into opening or closing
 //! the system app.
 
@@ -7,16 +7,13 @@ use core::time::Duration;
 use domain::apps::{App, Foreground};
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{Line, PrimitiveStyle, Rectangle};
+use embedded_graphics::primitives::Rectangle;
 
-use crate::app_screen::{title, AppScreen};
+use crate::app_screen::AppScreen;
 use crate::controls::{ControlsSample, Input};
 use crate::gestures::{Gesture, Gestures};
-use crate::text::{self, TITLE};
 
-const MARGIN: i32 = 12;
-const TITLE_RULE_GAP: i32 = 4;
-const BODY_GAP: i32 = 10;
+const MARGIN: i32 = 8;
 
 /// How what was just drawn relates to what was drawn before.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -62,19 +59,8 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
 
     pub fn draw(&mut self, target: &mut D, area: Rectangle) -> ScreenChange {
         let front = self.enter_front();
-        let inner = area.offset(-MARGIN);
-        let rule_y = inner.top_left.y + TITLE.character_size.height as i32 + TITLE_RULE_GAP;
-        let body_top = rule_y + BODY_GAP;
-        let body_height = inner.top_left.y + inner.size.height as i32 - body_top;
-        let body = Rectangle::new(Point::new(inner.top_left.x, body_top), Size::new(inner.size.width, body_height.max(0) as u32));
-
-        text::write(target, title(front), inner.top_left, inner.size.width, &TITLE);
-        let rule_end = inner.top_left.x + inner.size.width as i32 - 1;
-        let _ = Line::new(Point::new(inner.top_left.x, rule_y), Point::new(rule_end, rule_y))
-            .into_styled(PrimitiveStyle::with_stroke(BinaryColor::On, 1))
-            .draw(target);
         if let Some(screen) = self.screens.iter().find(|s| s.app() == front) {
-            screen.draw(target, body);
+            screen.draw(target, area.offset(-MARGIN));
         }
 
         let same_app = self.drawn.is_some_and(|(app, _)| app == front);
@@ -122,26 +108,44 @@ mod tests {
     use std::cell::RefCell;
     use std::rc::Rc;
 
-    use domain::counter::Counter;
     use domain::settings::{Settings, SettingsRecord, SettingsStore};
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
 
     use super::*;
-    use crate::apps::{CounterScreen, EchoScreen, SystemScreen};
+    use crate::apps::SystemScreen;
     use crate::controls::{ButtonSample, Control};
     use crate::gestures::HOLD_TO_SWITCH;
+    use crate::text::{self, BODY};
 
-    /// Remembers every input it was given.
-    struct Recorder(App, Rc<RefCell<Vec<Input>>>);
+    /// Remembers every input it was given, and draws a line of text it may be given. Its
+    /// clones share all of it, so a test keeps one while the shell holds another.
+    #[derive(Clone)]
+    struct Probe {
+        app: App,
+        inputs: Rc<RefCell<Vec<Input>>>,
+        text: Rc<RefCell<String>>,
+        version: Rc<RefCell<u64>>,
+    }
 
-    impl AppScreen<Frame> for Recorder {
+    impl Probe {
+        fn new(app: App) -> Self {
+            Self { app, inputs: Rc::default(), text: Rc::new(RefCell::new("probe".into())), version: Rc::default() }
+        }
+    }
+
+    impl AppScreen<Frame> for Probe {
         fn app(&self) -> App {
-            self.0
+            self.app
+        }
+        fn version(&self) -> u64 {
+            *self.version.borrow()
         }
         fn on_input(&mut self, input: Input) {
-            self.1.borrow_mut().push(input);
+            self.inputs.borrow_mut().push(input);
         }
-        fn draw(&self, _: &mut Frame, _: Rectangle) {}
+        fn draw(&self, target: &mut Frame, area: Rectangle) {
+            text::write(target, &self.text.borrow(), area.top_left, area.size.width, &BODY);
+        }
     }
 
     struct Nowhere;
@@ -180,67 +184,65 @@ mod tests {
         (frame, change)
     }
 
-    fn with_system(foreground: &Foreground, mut screens: Vec<Box<dyn AppScreen<Frame>>>) -> Shell<Frame> {
-        let settings = Settings::load(Box::new(Nowhere));
-        screens.push(Box::new(SystemScreen::new(foreground.clone(), settings)));
-        Shell::new(foreground.clone(), screens).unwrap()
-    }
-
-    fn counter_and_echo(foreground: &Foreground) -> Shell<Frame> {
-        with_system(foreground, vec![Box::new(CounterScreen::new(Counter::new())), Box::new(EchoScreen::default())])
+    /// The weather and radar apps as probes, and the real system app.
+    fn shell(foreground: &Foreground) -> (Shell<Frame>, Probe, Probe) {
+        let (weather, radar) = (Probe::new(App::Weather), Probe::new(App::Radar));
+        let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
+            Box::new(weather.clone()),
+            Box::new(radar.clone()),
+            Box::new(SystemScreen::new(foreground.clone(), Settings::load(Box::new(Nowhere)))),
+        ];
+        (Shell::new(foreground.clone(), screens).unwrap(), weather, radar)
     }
 
     #[test]
     fn holding_the_long_button_opens_the_system_app_and_again_closes_it() {
-        let foreground = Foreground::new(App::Echo);
-        let mut shell = counter_and_echo(&foreground);
+        let foreground = Foreground::new(App::Radar);
+        let (mut shell, _, _) = shell(&foreground);
         hold_long(&mut shell, Duration::ZERO);
         assert_eq!(foreground.app(), App::System);
         hold_long(&mut shell, Duration::from_secs(10));
-        assert_eq!(foreground.app(), App::Echo);
+        assert_eq!(foreground.app(), App::Radar);
     }
 
     #[test]
     fn inputs_reach_only_the_app_in_front_and_never_the_system_gesture() {
-        let (counter, echo) = (Rc::default(), Rc::default());
-        let foreground = Foreground::new(App::Counter);
-        let mut shell = with_system(
-            &foreground,
-            vec![Box::new(Recorder(App::Counter, Rc::clone(&counter))), Box::new(Recorder(App::Echo, Rc::clone(&echo)))],
-        );
+        let foreground = Foreground::new(App::Weather);
+        let (mut shell, weather, radar) = shell(&foreground);
 
         shell.on_sample(&turn(5), Duration::ZERO);
         hold_long(&mut shell, Duration::from_secs(10));
         shell.on_sample(&turn(1), Duration::from_secs(20));
         shell.on_sample(&press(Control::Wheel), Duration::from_secs(20));
-        assert_eq!(foreground.app(), App::Echo);
+        assert_eq!(foreground.app(), App::Radar);
         shell.on_sample(&press(Control::Yellow), Duration::from_secs(30));
 
-        assert_eq!(*counter.borrow(), [Input::Turn(5)]);
-        assert_eq!(*echo.borrow(), [Input::Press(Control::Yellow)]);
+        assert_eq!(*weather.inputs.borrow(), [Input::Turn(5)]);
+        assert_eq!(*radar.inputs.borrow(), [Input::Press(Control::Yellow)]);
     }
 
     #[test]
     fn a_screen_is_told_it_came_to_the_front_before_its_first_input() {
-        let foreground = Foreground::new(App::Echo);
-        let mut shell = counter_and_echo(&foreground);
+        let foreground = Foreground::new(App::Radar);
+        let (mut shell, _, _) = shell(&foreground);
         hold_long(&mut shell, Duration::ZERO);
         shell.on_sample(&press(Control::Wheel), Duration::from_secs(10));
-        assert_eq!(foreground.app(), App::Echo, "the dot started on Echo, where it was opened from");
+        assert_eq!(foreground.app(), App::Radar, "the dot started on Radar, where it was opened from");
     }
 
     #[test]
     fn a_short_long_press_goes_to_the_app_not_the_system() {
-        let foreground = Foreground::new(App::Echo);
-        let mut shell = counter_and_echo(&foreground);
+        let foreground = Foreground::new(App::Radar);
+        let (mut shell, _, radar) = shell(&foreground);
         assert!(shell.on_sample(&press(Control::Long), Duration::ZERO));
-        assert_eq!(foreground.app(), App::Echo);
+        assert_eq!(foreground.app(), App::Radar);
+        assert_eq!(*radar.inputs.borrow(), [Input::Press(Control::Long)]);
     }
 
     #[test]
     fn a_new_app_in_front_is_a_new_screen_and_using_it_is_the_same_screen() {
-        let foreground = Foreground::new(App::Counter);
-        let mut shell = counter_and_echo(&foreground);
+        let foreground = Foreground::new(App::Weather);
+        let (mut shell, _, _) = shell(&foreground);
         assert!(shell.is_outdated(), "nothing drawn yet");
         assert_eq!(render(&mut shell).1, ScreenChange::NewScreen);
         assert!(!shell.is_outdated());
@@ -254,54 +256,33 @@ mod tests {
 
     #[test]
     fn an_app_brought_forward_by_the_domain_outdates_the_glass() {
-        let foreground = Foreground::new(App::Counter);
-        let mut shell = counter_and_echo(&foreground);
+        let foreground = Foreground::new(App::Weather);
+        let (mut shell, _, _) = shell(&foreground);
         render(&mut shell);
-        foreground.bring_to_front(App::Echo);
+        foreground.bring_to_front(App::Radar);
         assert!(shell.is_outdated());
         assert_eq!(render(&mut shell).1, ScreenChange::NewScreen);
     }
 
     #[test]
-    fn an_app_is_drawn_from_the_domain_whoever_changed_it() {
-        let counter = Counter::new();
-        let foreground = Foreground::new(App::Counter);
-        let mut shell = with_system(&foreground, vec![Box::new(CounterScreen::new(counter.clone()))]);
-        let (before, _) = render(&mut shell);
-        counter.add(7);
-        assert!(render(&mut shell).0 != before);
-    }
-
-    /// Its version is whatever the test says.
-    struct Changing(Rc<RefCell<u64>>);
-
-    impl AppScreen<Frame> for Changing {
-        fn app(&self) -> App {
-            App::Weather
-        }
-        fn version(&self) -> u64 {
-            *self.0.borrow()
-        }
-        fn on_input(&mut self, _: Input) {}
-        fn draw(&self, _: &mut Frame, _: Rectangle) {}
-    }
-
-    #[test]
     fn an_app_that_changed_on_its_own_is_redrawn_as_the_same_screen() {
-        let version = Rc::new(RefCell::new(1));
-        let mut shell = with_system(&Foreground::new(App::Weather), vec![Box::new(Changing(Rc::clone(&version)))]);
-        render(&mut shell);
+        let (mut shell, weather, _) = shell(&Foreground::new(App::Weather));
+        let (before, _) = render(&mut shell);
         assert!(!shell.is_outdated());
-        *version.borrow_mut() = 2;
+        *weather.text.borrow_mut() = "changed".into();
+        *weather.version.borrow_mut() = 2;
         assert!(shell.is_outdated());
-        assert_eq!(render(&mut shell).1, ScreenChange::SameScreen);
+        let (after, change) = render(&mut shell);
+        assert_eq!(change, ScreenChange::SameScreen);
+        assert!(after != before);
         assert!(!shell.is_outdated());
     }
 
     #[test]
     fn nothing_is_drawn_outside_the_area_given() {
-        let foreground = Foreground::new(App::Counter);
-        let mut shell = counter_and_echo(&foreground);
+        let foreground = Foreground::new(App::Weather);
+        let (mut shell, weather, _) = shell(&foreground);
+        *weather.text.borrow_mut() = "a line far too long to fit on the glass at all, however small".into();
         let (app, _) = render(&mut shell);
         foreground.open_system();
         let (system, _) = render(&mut shell);

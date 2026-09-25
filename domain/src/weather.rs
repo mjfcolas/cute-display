@@ -1,22 +1,15 @@
 //! The weather at one place: today, and the days ahead. Fetched from outside every hour,
 //! and on request; a failed fetch keeps the last forecast rather than showing nothing.
 
-use std::fmt;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 use crate::calendar::Date;
+use crate::fetch::{FetchStatus, Unavailable};
+use crate::place::{Place, PlaceSource};
 
 pub const REFRESH_EVERY: Duration = Duration::from_secs(60 * 60);
 pub const RETRY_AFTER: Duration = Duration::from_secs(10 * 60);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Location {
-    /// What the place is called on the glass.
-    pub place: String,
-    pub latitude: f64,
-    pub longitude: f64,
-}
 
 /// What the sky is doing, in as many states as the device draws.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -57,32 +50,8 @@ pub struct Forecast {
     pub week: Vec<DayForecast>,
 }
 
-/// Why there is no forecast, in words a person can act on.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Unavailable(pub String);
-
-impl fmt::Display for Unavailable {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-pub trait LocationSource: Send {
-    /// `None` when no place has been set.
-    fn location(&mut self) -> Option<Location>;
-}
-
 pub trait ForecastSource: Send {
-    fn fetch(&mut self, location: &Location) -> Result<Forecast, Unavailable>;
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Status {
-    NeverFetched,
-    Updating,
-    UpToDate,
-    NoLocation,
-    Failed(Unavailable),
+    fn fetch(&mut self, place: &Place) -> Result<Forecast, Unavailable>;
 }
 
 /// Everything the weather is at one moment.
@@ -92,13 +61,13 @@ pub struct WeatherReport {
     pub forecast: Option<Forecast>,
     /// When `forecast` was fetched.
     pub fetched_at: Option<Instant>,
-    pub status: Status,
+    pub status: FetchStatus,
     /// Moves on at every change, so a screen knows when to redraw.
     pub revision: u64,
 }
 
 struct Sources {
-    location: Box<dyn LocationSource>,
+    place: Box<dyn PlaceSource>,
     forecast: Box<dyn ForecastSource>,
 }
 
@@ -116,11 +85,11 @@ pub struct Weather {
 }
 
 impl Weather {
-    pub fn new(location: Box<dyn LocationSource>, forecast: Box<dyn ForecastSource>) -> Self {
-        let report = WeatherReport { place: None, forecast: None, fetched_at: None, status: Status::NeverFetched, revision: 0 };
+    pub fn new(place: Box<dyn PlaceSource>, forecast: Box<dyn ForecastSource>) -> Self {
+        let report = WeatherReport { place: None, forecast: None, fetched_at: None, status: FetchStatus::NeverFetched, revision: 0 };
         Self {
             state: Arc::new(Mutex::new(State { report, last_attempt: None, requested: false })),
-            sources: Arc::new(Mutex::new(Sources { location, forecast })),
+            sources: Arc::new(Mutex::new(Sources { place, forecast })),
         }
     }
 
@@ -139,7 +108,7 @@ impl Weather {
             return true;
         };
         let wait = match state.report.status {
-            Status::Failed(_) | Status::NoLocation => RETRY_AFTER,
+            FetchStatus::Failed(_) | FetchStatus::NoPlace => RETRY_AFTER,
             _ => REFRESH_EVERY,
         };
         state.requested || now.saturating_duration_since(last) >= wait
@@ -152,32 +121,32 @@ impl Weather {
             return;
         }
         self.change(|state| {
-            state.report.status = Status::Updating;
+            state.report.status = FetchStatus::Updating;
             state.requested = false;
             state.last_attempt = Some(now);
         });
 
         let mut sources = self.sources.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        let Some(location) = sources.location.location() else {
+        let Some(place) = sources.place.place() else {
             drop(sources);
             self.change(|state| {
                 state.report.place = None;
-                state.report.status = Status::NoLocation;
+                state.report.status = FetchStatus::NoPlace;
             });
             return;
         };
-        let fetched = sources.forecast.fetch(&location);
+        let fetched = sources.forecast.fetch(&place);
         drop(sources);
 
         self.change(|state| {
-            state.report.place = Some(location.place);
+            state.report.place = Some(place.name);
             match fetched {
                 Ok(forecast) => {
                     state.report.forecast = Some(forecast);
                     state.report.fetched_at = Some(now);
-                    state.report.status = Status::UpToDate;
+                    state.report.status = FetchStatus::UpToDate;
                 }
-                Err(unavailable) => state.report.status = Status::Failed(unavailable),
+                Err(unavailable) => state.report.status = FetchStatus::Failed(unavailable),
             }
         });
     }
@@ -196,11 +165,12 @@ impl Weather {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::place::GeoPoint;
 
-    struct Fixed(Option<Location>);
+    struct Fixed(Option<Place>);
 
-    impl LocationSource for Fixed {
-        fn location(&mut self) -> Option<Location> {
+    impl PlaceSource for Fixed {
+        fn place(&mut self) -> Option<Place> {
             self.0.clone()
         }
     }
@@ -215,7 +185,7 @@ mod tests {
     struct Scripted(Arc<Mutex<Script>>);
 
     impl ForecastSource for Scripted {
-        fn fetch(&mut self, _: &Location) -> Result<Forecast, Unavailable> {
+        fn fetch(&mut self, _: &Place) -> Result<Forecast, Unavailable> {
             let mut script = self.0.lock().unwrap();
             script.fetches += 1;
             script.answers.remove(0)
@@ -231,8 +201,8 @@ mod tests {
         }
     }
 
-    fn paris() -> Option<Location> {
-        Some(Location { place: "Paris".into(), latitude: 48.85, longitude: 2.35 })
+    fn paris() -> Option<Place> {
+        Some(Place { name: "Paris".into(), point: GeoPoint { latitude: 48.85, longitude: 2.35 } })
     }
 
     fn forecast(now: i16) -> Forecast {
@@ -255,7 +225,7 @@ mod tests {
         weather.refresh_if_due(start + REFRESH_EVERY);
         assert_eq!(source.fetches(), 2);
         let report = weather.report();
-        assert_eq!(report.status, Status::UpToDate);
+        assert_eq!(report.status, FetchStatus::UpToDate);
         assert_eq!(report.place.as_deref(), Some("Paris"));
         assert_eq!(report.forecast.map(|f| f.today.now), Some(Degrees(16)));
     }
@@ -268,7 +238,7 @@ mod tests {
         weather.request_refresh();
         weather.refresh_if_due(start);
         let report = weather.report();
-        assert_eq!(report.status, Status::Failed(Unavailable("no Wi-Fi".into())));
+        assert_eq!(report.status, FetchStatus::Failed(Unavailable("no Wi-Fi".into())));
         assert_eq!(report.forecast.map(|f| f.today.now), Some(Degrees(15)));
 
         weather.refresh_if_due(start + RETRY_AFTER);
@@ -290,7 +260,7 @@ mod tests {
         let source = Scripted::new(vec![]);
         let weather = Weather::new(Box::new(Fixed(None)), Box::new(source.clone()));
         weather.refresh_if_due(Instant::now());
-        assert_eq!(weather.report().status, Status::NoLocation);
+        assert_eq!(weather.report().status, FetchStatus::NoPlace);
         assert_eq!(source.fetches(), 0);
     }
 

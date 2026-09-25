@@ -10,6 +10,7 @@ pub mod controls;
 pub mod gestures;
 pub mod shell;
 
+mod radar_view;
 mod text;
 mod weather_icons;
 

@@ -73,13 +73,13 @@ a "latest value" out:
 | survey   | the Wi-Fi radio        | a scan blocks for seconds                         |
 | buttons  | the button pins        | presses must be counted while everyone else is busy |
 | maintenance | the USB console's input | it waits for lines from a computer            |
-| weather  | the Wi-Fi and HTTPS client | a fetch waits on the network for seconds     |
+| network  | the Wi-Fi and HTTPS client, for weather and radar | a fetch waits on the network for seconds; one thread, since each stack is heap TLS needs |
 
 ## Where things live
 
 ```
 domain/     what the product does: the apps, the one in front, settings, lighting, weather,
-            Counter, Ping
+            radar, places
 infrastructure/ the domain's contracts on the HAL: conf files, lights, Internet on demand,
             Open-Meteo
 ui/         app screens (the system app's among them), gestures; host-tested with hal's
@@ -101,7 +101,7 @@ time.
 **The domain owns the apps.** `domain::apps::App` lists them and `Foreground` says which
 one is in front; anything may bring an app forward, not only the person at the controls
 (when an alarm rings, the alarm's own service will). Each app's state and rules are domain
-concepts too (`Counter`, `Ping`), shared with whoever needs them.
+concepts too (`Weather`, `Radar`), shared with whoever needs them.
 
 **The system app is an app with a special status.** It lists the other apps and holds the
 device's settings. It is not in the list (`App::LAUNCHABLE`), only the system gesture
@@ -122,8 +122,7 @@ remembers. Its settings are domain concepts:
 **The UI owns how they are seen and steered.**
 
 - `ui::AppScreen`: one per app, the system app's included. Turns the controls into
-  intents on the domain and draws what the domain says. `Echo` is the exception: a
-  diagnostic about the controls themselves, with nothing to say to the domain.
+  intents on the domain and draws what the domain says.
 - `ui::apps::SystemScreen`: one list, the apps then the settings. The wheel moves the dot,
   which starts on the app the system app was opened from; a press opens an app or moves a
   setting to its next value; the long button goes back.
@@ -131,8 +130,8 @@ remembers. Its settings are domain concepts:
   system app, or closes it. A shorter press of the long button reaches the app, on
   release; every other control reaches it at once. Any control used also tells
   `Lighting` that the device was touched.
-- `ui::Shell`: shows the screen of the app in front under its title, and tells a screen
-  when it comes to the front.
+- `ui::Shell`: gives the app in front the whole glass, bar a thin margin (no title: the
+  screen says what it is), and tells a screen when it comes to the front.
 
 **Refreshing**: the UI thread redraws after any input; whenever the app in front is not
 the one on the glass; and whenever the app in front says it changed on its own, by moving
@@ -145,20 +144,61 @@ thread), and what piled up is handled in one go before the next refresh.
 
 The first real app: today's weather and the week's, at one place.
 
-- `domain::weather`: `Location`, `Sky`, `Forecast` (today, then the week), and `Weather`,
-  which fetches once at start, every hour and on request, retries ten minutes after a
-  failure, and keeps the last forecast through failures. It needs a `LocationSource` and
-  a `ForecastSource`; `domain::calendar` gives a date its weekday.
-- `infrastructure::location_file` reads `cute-display/weather.conf` (`place`, `latitude`,
-  `longitude`), and `infrastructure::open_meteo` asks Open-Meteo (free, no key, dates in
-  the place's own time zone, so no clock is needed to know which day it is).
-- `infrastructure::internet::OnDemandInternet` joins the Wi-Fi in `cute-display/wifi.conf`
-  for one request and always leaves it: the radio is on for seconds an hour. Both files
-  are read again at every fetch, so a file dropped with `just sd-put` needs no restart.
+- `domain::weather`: `Sky`, `Forecast` (today, then the week), and `Weather`, which
+  fetches once at start, every hour and on request, retries ten minutes after a failure,
+  and keeps the last forecast through failures. It needs a `PlaceSource` and a
+  `ForecastSource`; `domain::calendar` gives a date its weekday.
+- `infrastructure::open_meteo` asks Open-Meteo (free, no key, dates in the place's own
+  time zone, so no clock is needed to know which day it is), for the place in
+  `cute-display/weather.conf`.
 - `ui::apps::WeatherScreen`: the wheel turns to the week and back, a press asks for an
   update; the foot of the screen says how fresh the forecast is, or what is missing.
   `ui::weather_icons` draws each sky from shapes, at any size.
-- `firmware`: the `weather` thread calls `refresh_if_due` every second.
+
+### Radar
+
+The aircraft around a place, as a radar scope, with the nearest listed beside it.
+
+- `domain::radar`: `Aircraft`, `Range` (5 to 100 km) and `Radar`, which fetches every
+  15 s, **only while the radar app is in front**, and at once when the range changes. It
+  keeps the 60 nearest aircraft.
+- `infrastructure::adsb_fi` asks adsb.fi's open data (free, no key, personal and
+  non-commercial use, credited on the screen), for the place in `cute-display/radar.conf`.
+  A busy sky is tens of kilobytes of JSON, so the answer is read **as it arrives**
+  (`HttpClient` hands over a stream) and only the nearest aircraft are ever held.
+- `ui::apps::RadarScreen`: north up, the place as a small cross, rings at half and full
+  range, airports as dots, a triangle per aircraft pointing along its track. Aircraft are
+  called by the last two letters of their registration (`F-GKXA` is `XA`), on the scope
+  and in front of their line in the list, so the two can be matched. The scope takes the
+  whole height; the place, the range, the five nearest and, at the foot, any trouble, the
+  controls and the source share the column beside it. The wheel sets the range, a press
+  asks for an update.
+- **Labels never cover each other** (`ui::radar_view::place_labels`): named airports
+  first, then aircraft nearest first; each tries eight spots around its mark, beside
+  before above and below before the corners, and takes the first that covers no label, no
+  mark and nothing outside the scope. One with nowhere to go goes without.
+- Airports come from `cute-display/airports.conf`, one a line (code, latitude, longitude,
+  name), read by `infrastructure::airports_file` at every update. `tools/airports.py`
+  (`just radar-airports`) writes it from OurAirports: every airport and airfield within
+  100 km of the place in `radar.conf`, read off the device. Which ones are named is the
+  radar's own setting, `airport_labels` in `radar.conf`, since `airports.conf` is written
+  again whenever the place changes.
+
+### Places and the Internet
+
+- `domain::place`: a `GeoPoint`, its distance and east/north offset to another (a flat
+  projection, well under a percent off at 100 km), and a named `Place`.
+  `infrastructure::place_file::PlaceFile` reads one from a conf file (`place`, `latitude`,
+  `longitude`); weather and radar each have theirs.
+- `domain::fetch`: `Unavailable` (why the outside gave nothing, in words a person can act
+  on) and `FetchStatus`, shared by every service that fetches.
+- `infrastructure::internet`: `OnDemandInternet` joins the Wi-Fi in
+  `cute-display/wifi.conf` on the first request and leaves it after a minute with none;
+  a failed request leaves at once, to start afresh. `SharedInternet` hands the one
+  connection to weather and radar, whose requests take turns. Conf files are read again
+  at every fetch, so a file dropped with `just sd-put` needs no restart.
+- `firmware`: the `network` thread runs both services' `refresh_if_due` every second, and
+  releases the Wi-Fi once idle.
 
 ## Maintenance console
 

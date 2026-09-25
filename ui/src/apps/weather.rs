@@ -4,7 +4,8 @@ use std::time::Instant;
 
 use domain::apps::App;
 use domain::calendar::Weekday;
-use domain::weather::{Degrees, Forecast, Sky, Status, Weather, WeatherReport};
+use domain::fetch::FetchStatus;
+use domain::weather::{Degrees, Forecast, Sky, Weather, WeatherReport};
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
@@ -78,14 +79,14 @@ fn minutes_since(report: &WeatherReport) -> Option<u64> {
 
 fn status_line(report: &WeatherReport) -> String {
     match &report.status {
-        Status::NeverFetched => "waiting for the first update".into(),
-        Status::Updating => "updating...".into(),
-        Status::UpToDate => match minutes_since(report) {
+        FetchStatus::NeverFetched => "waiting for the first update".into(),
+        FetchStatus::Updating => "updating...".into(),
+        FetchStatus::UpToDate => match minutes_since(report) {
             Some(0) | None => "updated just now   press: update   wheel: today/week".into(),
             Some(minutes) => format!("updated {minutes} min ago   press: update   wheel: today/week"),
         },
-        Status::NoLocation => "no place: put cute-display/weather.conf".into(),
-        Status::Failed(why) => format!("offline: {why}"),
+        FetchStatus::NoPlace => "no place: put cute-display/weather.conf".into(),
+        FetchStatus::Failed(why) => format!("offline: {why}"),
     }
 }
 
@@ -156,16 +157,18 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use domain::calendar::Date;
-    use domain::weather::{DayForecast, ForecastSource, Location, LocationSource, Today, Unavailable};
+    use domain::fetch::Unavailable;
+    use domain::place::{GeoPoint, Place, PlaceSource};
+    use domain::weather::{DayForecast, ForecastSource, Today};
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
 
     use super::*;
 
     struct Paris;
 
-    impl LocationSource for Paris {
-        fn location(&mut self) -> Option<Location> {
-            Some(Location { place: "Paris".into(), latitude: 48.85, longitude: 2.35 })
+    impl PlaceSource for Paris {
+        fn place(&mut self) -> Option<Place> {
+            Some(Place { name: "Paris".into(), point: GeoPoint { latitude: 48.85, longitude: 2.35 } })
         }
     }
 
@@ -173,7 +176,7 @@ mod tests {
     struct Answers(Arc<Mutex<Vec<Result<Forecast, Unavailable>>>>);
 
     impl ForecastSource for Answers {
-        fn fetch(&mut self, _: &Location) -> Result<Forecast, Unavailable> {
+        fn fetch(&mut self, _: &Place) -> Result<Forecast, Unavailable> {
             self.0.lock().unwrap().remove(0)
         }
     }

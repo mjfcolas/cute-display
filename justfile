@@ -23,7 +23,7 @@ lint:
     cargo clippy --workspace --all-targets
     cd firmware && source ~/export-esp.sh && cargo clippy --release
 
-# render an app screen to a PNG: system, weather, weather-week, counter, echo or ping
+# render an app screen to a PNG: system, weather, weather-week or radar
 preview screen="system" zoom="2":
     cargo run --quiet -p ui --example app_screen -- /tmp/cute-display.fb {{screen}}
     python3 tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
@@ -149,6 +149,10 @@ sd-put file path:
 # remove a file from the SD card, somewhere under cute-display/
 sd-rm path:
     python3 tools/sd.py rm {{path}}
+
+# put the airports within 100 km of radar.conf's place on the device (from OurAirports)
+radar-airports:
+    python3 tools/airports.py
 
 # boot the stock Habity firmware again (writes the saved stock otadata back)
 fw-stock:
