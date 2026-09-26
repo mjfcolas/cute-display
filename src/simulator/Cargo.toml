@@ -1,0 +1,19 @@
+[package]
+name = "simulator"
+version = "0.1.0"
+edition = "2021"
+description = "The app image on a computer: the panel in a window, the controls on the keyboard, the SD card in a directory, the Internet through the computer's."
+
+[lints]
+workspace = true
+
+[dependencies]
+app = { path = "../app" }
+drivers = { path = "../drivers" }
+hal = { path = "../hal" }
+infrastructure = { path = "../infrastructure" }
+embedded-graphics = "0.8"
+env_logger = "0.11"
+log = "0.4"
+minifb = "0.28"
+ureq = "3"

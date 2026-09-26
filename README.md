@@ -15,9 +15,12 @@ Both are flashed into `app1`.
   - [Maintenance console](docs/maintenance/README.md)
 - **[Hardware test](docs/hwtest/README.md)**
 
+The [simulator](docs/simulator/README.md) runs the app image on a computer.
+
 ## Commands
 
 ```sh
+just sim         # the app image in a window, no device needed
 just fw          # build the app image, flash it into app1, watch the log
 just fw-stock    # back to the stock firmware
 just backup      # dump the whole flash to backup/ (gitignored)

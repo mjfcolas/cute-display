@@ -31,14 +31,11 @@ harness = false
 [dependencies]
 log = "0.4"
 esp-idf-svc = "0.52.1"
+app = { path = "../app" }
 hal = { path = "../hal" }
 drivers = { path = "../drivers" }
 hwtest = { path = "../hwtest" }
-domain = { path = "../domain" }
-infrastructure = { path = "../infrastructure" }
 maintenance = { path = "../maintenance" }
-ui = { path = "../ui" }
-embedded-graphics = "0.8"
 
 [build-dependencies]
 embuild = "0.33"

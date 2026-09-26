@@ -26,7 +26,8 @@ speaker, lights).
 ### 2. Layered architecture, SOLID
 
 Described in [`DESIGN.md`](DESIGN.md). In short: `domain` ← `infrastructure` → `hal` ←
-`drivers`, `ui` → `domain`, and one composition root per image in `firmware`.
+`drivers`, `ui` → `domain`; `app` wires the app image on any hardware, and the
+composition roots are `firmware` (the board) and `simulator` (a computer).
 Dependencies only point the way DESIGN.md says; a new dependency that points elsewhere
 is a design change and goes through DESIGN.md first.
 
@@ -48,9 +49,9 @@ the device keeps running.
 
 - Small files, one subject each, linked from where they are needed; never one large
   file. `README.md` and `DESIGN.md` at the root are indexes that point to the details.
-- Each app (`docs/apps/<app>/`), the maintenance console and the hardware test has a
-  `README.md` for people: what it does, its controls, its conf files, in short bullet
-  points. A `DESIGN.md` beside it only for design decisions no module comment holds.
+- Each app (`docs/apps/<app>/`), the maintenance console, the hardware test and the
+  simulator has a `README.md` for people: what it does, its controls, its conf files, in
+  short bullet points. A `DESIGN.md` beside it only for design decisions no module comment holds.
 - The root `README.md` only names and links; what a part does is in its own README.
 - The code is the reference for behaviour and details: docs do not repeat what a name,
   a type or a module comment already says.
@@ -66,6 +67,7 @@ of ours is in one place.
 just test        # host tests
 just lint        # clippy, host and ESP32
 just preview     # render an app screen to a PNG (system, weather, weather-week, radar)
+just sim         # run the app image in a window, the SD card in sim-sd/
 just fw          # build the app image, flash it into app1, watch the log
 just fw hwtest   # the same with the hardware test image
 just sd-ls       # list the SD card; also sd-get, sd-put, sd-rm (monitor closed)

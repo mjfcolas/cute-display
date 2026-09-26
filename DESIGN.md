@@ -3,8 +3,12 @@
 ## Layers
 
 ```
-                 ┌──────────┐
-                 │ firmware │  composition roots: one binary per image
+          ┌──────────┐   ┌───────────┐
+          │ firmware │   │ simulator │  composition roots: the board, a computer
+          └────┬─────┘   └─────┬─────┘
+               └──────┬────────┘
+                 ┌────▼─────┐
+                 │   app    │  the app image on any hardware
                  └────┬─────┘
        ┌──────────────┼──────────────────┬──────────────┐
        ▼              ▼                  ▼              ▼
@@ -28,13 +32,15 @@
 | `ui`             | A screen per app, the system app's included: reads the controls, turns them into domain intents, renders domain state. Runs on its own thread | `domain`         |
 | `maintenance`    | The console that serves the SD card on the USB cable                                           | `hal`            |
 | `hwtest`         | The hardware test bench                                                                        | `hal`            |
-| `firmware`       | Composition roots: builds the drivers from the pin map (`board`), wires the layers, runs them  | everything       |
+| `app`            | The app image on any hardware that keeps the HAL's contracts: wires the layers, runs the threads | `domain`, `infrastructure`, `ui`, `hal` |
+| `firmware`       | Composition roots on the board: builds the drivers from the pin map (`board`), hands them to `app` or `hwtest` | everything but `simulator` |
+| `simulator`      | Composition root on a computer: the HAL in a window, on the keyboard, in a directory, on the computer's Internet; hands it to `app`; the panel refreshes by the UC8253 driver's policy | `app`, `hal`, `infrastructure`, `drivers` (its host half) |
 
 The arrows are the only allowed dependencies. In particular the domain never sees a HAL
-type, the UI never sees hardware, and nothing but `firmware` knows which chip is on
-which pin.
+type, the UI never sees hardware, `app` never sees a chip, and nothing but `firmware`
+knows which chip is on which pin.
 
-The UI meets the hardware through two exchange surfaces, which `firmware` connects:
+The UI meets the hardware through two exchange surfaces, which `app` connects:
 
 - **out**: embedded-graphics' `DrawTarget`, a library trait that `hal::display::Frame`
   implements and that every screen draws on;
@@ -90,8 +96,10 @@ src/            the sources, one crate per directory
                   host-tested
   maintenance/    the console that serves the SD card on the USB cable
   hwtest/         the hardware test bench
+  app/            the app image's threads and wiring, generic over the HAL
   firmware/       board pin map + one binary per image (`app`, `hwtest`); the only crate
                   built for the ESP32 only
+  simulator/      the app image on a computer
 docs/           the board, and a README per app, console and test image
 tools/          host scripts (frame dump to PNG, SD card over USB, radar airports, RTC
                 registers backup)
@@ -99,7 +107,8 @@ tools/          host scripts (frame dump to PNG, SD card over USB, radar airport
 
 ## Applications
 
-The main image (`src/firmware/src/bin/app.rs`) runs small apps, one in front at a time.
+The main image (`src/app/`, on the board by `src/firmware/src/bin/app.rs`, on a computer
+by `src/simulator/`) runs small apps, one in front at a time.
 
 - **The domain owns the apps**: `domain::apps::App` lists them, `Foreground` says which
   one is in front. Anything may bring an app forward, not only the controls (an alarm
@@ -112,6 +121,7 @@ The main image (`src/firmware/src/bin/app.rs`) runs small apps, one in front at 
 
 ## Further
 
+- [Simulator](docs/simulator/README.md)
 - [Maintenance console](docs/maintenance/DESIGN.md)
 - [Hardware test](docs/hwtest/DESIGN.md)
 - [Hardware](docs/hardware.md)

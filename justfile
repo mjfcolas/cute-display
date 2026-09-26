@@ -29,6 +29,10 @@ preview screen="system" zoom="2":
     python3 tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
     xdg-open /tmp/cute-display.png >/dev/null 2>&1 &
 
+# run the app image on this computer, the SD card being a directory
+sim card="sim-sd":
+    cargo run --quiet -p simulator -- {{card}}
+
 # render the hardware test's report page to a PNG (`pattern` for the checkerboard)
 preview-hwtest page="" zoom="2":
     cargo run --quiet -p hwtest --example report_page -- /tmp/cute-display.fb {{page}}
