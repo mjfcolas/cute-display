@@ -31,29 +31,18 @@ The console is the USB Serial/JTAG (`303a:1001`); there is no reachable UART.
 - **MCU**: ESP32-S3, 16 MB flash, no PSRAM established.
 - **Panel**: GDEY037T03, 416 × 240, controller **UC8253** (a UC8xxx, not an SSD16xx).
   The case hides columns 398 to 415.
-- **RTC**: DS3231, battery-backed. The stock firmware keeps a daily alarm armed on it.
-  Its die temperature sensor is the board's only thermometer. Read on 2026-09-26
-  (`backup/`): the power-on state, oscillator-stopped flag set, 2000-01-01, both alarms
-  off and zero.
+- **RTC**: DS3231, battery-backed. The stock firmware arms alarm 1 daily from settings it
+  keeps in NVS; once it fires, INT (GPIO 3) stays low until the flag is cleared. Its die
+  temperature sensor is the board's only thermometer.
 - **Amplifier**: part unknown, fixed gain, loud: a pure tone at 25 % of full scale is
   already unpleasant. Volume is digital scaling.
 - **Battery**: the device runs for hours unplugged; no fuel gauge, only the sense pad.
 
 ## The panel controller
 
-Measured, no datasheet:
-
-- Portrait memory: one row per landscape column (416 rows of 30 bytes), MSB first,
-  1 = white.
-- Init: hardware reset, `0x00 ← 0x16 0x0D` (soft reset), `0x00 ← 0x17 0x0D`, power on,
-  `0x50 ← 0x97`. No resolution command: the geometry is in `0x0D`.
-- Two image memories (`0x10`, `0x13`); **every refresh swaps their roles**. Pixels equal
-  in both are not driven, so the "current" memory must hold what is really on the glass.
-- Clean full refresh ≈ 2.6 s (up to 6.9 s cold). Fast partial ≈ 350 ms, selected by
-  forcing the temperature (`0xE0 ← 0x02`, `0xE5 ← 0x6E`, `0x50 ← 0xD7`) and restored
-  afterwards. Partial windows wider than 320 columns do nothing.
-- Each memory is written in its own `0x91`/`0x90`/`0x92` block; the window's last byte
-  keeps "scan all gate lines" off, or a full-width band wears into the glass.
+Measured, no datasheet. What the driver relies on is written beside the code, in
+[`src/drivers/src/uc8253/`](../src/drivers/src/uc8253/). Clean full refresh ≈ 2.6 s (up
+to 6.9 s cold); fast partial ≈ 350 ms.
 
 ## Flash layout of this unit
 
@@ -66,6 +55,3 @@ Measured, no datasheet:
 | app0      | 0x420000 | 4 MB    | stock Habity v1.1.1 (OTA), what the device ran      |
 | app1      | 0x820000 | 4 MB    | **cute-display**                                    |
 | coredump  | 0xc20000 | 3.9 MB  |                                                     |
-
-`just fw-flash` writes `app1`, then `otadata` with `ota_seq = 2`. `just fw-stock`
-writes back the stock `otadata` (which selects `app0`, v1.1.1) saved on first flash.

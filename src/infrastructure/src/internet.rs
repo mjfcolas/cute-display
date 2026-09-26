@@ -50,24 +50,28 @@ pub struct OnDemandInternet<W, H, S> {
     wifi: W,
     http: H,
     storage: S,
-    /// Joined, and when the last request ended.
-    last_used: Option<Instant>,
+    link: Link,
+}
+
+enum Link {
+    Left,
+    Joined { last_used: Instant },
 }
 
 impl<W: WifiStation, H: HttpClient, S: FileStorage> OnDemandInternet<W, H, S> {
     pub fn new(wifi: W, http: H, storage: S) -> Self {
-        Self { wifi, http, storage, last_used: None }
+        Self { wifi, http, storage, link: Link::Left }
     }
 
     /// Leaves the network once nothing has asked for [`LINGER`].
     pub fn release_if_idle(&mut self, now: Instant) {
-        if self.last_used.is_some_and(|used| now.saturating_duration_since(used) >= LINGER) {
+        if matches!(self.link, Link::Joined { last_used } if now.saturating_duration_since(last_used) >= LINGER) {
             self.leave();
         }
     }
 
     fn join(&mut self) -> Result<(), Unavailable> {
-        if self.last_used.is_some() {
+        if matches!(self.link, Link::Joined { .. }) {
             return Ok(());
         }
         let (ssid, password) = self.credentials()?;
@@ -75,12 +79,12 @@ impl<W: WifiStation, H: HttpClient, S: FileStorage> OnDemandInternet<W, H, S> {
             self.leave();
             return Err(Unavailable(fault.to_string()));
         }
-        self.last_used = Some(Instant::now());
+        self.link = Link::Joined { last_used: Instant::now() };
         Ok(())
     }
 
     fn leave(&mut self) {
-        self.last_used = None;
+        self.link = Link::Left;
         if let Err(fault) = self.wifi.disconnect() {
             log::warn!("wifi: {fault}");
         }
@@ -112,12 +116,12 @@ where
         });
         match (fetched, refused) {
             (Ok(()), _) => {
-                self.last_used = Some(Instant::now());
+                self.link = Link::Joined { last_used: Instant::now() };
                 Ok(())
             }
             // The body arrived but was not what the reader wanted: the network is fine.
             (Err(_), Some(unavailable)) => {
-                self.last_used = Some(Instant::now());
+                self.link = Link::Joined { last_used: Instant::now() };
                 Err(unavailable)
             }
             // The network may be what failed: start again from scratch next time.

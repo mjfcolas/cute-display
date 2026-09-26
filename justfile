@@ -175,7 +175,7 @@ backup:
 backup-sd:
     python3 tools/sd.py pull "" {{backup_dir}}/sd
 
-# copy the RTC's registers, the stock alarm among them, into backup/ (hardware test image)
+# copy the RTC's registers into backup/ (hardware test image)
 backup-rtc:
     mkdir -p {{backup_dir}}
     python3 tools/rtc_backup.py {{backup_dir}}/ds3231-registers-$(date +%Y%m%d-%H%M%S).bin

@@ -5,6 +5,7 @@
 //! firmware's `board`, not this crate.
 
 pub mod button;
+pub mod detents;
 pub mod ds3231;
 pub mod uc8253;
 

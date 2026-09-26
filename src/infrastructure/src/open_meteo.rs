@@ -86,11 +86,9 @@ fn degrees(celsius: f64) -> Degrees {
 
 /// `2026-09-25`.
 fn date_of(text: &str) -> Result<Date, Unavailable> {
-    let mut parts = text.splitn(3, '-').map(str::parse::<u16>);
-    match (parts.next(), parts.next(), parts.next()) {
-        (Some(Ok(year)), Some(Ok(month @ 1..=12)), Some(Ok(day @ 1..=31))) => Ok(Date { year, month: month as u8, day: day as u8 }),
-        _ => Err(Unavailable(format!("unreadable date '{text}'"))),
-    }
+    let mut parts = text.splitn(3, '-');
+    let date = (|| Date::new(parts.next()?.parse().ok()?, parts.next()?.parse().ok()?, parts.next()?.parse().ok()?))();
+    date.ok_or_else(|| Unavailable(format!("unreadable date '{text}'")))
 }
 
 /// WMO weather interpretation codes, as Open-Meteo documents them.
@@ -187,7 +185,7 @@ mod tests {
 
     #[test]
     fn dates_are_read_strictly() {
-        assert_eq!(date_of("2026-09-25"), Ok(Date { year: 2026, month: 9, day: 25 }));
+        assert_eq!(date_of("2026-09-25"), Ok(Date::new(2026, 9, 25).unwrap()));
         for bad in ["2026-13-01", "2026-09", "yesterday", "2026-09-32"] {
             assert!(date_of(bad).is_err(), "{bad}");
         }

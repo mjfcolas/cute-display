@@ -57,7 +57,7 @@ impl<S: FileStorage> MaintenanceConsole<S> {
             Request::List(dir) => match self.storage.entries(dir.as_str()) {
                 Ok(entries) => entries
                     .iter()
-                    .map(|e| protocol::entry(id, &e.name, e.size_bytes, e.is_dir))
+                    .map(|e| protocol::entry(id, e))
                     .chain([protocol::ok(id, "")])
                     .collect(),
                 Err(fault) => vec![protocol::error(id, fault.reason())],

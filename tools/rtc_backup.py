@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copy the DS3231's registers, the stock firmware's alarm among them, into a file.
+"""Copy the DS3231's registers into a file.
 
   tools/rtc_backup.py <local file>
 

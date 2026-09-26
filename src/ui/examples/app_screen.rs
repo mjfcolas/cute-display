@@ -43,7 +43,7 @@ impl ForecastSource for Sample {
         let week = days
             .iter()
             .enumerate()
-            .map(|(n, &(sky, low, high))| DayForecast { date: Date { year: 2026, month: 9, day: 25 + n as u8 }, sky, low: Degrees(low), high: Degrees(high) })
+            .filter_map(|(n, &(sky, low, high))| Some(DayForecast { date: Date::new(2026, 9, 25 + n as u8)?, sky, low: Degrees(low), high: Degrees(high) }))
             .collect();
         Ok(Forecast { today: Today { sky: Sky::PartlyCloudy, now: Degrees(19), low: Degrees(11), high: Degrees(21) }, week })
     }

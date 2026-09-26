@@ -55,6 +55,7 @@ impl WifiStation for EspWifiRadio {
 
     /// Also turns the radio off.
     fn disconnect(&mut self) -> Result<(), Fault> {
+        // Fails when Wi-Fi was never started; stopping ends any association anyway.
         let _ = self.wifi.disconnect();
         self.wifi.stop().or_fault("stopping Wi-Fi")
     }

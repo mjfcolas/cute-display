@@ -4,6 +4,7 @@ use hal::clock::{ClockReading, DateTime};
 use hal::thermometer::Temperature;
 
 pub const ADDRESS: u8 = 0x68;
+pub const SECONDS_REGISTER: u8 = 0x00;
 /// Time, alarms, control and status: 0x00 to 0x0F.
 pub const CLOCK_REGISTERS: usize = 0x10;
 pub const TEMPERATURE_REGISTER: u8 = 0x11;
@@ -59,7 +60,9 @@ mod chip {
     use hal::thermometer::{Temperature, Thermometer};
     use hal::Fault;
 
-    use super::{decode_clock, decode_temperature, ADDRESS, ALL_REGISTERS, CLOCK_REGISTERS, TEMPERATURE_REGISTER};
+    use super::{
+        decode_clock, decode_temperature, ADDRESS, ALL_REGISTERS, CLOCK_REGISTERS, SECONDS_REGISTER, TEMPERATURE_REGISTER,
+    };
     use crate::i2c::I2cMaster;
 
     pub struct Ds3231Clock {
@@ -73,10 +76,10 @@ mod chip {
             Self { bus, interrupt }
         }
 
-        /// Every register as it is, for a copy of what the stock firmware set: its alarm.
+        /// Every register as it is, alarms included, for a backup.
         pub fn registers(&mut self) -> Result<[u8; ALL_REGISTERS], Fault> {
             let mut registers = [0u8; ALL_REGISTERS];
-            self.bus.write_read(ADDRESS, &[0x00], &mut registers)?;
+            self.bus.write_read(ADDRESS, &[SECONDS_REGISTER], &mut registers)?;
             Ok(registers)
         }
     }
@@ -85,7 +88,7 @@ mod chip {
         fn read(&mut self) -> Result<ClockReading, Fault> {
             // One transaction, so the time cannot tear across a rollover.
             let mut registers = [0u8; CLOCK_REGISTERS];
-            self.bus.write_read(ADDRESS, &[0x00], &mut registers)?;
+            self.bus.write_read(ADDRESS, &[SECONDS_REGISTER], &mut registers)?;
             Ok(decode_clock(&registers, self.interrupt.is_low()))
         }
     }

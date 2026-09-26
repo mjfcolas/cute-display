@@ -19,11 +19,8 @@ Both are flashed into `app1`.
 
 ```sh
 just fw          # build the app image, flash it into app1, watch the log
-just fw hwtest   # the same with the hardware test
 just fw-stock    # back to the stock firmware
 just backup      # dump the whole flash to backup/ (gitignored)
-just backup-sd   # copy the whole SD card to backup/sd/ (app image)
-just backup-rtc  # copy the RTC's registers to backup/ (hardware test image)
 just             # every recipe
 ```
 

@@ -17,13 +17,17 @@
                                                           └─────────┘
 ```
 
+`maintenance` and `hwtest`, beside the diagram, depend on `hal` alone.
+
 | Layer            | Holds                                                                                          | Depends on       |
 | ---------------- | ---------------------------------------------------------------------------------------------- | ---------------- |
-| `domain`         | Every functional concept (alarm, schedule, settings, sound…) and the contracts it needs from the outside world. Speaks in intents ("snooze"), never in controls ("yellow pressed") | nothing          |
-| `infrastructure` | Implementations of the domain's contracts: settings on the SD card, time from the RTC and NTP…  | `domain`, `hal`  |
-| `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, storage, radio, power | nothing          |
+| `domain`         | Every functional concept (apps, settings, lighting, weather, radar, places…) and the contracts it needs from the outside world. Speaks in intents (`request_refresh`, `choose_next_backlight`), never in controls ("yellow pressed") | nothing          |
+| `infrastructure` | Implementations of the domain's contracts: settings, places and airports on the SD card, lights, the Internet on demand, Open-Meteo, adsb.fi | `domain`, `hal`  |
+| `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, thermometer, storage, radio, HTTP, I2C bus, power, system | nothing          |
 | `drivers`        | Implementations of `hal` on the board's chips                                                  | `hal`            |
 | `ui`             | A screen per app, the system app's included: reads the controls, turns them into domain intents, renders domain state. Runs on its own thread | `domain`         |
+| `maintenance`    | The console that serves the SD card on the USB cable                                           | `hal`            |
+| `hwtest`         | The hardware test bench                                                                        | `hal`            |
 | `firmware`       | Composition roots: builds the drivers from the pin map (`board`), wires the layers, runs them  | everything       |
 
 The arrows are the only allowed dependencies. In particular the domain never sees a HAL
@@ -53,8 +57,7 @@ The UI meets the hardware through two exchange surfaces, which `firmware` connec
 
 ## Contracts
 
-- HAL contracts are **blocking and single-owner**. Deciding what runs on which thread
-  belongs to the layer that uses them.
+- How HAL contracts meet threads: the `hal` crate's doc.
 - Failures are values: `hal::Fault` describes what the hardware did not do.
 - Contracts speak in the product's units (`Brightness`, `Temperature`, `Redraw`), not
   in register values.
@@ -67,10 +70,7 @@ a "latest value" out:
 | Thread   | Owns                   | Why                                               |
 | -------- | ---------------------- | ------------------------------------------------- |
 | main     | domain services (lighting) | they must keep running whatever is on screen  |
-| ui       | controls, apps, display | a refresh blocks for 0.35 to 3 s                 |
-| painter  | the e-paper display (hwtest) | a refresh blocks for 0.35 to 3 s            |
-| chimes   | the speaker            | playback blocks until the sound ends              |
-| survey   | the Wi-Fi radio        | a scan blocks for seconds                         |
+| ui       | controls, apps, display | a refresh blocks for 0.35 to 7 s                 |
 | buttons  | the button pins        | presses must be counted while everyone else is busy |
 | maintenance | the USB console's input | it waits for lines from a computer            |
 | network  | the Wi-Fi and HTTPS client, for weather and radar | a fetch waits on the network for seconds; one thread, since each stack is heap TLS needs |
@@ -82,7 +82,7 @@ src/            the sources, one crate per directory
   domain/         what the product does: the apps, the one in front, settings, lighting,
                   weather, radar, places
   infrastructure/ the domain's contracts on the HAL: conf files, lights, Internet on
-                  demand, Open-Meteo
+                  demand, Open-Meteo, adsb.fi, airports
   ui/             app screens (the system app's among them), gestures; host-tested with
                   hal's Frame as a dev-dependency
   hal/            contracts with the hardware, and the Frame the display shows
@@ -93,7 +93,8 @@ src/            the sources, one crate per directory
   firmware/       board pin map + one binary per image (`app`, `hwtest`); the only crate
                   built for the ESP32 only
 docs/           the board, and a README per app, console and test image
-tools/          host scripts (frame dump to PNG, SD card over USB, radar airports)
+tools/          host scripts (frame dump to PNG, SD card over USB, radar airports, RTC
+                registers backup)
 ```
 
 ## Applications
@@ -106,10 +107,8 @@ The main image (`src/firmware/src/bin/app.rs`) runs small apps, one in front at 
 - **The UI owns how they are seen and steered**: one `ui::AppScreen` per app turns the
   controls into domain intents and draws the domain's state. `ui::Shell` hosts the one
   in front; `ui::gestures` keeps the long-button hold for the system.
-- **Refreshing**: a new app in front is a whole, clean redraw; anything else redraws only
-  what changed. A screen that changes on its own moves its `AppScreen::version` on.
-  Controls keep counting during a refresh (PCNT, the buttons' thread) and are handled in
-  one go before the next.
+- **Refreshing**: `ui::ScreenChange` says which redraw the glass gets; `AppScreen::version`
+  is how a screen changes on its own.
 
 ## Further
 

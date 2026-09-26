@@ -3,6 +3,8 @@
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 
+use hal::storage::Entry;
+
 use crate::path::SdPath;
 
 pub const PREFIX: &str = "@@";
@@ -79,8 +81,8 @@ pub fn error(id: &str, reason: &str) -> String {
     format!("{PREFIX} {id} error {reason}")
 }
 
-pub fn entry(id: &str, name: &str, size_bytes: u64, is_dir: bool) -> String {
-    format!("{PREFIX} {id} entry {} {size_bytes} {name}", if is_dir { 'd' } else { 'f' })
+pub fn entry(id: &str, entry: &Entry) -> String {
+    format!("{PREFIX} {id} entry {} {} {}", if entry.is_dir { 'd' } else { 'f' }, entry.size_bytes, entry.name)
 }
 
 pub fn data(id: &str, bytes: &[u8]) -> String {

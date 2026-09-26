@@ -16,6 +16,7 @@ use crate::text::{self, HINT, LIST, TITLE};
 
 const NEAREST_LISTED: usize = 5;
 const AIRPORT_DIAMETER: u32 = 4;
+const TRACKLESS_AIRCRAFT_DIAMETER: u32 = 4;
 /// From the center of a mark to its label.
 const LABEL_CLEARANCE: i32 = AIRCRAFT_LENGTH / 2 + 2;
 const HOME_ARM: i32 = 3;
@@ -117,7 +118,7 @@ fn draw_scope<D: DrawTarget<Color = BinaryColor>>(target: &mut D, scope: &Scope,
                 let _ = Triangle::new(nose, left, right).into_styled(fill).draw(target);
             }
             None => {
-                let _ = Circle::with_center(at, 4).into_styled(fill).draw(target);
+                let _ = Circle::with_center(at, TRACKLESS_AIRCRAFT_DIAMETER).into_styled(fill).draw(target);
             }
         }
     }

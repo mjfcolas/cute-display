@@ -107,7 +107,6 @@ fn draw_column(frame: &mut Frame, checks: &[Check], left: i32) {
     }
 }
 
-/// Filled: pass. Crossed: fail. Hollow: pending. None: a plain reading.
 fn draw_mark(frame: &mut Frame, verdict: Verdict, corner: Point) {
     let square = Rectangle::new(corner, Size::new(MARK_SIDE as u32, MARK_SIDE as u32));
     let stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);

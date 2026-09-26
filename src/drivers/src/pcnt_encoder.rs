@@ -9,14 +9,12 @@ use esp_idf_svc::hal::pcnt::PcntUnitDriver;
 use hal::input::RotaryEncoder;
 use hal::Fault;
 
+use crate::detents::DetentCounter;
 use crate::or_fault::OrFault;
-
-/// Both edges of A are counted, and the wheel clicks once per quadrature cycle.
-const COUNTS_PER_DETENT: i32 = 2;
 
 pub struct PcntEncoder {
     unit: PcntUnitDriver<'static>,
-    counted: i32,
+    detents: DetentCounter,
 }
 
 impl PcntEncoder {
@@ -32,7 +30,7 @@ impl PcntEncoder {
             .or_fault("PCNT level action")?;
         unit.enable().or_fault("PCNT enable")?;
         unit.start().or_fault("PCNT start")?;
-        Ok(Self { unit, counted: 0 })
+        Ok(Self { unit, detents: DetentCounter::default() })
     }
 }
 
@@ -41,9 +39,6 @@ impl RotaryEncoder for PcntEncoder {
         let Ok(count) = self.unit.get_count() else {
             return 0;
         };
-        // A half-turned detent stays in the counter until it completes.
-        let detents = count.saturating_sub(self.counted) / COUNTS_PER_DETENT;
-        self.counted = self.counted.saturating_add(detents * COUNTS_PER_DETENT);
-        detents
+        self.detents.detents_at(count)
     }
 }

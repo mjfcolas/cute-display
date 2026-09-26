@@ -9,6 +9,8 @@ use crate::or_fault::OrFault;
 
 const SAMPLE_RATE_HZ: u32 = 44_100;
 const FRAMES_PER_WRITE: usize = 441;
+/// 16-bit left, then 16-bit right.
+const BYTES_PER_FRAME: usize = 4;
 const AMPLIFIER_WAKE_MS: u32 = 60;
 /// Flushes the DMA ring before the amplifier goes off, so its last buffer is not looped.
 const TRAILING_SILENCE_WRITES: usize = 6;
@@ -41,10 +43,10 @@ impl I2sSpeaker {
         self.amplifier.set_high().or_fault("amplifier enable")?;
         FreeRtos::delay_ms(AMPLIFIER_WAKE_MS);
         let mut silence = 0;
-        let mut bytes = [0u8; FRAMES_PER_WRITE * 4];
+        let mut bytes = [0u8; FRAMES_PER_WRITE * BYTES_PER_FRAME];
         while silence < TRAILING_SILENCE_WRITES {
             let mut frames = 0;
-            for frame in bytes.chunks_exact_mut(4) {
+            for frame in bytes.chunks_exact_mut(BYTES_PER_FRAME) {
                 let Some(sample) = samples.next() else { break };
                 let [lo, hi] = sample.to_le_bytes();
                 frame.copy_from_slice(&[lo, hi, lo, hi]);
@@ -55,7 +57,7 @@ impl I2sSpeaker {
                 frames = FRAMES_PER_WRITE;
                 silence += 1;
             }
-            self.i2s.write_all(bytes.get(..frames * 4).unwrap_or(&[]), BLOCK).or_fault("I2S write")?;
+            self.i2s.write_all(bytes.get(..frames * BYTES_PER_FRAME).unwrap_or(&[]), BLOCK).or_fault("I2S write")?;
         }
         Ok(())
     }

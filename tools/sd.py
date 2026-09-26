@@ -22,7 +22,9 @@ import zlib
 import serial
 
 PORT_PATTERN = '/dev/serial/by-id/*Espressif*'
-CHUNK_BYTES = 48
+# A data line waits for its ack, so it only has to fit in the device's 1024-byte receive
+# buffer: 240 bytes are 320 characters of base64.
+CHUNK_BYTES = 240
 REPLY_TIMEOUT_S = 10
 # The console drops output nobody reads in time: a range that arrives damaged is asked again.
 RANGE_ATTEMPTS = 5

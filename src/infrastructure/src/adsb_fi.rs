@@ -60,8 +60,8 @@ fn read_nearest(body: &mut dyn Read, center: GeoPoint, keep: usize) -> Result<Ve
 #[derive(Deserialize)]
 struct Reported {
     flight: Option<String>,
-    /// The registration.
-    r: Option<String>,
+    #[serde(rename = "r")]
+    registration: Option<String>,
     lat: Option<f64>,
     lon: Option<f64>,
     alt_baro: Option<BarometricAltitude>,
@@ -83,7 +83,7 @@ impl Reported {
         let point = GeoPoint { latitude: self.lat?, longitude: self.lon? };
         let trimmed = |text: Option<String>| text.map(|t| t.trim().to_owned()).filter(|t| !t.is_empty());
         let callsign = trimmed(self.flight);
-        let registration = trimmed(self.r);
+        let registration = trimmed(self.registration);
         let altitude = self.alt_baro.map(|a| match a {
             BarometricAltitude::Feet(feet) => Altitude::Feet(feet.round() as i32),
             BarometricAltitude::Ground(_) => Altitude::Ground,

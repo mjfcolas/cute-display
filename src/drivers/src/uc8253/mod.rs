@@ -3,6 +3,7 @@
 //! No datasheet for it was found: everything here was measured on the device.
 
 pub mod memory;
+pub mod refresh;
 
 #[cfg(target_os = "espidf")]
 mod controller;

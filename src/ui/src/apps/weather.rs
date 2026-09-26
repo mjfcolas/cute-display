@@ -20,6 +20,8 @@ const WEEK_ICON: u32 = 16;
 const WEEK_PITCH: i32 = 20;
 const LINE_PITCH: i32 = 26;
 const GAP: i32 = 16;
+/// "Today" and a space.
+const DAY_NAME_CHARS: i32 = 6;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Page {
@@ -136,7 +138,7 @@ fn draw_today<D: DrawTarget<Color = BinaryColor>>(target: &mut D, area: Rectangl
 
 fn draw_week<D: DrawTarget<Color = BinaryColor>>(target: &mut D, area: Rectangle, forecast: &Forecast) {
     let advance = (BODY.character_size.width + BODY.character_spacing) as i32;
-    let icon_left = area.top_left.x + 6 * advance;
+    let icon_left = area.top_left.x + DAY_NAME_CHARS * advance;
     let text_left = icon_left + WEEK_ICON as i32 + GAP;
     let text_width = (area.top_left.x + area.size.width as i32 - text_left).max(0) as u32;
     for (n, day) in forecast.week.iter().enumerate() {
@@ -145,7 +147,7 @@ fn draw_week<D: DrawTarget<Color = BinaryColor>>(target: &mut D, area: Rectangle
             break;
         }
         let name = if n == 0 { "Today" } else { weekday_name(day.date.weekday()) };
-        text::write(target, name, Point::new(area.top_left.x, top), 6 * advance as u32, &BODY);
+        text::write(target, name, Point::new(area.top_left.x, top), (DAY_NAME_CHARS * advance) as u32, &BODY);
         weather_icons::draw(target, day.sky, Point::new(icon_left, top + 2), WEEK_ICON);
         let temperatures = format!("{:>4} / {}", temperature(day.low), temperature(day.high));
         text::write(target, &temperatures, Point::new(text_left, top), text_width, &BODY);
@@ -186,7 +188,7 @@ mod tests {
         let week = skies
             .iter()
             .enumerate()
-            .map(|(n, &sky)| DayForecast { date: Date { year: 2026, month: 9, day: 25 + n as u8 }, sky, low: Degrees(8), high: Degrees(21) })
+            .map(|(n, &sky)| DayForecast { date: Date::new(2026, 9, 25 + n as u8).unwrap(), sky, low: Degrees(8), high: Degrees(21) })
             .collect();
         Forecast { today: Today { sky: Sky::Cloudy, now: Degrees(19), low: Degrees(12), high: Degrees(21) }, week }
     }

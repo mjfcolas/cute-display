@@ -30,13 +30,12 @@ fn rows() -> Vec<Row> {
 pub struct SystemScreen {
     foreground: Foreground,
     settings: Settings,
-    /// The row the wheel is on.
-    dot: usize,
+    dot_row: usize,
 }
 
 impl SystemScreen {
     pub fn new(foreground: Foreground, settings: Settings) -> Self {
-        Self { foreground, settings, dot: 0 }
+        Self { foreground, settings, dot_row: 0 }
     }
 
     fn label(&self, row: Row) -> String {
@@ -67,15 +66,15 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
     /// The dot starts on the app the system app was opened from.
     fn entered(&mut self) {
         let origin = Row::App(self.foreground.before_system());
-        self.dot = rows().iter().position(|&row| row == origin).unwrap_or(0);
+        self.dot_row = rows().iter().position(|&row| row == origin).unwrap_or(0);
     }
 
     fn on_input(&mut self, input: Input) {
         match input {
             Input::Turn(detents) => {
-                self.dot = (self.dot as i64 + i64::from(detents)).rem_euclid(rows().len() as i64) as usize;
+                self.dot_row = (self.dot_row as i64 + i64::from(detents)).rem_euclid(rows().len() as i64) as usize;
             }
-            Input::Press(Control::Wheel) => match rows().get(self.dot) {
+            Input::Press(Control::Wheel) => match rows().get(self.dot_row) {
                 Some(Row::App(app)) => self.foreground.bring_to_front(*app),
                 Some(Row::Backlight) => self.settings.choose_next_backlight(),
                 Some(Row::ReadingLamp) => self.settings.choose_next_reading_lamp(),
@@ -94,7 +93,7 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
             if n > 0 && matches!(row, Row::Backlight) {
                 top += SETTINGS_GAP;
             }
-            if n == self.dot {
+            if n == self.dot_row {
                 let dot_top = top + (BODY.character_size.height as i32 - DOT_DIAMETER as i32) / 2;
                 let _ = Circle::new(Point::new(area.top_left.x, dot_top), DOT_DIAMETER)
                     .into_styled(PrimitiveStyle::with_fill(BinaryColor::On))
@@ -140,11 +139,11 @@ mod tests {
     /// Turns the wheel until the dot is on `row`.
     fn move_to(screen: &mut SystemScreen, row: Row) {
         let target = rows().iter().position(|&r| r == row).unwrap() as i32;
-        input(screen, Input::Turn(target - screen.dot as i32));
+        input(screen, Input::Turn(target - screen.dot_row as i32));
     }
 
     fn row_under_dot(screen: &SystemScreen) -> Option<Row> {
-        rows().get(screen.dot).copied()
+        rows().get(screen.dot_row).copied()
     }
 
     #[test]

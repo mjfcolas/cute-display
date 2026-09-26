@@ -4,10 +4,11 @@ use std::time::{Duration, Instant};
 use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::hal::gpio::{Input, Output, PinDriver};
 use esp_idf_svc::hal::spi::{SpiDeviceDriver, SpiDriver};
-use hal::display::{EpaperDisplay, Frame, Redraw, Refreshed, HEIGHT};
+use hal::display::{EpaperDisplay, Frame, Redraw, Refreshed};
 use hal::Fault;
 
 use super::memory::{self, Image, BYTES};
+use super::refresh::{partial_window, Plan, RefreshPolicy};
 use crate::or_fault::OrFault;
 
 mod command {
@@ -39,11 +40,9 @@ const FAST_WAVEFORM_TEMPERATURE: u8 = 0x6e;
 const VCOM_CLEAN: u8 = 0x97;
 const VCOM_FAST: u8 = 0xd7;
 
-/// Wider partial windows run the waveform and change nothing.
-const MAX_FAST_ROWS: usize = 320;
-/// Fast refreshes leave ghosts that only a clean one erases.
-const FAST_REFRESHES_BETWEEN_CLEAN: u32 = 120;
-
+/// The panel maker's reference driver's timings, not measured minimums.
+const RESET_LEVEL_MS: u32 = 20;
+const SOFT_RESET_MS: u32 = 10;
 const POLL_MS: u32 = 10;
 const START_TIMEOUT: Duration = Duration::from_secs(2);
 const SETTLE_TIMEOUT: Duration = Duration::from_secs(5);
@@ -55,9 +54,14 @@ struct Bus {
     chip_select: PinDriver<'static, Output>,
 }
 
+enum Transfer {
+    Command,
+    Data,
+}
+
 impl Bus {
-    fn send(&mut self, is_data: bool, bytes: &[u8]) -> Result<(), Fault> {
-        self.data_not_command.set_level(is_data.into()).or_fault("panel DC")?;
+    fn send(&mut self, transfer: Transfer, bytes: &[u8]) -> Result<(), Fault> {
+        self.data_not_command.set_level(matches!(transfer, Transfer::Data).into()).or_fault("panel DC")?;
         self.chip_select.set_low().or_fault("panel CS")?;
         let sent = self.spi.write(bytes).or_fault("panel SPI");
         self.chip_select.set_high().or_fault("panel CS")?;
@@ -65,11 +69,11 @@ impl Bus {
     }
 
     fn command(&mut self, command: u8, parameters: &[u8]) -> Result<(), Fault> {
-        self.send(false, &[command])?;
+        self.send(Transfer::Command, &[command])?;
         if parameters.is_empty() {
             return Ok(());
         }
-        self.send(true, parameters)
+        self.send(Transfer::Data, parameters)
     }
 }
 
@@ -82,8 +86,12 @@ pub struct Uc8253 {
     memories_swapped: bool,
     on_glass: Box<Image>,
     wanted: Box<Image>,
-    glass_known: bool,
-    fast_refreshes: u32,
+    policy: RefreshPolicy,
+}
+
+struct Memories {
+    holding_glass: u8,
+    receiving: u8,
 }
 
 impl Uc8253 {
@@ -103,8 +111,7 @@ impl Uc8253 {
             memories_swapped: false,
             on_glass: Box::new([0xff; BYTES]),
             wanted: Box::new([0xff; BYTES]),
-            glass_known: false,
-            fast_refreshes: 0,
+            policy: RefreshPolicy::default(),
         };
         panel.initialize()?;
         Ok(panel)
@@ -113,58 +120,54 @@ impl Uc8253 {
     fn initialize(&mut self) -> Result<(), Fault> {
         for level in [true, false, true] {
             self.reset.set_level(level.into()).or_fault("panel RST")?;
-            FreeRtos::delay_ms(20);
+            FreeRtos::delay_ms(RESET_LEVEL_MS);
         }
         self.wait_until_idle(SETTLE_TIMEOUT, "reset")?;
         let [setting, geometry] = PANEL_SETTING;
         self.bus.command(command::PANEL_SETTING, &[setting & !RUNNING, geometry])?;
-        FreeRtos::delay_ms(10);
+        FreeRtos::delay_ms(SOFT_RESET_MS);
         self.bus.command(command::PANEL_SETTING, &PANEL_SETTING)?;
         self.power_on()?;
         self.bus.command(command::VCOM_AND_DATA_INTERVAL, &[VCOM_CLEAN])?;
         self.power_off()?;
-        // A reset clears both memories; the glass keeps whatever it showed.
         self.memories_swapped = false;
         self.on_glass.fill(0xff);
-        self.glass_known = false;
+        self.policy.forget_glass();
         Ok(())
     }
 
-    /// (holding what is on the glass, receiving what is wanted)
-    fn memories(&self) -> (u8, u8) {
+    fn memories(&self) -> Memories {
         if self.memories_swapped {
-            (command::IMAGE_B, command::IMAGE_A)
+            Memories { holding_glass: command::IMAGE_B, receiving: command::IMAGE_A }
         } else {
-            (command::IMAGE_A, command::IMAGE_B)
+            Memories { holding_glass: command::IMAGE_A, receiving: command::IMAGE_B }
         }
     }
 
     fn refresh_whole(&mut self) -> Result<Refreshed, Fault> {
-        let (current, next) = self.memories();
+        let Memories { holding_glass, receiving } = self.memories();
         self.power_on()?;
-        // Pixels identical in both memories are not driven, so the current image has
-        // to be what is really on the glass, or the old ink stays.
-        self.bus.command(current, &self.on_glass[..])?;
-        self.bus.command(next, &self.wanted[..])?;
+        // Pixels identical in both memories are not driven, so the image held has to be
+        // what is really on the glass, or the old ink stays.
+        self.bus.command(holding_glass, &self.on_glass[..])?;
+        self.bus.command(receiving, &self.wanted[..])?;
         let took = self.refresh();
         self.power_off()?;
         let took = took?;
 
         self.on_glass.copy_from_slice(&self.wanted[..]);
-        self.glass_known = true;
-        self.fast_refreshes = 0;
         Ok(Refreshed::Whole { took })
     }
 
-    fn refresh_rows(&mut self, rows: RangeInclusive<usize>) -> Result<Refreshed, Fault> {
-        let window = partial_window(&rows);
-        let (current, next) = self.memories();
+    fn refresh_rows(&mut self, rows: &RangeInclusive<usize>) -> Result<Refreshed, Fault> {
+        let window = partial_window(rows);
+        let Memories { holding_glass, receiving } = self.memories();
         self.power_on()?;
         // Each memory in its own partial block: sharing one spills outside the window.
-        for (memory, image) in [(current, &self.on_glass), (next, &self.wanted)] {
+        for (memory, image) in [(holding_glass, &self.on_glass), (receiving, &self.wanted)] {
             self.bus.command(command::PARTIAL_IN, &[])?;
             self.bus.command(command::PARTIAL_WINDOW, &window)?;
-            self.bus.command(memory, memory::rows(image, &rows))?;
+            self.bus.command(memory, memory::rows(image, rows))?;
             self.bus.command(command::PARTIAL_OUT, &[])?;
         }
         self.bus.command(command::TEMPERATURE_SOURCE, &[TEMPERATURE_FROM_REGISTER])?;
@@ -183,8 +186,7 @@ impl Uc8253 {
         self.power_off()?;
         let took = took?;
 
-        memory::rows_mut(&mut self.on_glass, &rows).copy_from_slice(memory::rows(&self.wanted, &rows));
-        self.fast_refreshes += 1;
+        memory::rows_mut(&mut self.on_glass, rows).copy_from_slice(memory::rows(&self.wanted, rows));
         Ok(Refreshed::Columns { count: rows.clone().count() as u16, took })
     }
 
@@ -237,22 +239,13 @@ impl Uc8253 {
 impl EpaperDisplay for Uc8253 {
     fn show(&mut self, frame: &Frame, redraw: Redraw) -> Result<Refreshed, Fault> {
         memory::render(frame, &mut self.wanted);
-        let clean_due = !self.glass_known || self.fast_refreshes >= FAST_REFRESHES_BETWEEN_CLEAN;
-        if redraw == Redraw::Whole || clean_due {
-            return self.refresh_whole();
-        }
-        match memory::changed_rows(&self.on_glass, &self.wanted) {
-            None => Ok(Refreshed::Nothing),
-            Some(rows) if rows.clone().count() > MAX_FAST_ROWS => self.refresh_whole(),
-            Some(rows) => self.refresh_rows(rows),
-        }
+        let plan = self.policy.plan(redraw, &self.on_glass, &self.wanted);
+        let refreshed = match &plan {
+            Plan::Whole => self.refresh_whole()?,
+            Plan::Rows(rows) => self.refresh_rows(rows)?,
+            Plan::Nothing => Refreshed::Nothing,
+        };
+        self.policy.record(&plan);
+        Ok(refreshed)
     }
-}
-
-/// Always the full height. The last byte leaves "scan every gate line" off: on, a
-/// small window wears a full-width band into the glass.
-fn partial_window(rows: &RangeInclusive<usize>) -> [u8; 7] {
-    let [first_hi, first_lo] = (*rows.start() as u16).to_be_bytes();
-    let [last_hi, last_lo] = (*rows.end() as u16).to_be_bytes();
-    [0, (HEIGHT - 1) as u8, first_hi, first_lo, last_hi, last_lo, 0]
 }
