@@ -11,7 +11,7 @@ use embedded_graphics::primitives::Rectangle;
 
 use crate::app_screen::AppScreen;
 use crate::calendar_names;
-use crate::controls::{Control, Input};
+use crate::controls::{Button, Input};
 use crate::text::{self, BODY, HINT};
 use crate::weather_icons;
 
@@ -56,8 +56,8 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for WeatherScreen {
         match input {
             Input::Turn(detents) if detents > 0 => self.page = Page::Week,
             Input::Turn(detents) if detents < 0 => self.page = Page::Today,
-            Input::Press(Control::Wheel) => self.weather.request_refresh(),
-            Input::Turn(_) | Input::Press(_) => {}
+            Input::Press(Button::Long) => self.weather.request_refresh(),
+            Input::Turn(_) | Input::Press(Button::Yellow) | Input::HoldYellowAndLong => {}
         }
     }
 
@@ -84,8 +84,8 @@ fn status_line(report: &WeatherReport) -> String {
         FetchStatus::NeverFetched => "waiting for the first update".into(),
         FetchStatus::Updating => "updating...".into(),
         FetchStatus::UpToDate => match minutes_since(report) {
-            Some(0) | None => "updated just now   press: update   wheel: today/week".into(),
-            Some(minutes) => format!("updated {minutes} min ago   press: update   wheel: today/week"),
+            Some(0) | None => "updated just now   long: update   wheel: today/week".into(),
+            Some(minutes) => format!("updated {minutes} min ago   long: update   wheel: today/week"),
         },
         FetchStatus::NoPlace => "no place: put cute-display/weather.conf".into(),
         FetchStatus::Failed(why) => format!("offline: {why}"),
@@ -218,7 +218,7 @@ mod tests {
         weather.refresh_if_due(now);
         let mut screen = WeatherScreen::new(weather.clone());
         assert!(!weather.is_due(now));
-        input(&mut screen, Input::Press(Control::Wheel));
+        input(&mut screen, Input::Press(Button::Long));
         assert!(weather.is_due(now));
     }
 

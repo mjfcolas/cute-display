@@ -13,7 +13,7 @@ use embedded_graphics::primitives::{Circle, PrimitiveStyle, Rectangle};
 use crate::app_screen::AppScreen;
 use crate::big_digits;
 use crate::calendar_names;
-use crate::controls::{Control, Input};
+use crate::controls::{Button, Input};
 use crate::text::{self, BODY, HINT, TITLE};
 
 /// What a day with no alarm starts at when it is given one.
@@ -29,8 +29,8 @@ const GAP: i32 = 12;
 enum Mode {
     Clock,
     Days { row: usize },
-    Hour { day: Weekday },
-    Minute { day: Weekday },
+    Hour { day: Weekday, time_to_put_back: Option<TimeOfDay> },
+    Minute { day: Weekday, time_to_put_back: Option<TimeOfDay> },
 }
 
 pub struct AlarmScreen {
@@ -52,15 +52,15 @@ impl AlarmScreen {
         Mode::Days { row: day.days_since_monday() }
     }
 
+    /// Ringing or snoozed, every other input is ignored so that nothing half asleep turns
+    /// the alarm off.
     fn on_clock_input(&mut self, input: Input) {
         match (self.alarm.state(), input) {
-            (AlarmState::Ringing, Input::Press(Control::Wheel)) | (AlarmState::Snoozed { .. }, Input::Press(Control::Wheel)) => {
-                self.alarm.stop();
-            }
-            (AlarmState::Ringing, Input::Press(Control::Long)) => self.alarm.snooze(),
+            (AlarmState::Ringing | AlarmState::Snoozed { .. }, Input::HoldYellowAndLong) => self.alarm.stop(),
+            (AlarmState::Ringing, Input::Press(Button::Long)) => self.alarm.snooze(),
             (AlarmState::Ringing | AlarmState::Snoozed { .. }, _) => {}
-            (AlarmState::Waiting { .. }, Input::Press(Control::Yellow)) => self.alarm.switch_on_or_off(),
-            (AlarmState::Waiting { .. }, Input::Press(Control::Wheel)) => {
+            (AlarmState::Waiting { .. }, Input::Press(Button::Yellow)) => self.alarm.switch_on_or_off(),
+            (AlarmState::Waiting { .. }, Input::Press(Button::Long)) => {
                 let today = self.clock.now().map_or(Weekday::Monday, |now| now.date.weekday());
                 self.mode = Self::days_row_of(today);
             }
@@ -107,24 +107,31 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for AlarmScreen {
         }
         match (self.mode, input) {
             (Mode::Clock, input) => self.on_clock_input(input),
-            (_, Input::Press(Control::Yellow)) => self.alarm.switch_on_or_off(),
+            (_, Input::HoldYellowAndLong) => {}
             (Mode::Days { row }, Input::Turn(detents)) => {
                 let row = (row as i64 + i64::from(detents)).rem_euclid(Weekday::ALL.len() as i64) as usize;
                 self.mode = Mode::Days { row };
             }
-            (Mode::Days { row }, Input::Press(Control::Wheel)) => {
+            (Mode::Days { row }, Input::Press(Button::Long)) => {
                 let day = Weekday::ALL.get(row).copied().unwrap_or(Weekday::Monday);
-                if self.time_on(day).is_none() {
+                let time_to_put_back = self.time_on(day);
+                if time_to_put_back.is_none() {
                     self.alarm.set_time_on(day, FIRST_TIME);
                 }
-                self.mode = Mode::Hour { day };
+                self.mode = Mode::Hour { day, time_to_put_back };
             }
-            (Mode::Days { .. }, Input::Press(Control::Long)) => self.mode = Mode::Clock,
-            (Mode::Hour { day }, Input::Turn(detents)) => self.turn_hour(day, detents),
-            (Mode::Hour { day }, Input::Press(Control::Wheel)) if self.time_on(day).is_some() => self.mode = Mode::Minute { day },
-            (Mode::Hour { day }, Input::Press(_)) => self.mode = Self::days_row_of(day),
-            (Mode::Minute { day }, Input::Turn(detents)) => self.turn_minute(day, detents),
-            (Mode::Minute { day }, Input::Press(_)) => self.mode = Self::days_row_of(day),
+            (Mode::Days { .. }, Input::Press(Button::Yellow)) => self.mode = Mode::Clock,
+            (Mode::Hour { day, .. }, Input::Turn(detents)) => self.turn_hour(day, detents),
+            (Mode::Hour { day, time_to_put_back }, Input::Press(Button::Long)) if self.time_on(day).is_some() => {
+                self.mode = Mode::Minute { day, time_to_put_back };
+            }
+            (Mode::Hour { day, .. }, Input::Press(Button::Long)) => self.mode = Self::days_row_of(day),
+            (Mode::Minute { day, .. }, Input::Turn(detents)) => self.turn_minute(day, detents),
+            (Mode::Minute { day, .. }, Input::Press(Button::Long)) => self.mode = Self::days_row_of(day),
+            (Mode::Hour { day, time_to_put_back } | Mode::Minute { day, time_to_put_back }, Input::Press(Button::Yellow)) => {
+                self.alarm.set_time_on(day, time_to_put_back);
+                self.mode = Self::days_row_of(day);
+            }
         }
     }
 
@@ -150,9 +157,9 @@ impl AlarmScreen {
         let line_top = digits_top + big_digits::HEIGHT as i32 + 2 * GAP;
         text::write(target, &self.alarm_line(now), Point::new(area.top_left.x, line_top), area.size.width, &BODY);
         let hint = match self.alarm.state() {
-            AlarmState::Ringing => format!("press: stop   long button: snooze {} min", SNOOZE.as_secs() / 60),
-            AlarmState::Snoozed { .. } => "press: stop".into(),
-            AlarmState::Waiting { .. } => "yellow: alarm on/off   press: wake-up times".into(),
+            AlarmState::Ringing => format!("long: snooze {} min   hold yellow and long: stop", SNOOZE.as_secs() / 60),
+            AlarmState::Snoozed { .. } => "hold yellow and long: stop".into(),
+            AlarmState::Waiting { .. } => "yellow: alarm on/off   long: wake-up times".into(),
         };
         write_hint(target, &hint, area);
     }
@@ -182,7 +189,7 @@ impl AlarmScreen {
             let top = first_top + n as i32 * ROW_PITCH;
             let chosen = match self.mode {
                 Mode::Days { row } => row == n,
-                Mode::Hour { day: editing } | Mode::Minute { day: editing } => editing == day,
+                Mode::Hour { day: editing, .. } | Mode::Minute { day: editing, .. } => editing == day,
                 Mode::Clock => false,
             };
             if chosen {
@@ -193,8 +200,8 @@ impl AlarmScreen {
             }
             text::write(target, calendar_names::weekday(day), Point::new(name_left, top), (DAY_NAME_CHARS * advance) as u32, &BODY);
             let field = match self.mode {
-                Mode::Hour { day: editing } if editing == day => Some(Field::Hour),
-                Mode::Minute { day: editing } if editing == day => Some(Field::Minute),
+                Mode::Hour { day: editing, .. } if editing == day => Some(Field::Hour),
+                Mode::Minute { day: editing, .. } if editing == day => Some(Field::Minute),
                 _ => None,
             };
             let time = wake_up_time(self.time_on(day), field);
@@ -202,9 +209,9 @@ impl AlarmScreen {
             text::write(target, &time, Point::new(time_left, top), width, &BODY);
         }
         let hint = match self.mode {
-            Mode::Hour { .. } => "wheel: hour, past 23 is off   press: minutes",
-            Mode::Minute { .. } => "wheel: minutes   press: done",
-            Mode::Days { .. } | Mode::Clock => "wheel: day   press: set   long: back   yellow: on/off",
+            Mode::Hour { .. } => "wheel: hour, past 23 is off   long: minutes   yellow: cancel",
+            Mode::Minute { .. } => "wheel: minutes   long: done   yellow: cancel",
+            Mode::Days { .. } | Mode::Clock => "wheel: day   long: set   yellow: back",
         };
         write_hint(target, hint, area);
     }
@@ -343,7 +350,7 @@ mod tests {
             AppScreen::<Frame>::on_input(&mut self.screen, input);
         }
 
-        fn press(&mut self, control: Control) {
+        fn press(&mut self, control: Button) {
             self.input(Input::Press(control));
         }
 
@@ -359,57 +366,81 @@ mod tests {
     fn the_yellow_button_turns_the_alarm_on_and_off() {
         let mut bench = Bench::new();
         assert!(!bench.alarm.schedule().enabled);
-        bench.press(Control::Yellow);
+        bench.press(Button::Yellow);
         assert!(bench.alarm.schedule().enabled);
-        bench.press(Control::Yellow);
+        bench.press(Button::Yellow);
         assert!(!bench.alarm.schedule().enabled);
     }
 
     #[test]
     fn a_day_is_set_hour_then_minutes_starting_from_today() {
         let mut bench = Bench::new();
-        bench.press(Control::Wheel);
+        bench.press(Button::Long);
         assert_eq!(bench.screen.mode, Mode::Days { row: 5 }, "Saturday");
         bench.input(Input::Turn(1));
-        bench.press(Control::Wheel);
+        bench.press(Button::Long);
         assert_eq!(bench.alarm.schedule().time_on(Weekday::Sunday), TimeOfDay::new(7, 0));
         bench.input(Input::Turn(2));
-        bench.press(Control::Wheel);
+        bench.press(Button::Long);
         bench.input(Input::Turn(-13));
-        bench.press(Control::Wheel);
+        bench.press(Button::Long);
         assert_eq!(bench.alarm.schedule().time_on(Weekday::Sunday), TimeOfDay::new(9, 47));
         assert_eq!(bench.screen.mode, Mode::Days { row: 6 });
-        bench.press(Control::Long);
+        bench.press(Button::Yellow);
         assert_eq!(bench.screen.mode, Mode::Clock);
+        assert!(!bench.alarm.schedule().enabled, "going back is not switching on or off");
+    }
+
+    #[test]
+    fn going_back_while_setting_a_day_puts_its_time_back() {
+        let mut bench = Bench::new();
+        bench.alarm.set_time_on(Weekday::Saturday, TimeOfDay::new(6, 30));
+        bench.press(Button::Long);
+        bench.press(Button::Long);
+        bench.input(Input::Turn(3));
+        bench.press(Button::Long);
+        bench.input(Input::Turn(10));
+        bench.press(Button::Yellow);
+        assert_eq!(bench.alarm.schedule().time_on(Weekday::Saturday), TimeOfDay::new(6, 30));
+        assert_eq!(bench.screen.mode, Mode::Days { row: 5 });
+
+        bench.input(Input::Turn(1));
+        bench.press(Button::Long);
+        bench.press(Button::Yellow);
+        assert_eq!(bench.alarm.schedule().time_on(Weekday::Sunday), None, "a day that had none has none again");
     }
 
     #[test]
     fn turning_the_hour_past_either_end_takes_the_day_off() {
         let mut bench = Bench::new();
-        bench.press(Control::Wheel);
-        bench.press(Control::Wheel);
+        bench.press(Button::Long);
+        bench.press(Button::Long);
         bench.input(Input::Turn(-8));
         assert_eq!(bench.alarm.schedule().time_on(Weekday::Saturday), None);
         bench.input(Input::Turn(-1));
         assert_eq!(bench.alarm.schedule().time_on(Weekday::Saturday), TimeOfDay::new(23, 0));
         bench.input(Input::Turn(1));
-        bench.press(Control::Wheel);
+        bench.press(Button::Long);
         assert_eq!(bench.screen.mode, Mode::Days { row: 5 }, "an off day has no minutes to set");
     }
 
     #[test]
-    fn ringing_the_wheel_stops_and_the_long_button_snoozes() {
+    fn ringing_the_long_button_snoozes_and_holding_both_stops() {
         let mut bench = Bench::new();
         bench.alarm.set_time_on(Weekday::Saturday, TimeOfDay::new(7, 0));
         bench.alarm.switch_on();
         bench.at(saturday_at_seven());
         assert_eq!(bench.alarm.state(), AlarmState::Ringing);
-        bench.press(Control::Yellow);
+        bench.press(Button::Yellow);
         bench.input(Input::Turn(3));
-        assert_eq!(bench.alarm.state(), AlarmState::Ringing, "only the wheel and the long button answer");
-        bench.press(Control::Long);
+        assert_eq!(bench.alarm.state(), AlarmState::Ringing, "the yellow button and the wheel do nothing");
+        assert!(bench.alarm.schedule().enabled);
+        bench.press(Button::Long);
         assert!(matches!(bench.alarm.state(), AlarmState::Snoozed { .. }));
-        bench.press(Control::Wheel);
+        bench.press(Button::Long);
+        bench.press(Button::Yellow);
+        assert!(matches!(bench.alarm.state(), AlarmState::Snoozed { .. }), "snoozing, only holding both stops");
+        bench.input(Input::HoldYellowAndLong);
         assert!(matches!(bench.alarm.state(), AlarmState::Waiting { .. }));
         assert_eq!(bench.screen.mode, Mode::Clock);
     }
@@ -444,12 +475,10 @@ mod tests {
     fn every_mode_draws_within_the_glass() {
         let mut bench = Bench::new();
         let mut frames = vec![bench.render()];
-        bench.press(Control::Wheel);
-        frames.push(bench.render());
-        bench.press(Control::Wheel);
-        frames.push(bench.render());
-        bench.press(Control::Wheel);
-        frames.push(bench.render());
+        for _ in 0..3 {
+            bench.press(Button::Long);
+            frames.push(bench.render());
+        }
         for (n, frame) in frames.iter().enumerate() {
             assert!(frames.iter().skip(n + 1).all(|other| other != frame), "mode {n} looks like a later one");
             for x in i32::from(VISIBLE_WIDTH)..i32::from(WIDTH) {

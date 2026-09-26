@@ -142,13 +142,13 @@ mod tests {
 
     #[test]
     fn a_new_screen_is_redrawn_whole_a_change_on_it_fast_and_nothing_else_is_redrawn() {
-        let (wheel, long, panel) = (FakeWheel::default(), FakeButton::default(), FakePanel::default());
+        let (wheel, wheel_button, panel) = (FakeWheel::default(), FakeButton::default(), FakePanel::default());
         let mut presentation = Presentation {
             controls: Controls {
                 wheel: wheel.clone(),
-                wheel_button: FakeButton::default(),
+                wheel_button: wheel_button.clone(),
                 yellow_button: FakeButton::default(),
-                long_button: long.clone(),
+                long_button: FakeButton::default(),
             },
             panel: panel.clone(),
         };
@@ -168,14 +168,13 @@ mod tests {
         assert_eq!(panel.take(), []);
         assert_eq!(*backlight.lock().unwrap(), Level::OFF);
 
-        long.presses.set(1);
-        long.held.set(true);
+        wheel_button.presses.set(1);
+        wheel_button.held.set(true);
         tick(2);
-        tick(3);
-        assert_eq!(panel.take(), [Redraw::Whole], "holding the long button opens the system app");
+        assert_eq!(panel.take(), [Redraw::Whole], "a click of the wheel opens the system app");
         assert_ne!(*backlight.lock().unwrap(), Level::OFF, "a touch lights the screen");
 
-        long.held.set(false);
+        wheel_button.held.set(false);
         tick(4);
         wheel.0.set(1);
         tick(5);

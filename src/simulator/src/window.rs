@@ -24,7 +24,7 @@ const LIT_PAPER: u32 = 0xff_f3_d6;
 
 const STRIP: u32 = 0x3a_3a_3a;
 const STRIP_TEXT: u32 = 0xe0_e0_e0;
-const KEYS: &str = "arrows/scroll turn · left click press · right yellow · space long";
+const KEYS: &str = "arrows/scroll turn · left click system · right yellow · space long";
 
 const COLUMNS: usize = VISIBLE_WIDTH as usize;
 const ROWS: usize = HEIGHT as usize;

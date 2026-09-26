@@ -10,7 +10,7 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Circle, Line, PrimitiveStyle, Rectangle, Triangle};
 
 use crate::app_screen::AppScreen;
-use crate::controls::{Control, Input};
+use crate::controls::{Button, Input};
 use crate::radar_view::{aircraft_triangle, place_labels, short_registration, LabelWanted, Scope};
 use crate::text::{self, HINT, LIST, TITLE};
 
@@ -57,8 +57,8 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for RadarScreen {
                 }
                 self.radar.set_range(range);
             }
-            Input::Press(Control::Wheel) => self.radar.request_refresh(),
-            Input::Press(_) => {}
+            Input::Press(Button::Long) => self.radar.request_refresh(),
+            Input::Press(Button::Yellow) | Input::HoldYellowAndLong => {}
         }
     }
 
@@ -206,7 +206,7 @@ fn footer(report: &RadarReport, chars: usize) -> Vec<String> {
         _ => String::new(),
     };
     let mut lines = text::wrap(&trouble, chars);
-    lines.extend(["wheel: range", "press: update", ATTRIBUTION].map(str::to_owned));
+    lines.extend(["wheel: range", "long: update", ATTRIBUTION].map(str::to_owned));
     lines
 }
 
@@ -375,7 +375,7 @@ mod tests {
         let now = Instant::now();
         let mut screen = RadarScreen::new(radar.clone());
         assert!(!radar.is_due(now));
-        AppScreen::<Frame>::on_input(&mut screen, Input::Press(Control::Wheel));
+        AppScreen::<Frame>::on_input(&mut screen, Input::Press(Button::Long));
         assert!(radar.is_due(now));
     }
 
@@ -383,7 +383,7 @@ mod tests {
     fn the_nearest_are_listed_and_the_source_is_credited() {
         let radar = radar_with(vec![plane(3.0, 0.0), plane(60.0, 0.0)]);
         let report = radar.report();
-        assert_eq!(footer(&report, 24), ["wheel: range", "press: update", ATTRIBUTION]);
+        assert_eq!(footer(&report, 24), ["wheel: range", "long: update", ATTRIBUTION]);
         assert_eq!(identity(&report.aircraft[0]), "XA AFR1234");
         assert_eq!(identity(&unnamed(report.aircraft[0].clone())), "   ?");
         assert_eq!(whereabouts(&report.aircraft[0], 3.04), "   35000 ft  3.0 km");
@@ -399,7 +399,7 @@ mod tests {
         );
         no_place.refresh_if_due(Instant::now());
         let lines = footer(&no_place.report(), 22);
-        assert_eq!(lines, ["no place: put", "cute-display/radar.con", "f", "wheel: range", "press: update", ATTRIBUTION]);
+        assert_eq!(lines, ["no place: put", "cute-display/radar.con", "f", "wheel: range", "long: update", ATTRIBUTION]);
         assert!(lines.iter().all(|l| l.chars().count() <= 22));
     }
 

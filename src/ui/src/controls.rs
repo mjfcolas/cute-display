@@ -2,8 +2,7 @@
 //! button.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Control {
-    Wheel,
+pub enum Button {
     Yellow,
     Long,
 }
@@ -33,11 +32,13 @@ impl ControlsSample {
     }
 }
 
-/// What an app receives.
+/// What an app receives. By convention a press of the long button confirms, and one of
+/// the yellow button goes back.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Input {
     Turn(i32),
-    Press(Control),
+    Press(Button),
+    HoldYellowAndLong,
 }
 
 #[cfg(test)]

@@ -7,7 +7,7 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Circle, PrimitiveStyle, Rectangle};
 
 use crate::app_screen::{title, AppScreen};
-use crate::controls::{Control, Input};
+use crate::controls::{Button, Input};
 use crate::text::{self, BODY, HINT};
 
 const ROW_PITCH: i32 = 24;
@@ -74,14 +74,14 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
             Input::Turn(detents) => {
                 self.dot_row = (self.dot_row as i64 + i64::from(detents)).rem_euclid(rows().len() as i64) as usize;
             }
-            Input::Press(Control::Wheel) => match rows().get(self.dot_row) {
+            Input::Press(Button::Long) => match rows().get(self.dot_row) {
                 Some(Row::App(app)) => self.foreground.bring_to_front(*app),
                 Some(Row::Backlight) => self.settings.choose_next_backlight(),
                 Some(Row::ReadingLamp) => self.settings.choose_next_reading_lamp(),
                 None => {}
             },
-            Input::Press(Control::Long) => self.foreground.close_system(),
-            Input::Press(Control::Yellow) => {}
+            Input::Press(Button::Yellow) => self.foreground.close_system(),
+            Input::HoldYellowAndLong => {}
         }
     }
 
@@ -103,7 +103,7 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
             top += ROW_PITCH;
         }
         let hint_top = area.top_left.y + area.size.height as i32 - HINT.character_size.height as i32;
-        text::write(target, "wheel: choose   press: open or change   long: back", Point::new(area.top_left.x, hint_top), area.size.width, &HINT);
+        text::write(target, "wheel: choose   long: open or change   yellow: back", Point::new(area.top_left.x, hint_top), area.size.width, &HINT);
     }
 }
 
@@ -156,7 +156,7 @@ mod tests {
     fn pressing_on_an_app_brings_it_to_the_front() {
         let (mut screen, foreground, _) = opened_from(App::Weather);
         move_to(&mut screen, Row::App(App::Radar));
-        input(&mut screen, Input::Press(Control::Wheel));
+        input(&mut screen, Input::Press(Button::Long));
         assert_eq!(foreground.app(), App::Radar);
     }
 
@@ -164,19 +164,19 @@ mod tests {
     fn pressing_on_a_setting_changes_it_and_stays_in_the_system_app() {
         let (mut screen, foreground, settings) = opened_from(App::Weather);
         move_to(&mut screen, Row::Backlight);
-        input(&mut screen, Input::Press(Control::Wheel));
+        input(&mut screen, Input::Press(Button::Long));
         assert_eq!(settings.backlight(), BacklightDuration::ThirtySeconds);
         move_to(&mut screen, Row::ReadingLamp);
-        input(&mut screen, Input::Press(Control::Wheel));
+        input(&mut screen, Input::Press(Button::Long));
         assert_eq!(settings.reading_lamp(), ReadingLamp::TenPercent);
         assert_eq!(foreground.app(), App::System);
     }
 
     #[test]
-    fn the_long_button_goes_back_without_changing_anything() {
+    fn the_yellow_button_goes_back_without_changing_anything() {
         let (mut screen, foreground, settings) = opened_from(App::Radar);
         input(&mut screen, Input::Turn(1));
-        input(&mut screen, Input::Press(Control::Long));
+        input(&mut screen, Input::Press(Button::Yellow));
         assert_eq!(foreground.app(), App::Radar);
         assert_eq!(settings.backlight(), BacklightDuration::default());
     }

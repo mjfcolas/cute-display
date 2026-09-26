@@ -116,7 +116,8 @@ by `src/simulator/`) runs small apps, one in front at a time.
   does).
 - **The UI owns how they are seen and steered**: one `ui::AppScreen` per app turns the
   controls into domain intents and draws the domain's state. `ui::Shell` hosts the one
-  in front; `ui::gestures` keeps the long-button hold for the system.
+  in front; `ui::gestures` turns the controls into what the shell and the apps
+  receive.
 - **Refreshing**: `ui::ScreenChange` says which redraw the glass gets; `AppScreen::version`
   is how a screen changes on its own.
 

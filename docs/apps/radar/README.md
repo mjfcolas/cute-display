@@ -6,7 +6,7 @@ The aircraft around a place, from [adsb.fi](https://adsb.fi)'s open data.
 - Aircraft are named by the last two letters of their registration (`F-GKXA` → `XA`).
 - The five nearest are listed beside the scope, with altitude and distance.
 - **Wheel**: range, 5 to 100 km.
-- **Press**: update now.
+- **Long button**: update now.
 - Updates every 15 s, only while it is on screen.
 
 ## Configuration

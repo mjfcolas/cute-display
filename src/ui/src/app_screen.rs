@@ -6,7 +6,7 @@ use embedded_graphics::primitives::Rectangle;
 use crate::controls::Input;
 
 /// What an app looks like, and what its controls mean. It turns inputs into intents on
-/// the domain and draws what the domain says; holding the long button never reaches it.
+/// the domain and draws what the domain says.
 pub trait AppScreen<D: DrawTarget<Color = BinaryColor>> {
     fn app(&self) -> App;
     /// The app just came to the front.

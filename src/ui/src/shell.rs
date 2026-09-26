@@ -113,8 +113,7 @@ mod tests {
 
     use super::*;
     use crate::apps::SystemScreen;
-    use crate::controls::{ButtonSample, Control};
-    use crate::gestures::HOLD_TO_SWITCH;
+    use crate::controls::{Button, ButtonSample};
     use crate::text::{self, BODY};
 
     /// Remembers every input it was given, and draws a line of text it may be given. Its
@@ -161,20 +160,16 @@ mod tests {
         ControlsSample { detents, ..Default::default() }
     }
 
-    fn press(control: Control) -> ControlsSample {
+    fn press(button: Button) -> ControlsSample {
         let pressed = ButtonSample { presses: 1, held: false };
-        match control {
-            Control::Wheel => ControlsSample { wheel: pressed, ..Default::default() },
-            Control::Yellow => ControlsSample { yellow: pressed, ..Default::default() },
-            Control::Long => ControlsSample { long: pressed, ..Default::default() },
+        match button {
+            Button::Yellow => ControlsSample { yellow: pressed, ..Default::default() },
+            Button::Long => ControlsSample { long: pressed, ..Default::default() },
         }
     }
 
-    fn hold_long(shell: &mut Shell<Frame>, from: Duration) {
-        let held = |presses| ControlsSample { long: ButtonSample { presses, held: true }, ..Default::default() };
-        shell.on_sample(&held(1), from);
-        shell.on_sample(&held(0), from + HOLD_TO_SWITCH);
-        shell.on_sample(&ControlsSample::default(), from + HOLD_TO_SWITCH * 2);
+    fn click_wheel(shell: &mut Shell<Frame>, at: Duration) {
+        shell.on_sample(&ControlsSample { wheel: ButtonSample { presses: 1, held: false }, ..Default::default() }, at);
     }
 
     fn render(shell: &mut Shell<Frame>) -> (Frame, ScreenChange) {
@@ -196,47 +191,47 @@ mod tests {
     }
 
     #[test]
-    fn holding_the_long_button_opens_the_system_app_and_again_closes_it() {
+    fn a_click_of_the_wheel_opens_the_system_app_and_another_closes_it() {
         let foreground = Foreground::new(App::Radar);
         let (mut shell, _, _) = shell(&foreground);
-        hold_long(&mut shell, Duration::ZERO);
+        click_wheel(&mut shell, Duration::ZERO);
         assert_eq!(foreground.app(), App::System);
-        hold_long(&mut shell, Duration::from_secs(10));
+        click_wheel(&mut shell, Duration::from_secs(10));
         assert_eq!(foreground.app(), App::Radar);
     }
 
     #[test]
-    fn inputs_reach_only_the_app_in_front_and_never_the_system_gesture() {
+    fn inputs_reach_only_the_app_in_front_and_never_the_wheels_click() {
         let foreground = Foreground::new(App::Weather);
         let (mut shell, weather, radar) = shell(&foreground);
 
         shell.on_sample(&turn(5), Duration::ZERO);
-        hold_long(&mut shell, Duration::from_secs(10));
+        click_wheel(&mut shell, Duration::from_secs(10));
         shell.on_sample(&turn(1), Duration::from_secs(20));
-        shell.on_sample(&press(Control::Wheel), Duration::from_secs(20));
+        shell.on_sample(&press(Button::Long), Duration::from_secs(20));
         assert_eq!(foreground.app(), App::Radar);
-        shell.on_sample(&press(Control::Yellow), Duration::from_secs(30));
+        shell.on_sample(&press(Button::Yellow), Duration::from_secs(30));
 
         assert_eq!(*weather.inputs.borrow(), [Input::Turn(5)]);
-        assert_eq!(*radar.inputs.borrow(), [Input::Press(Control::Yellow)]);
+        assert_eq!(*radar.inputs.borrow(), [Input::Press(Button::Yellow)]);
     }
 
     #[test]
     fn a_screen_is_told_it_came_to_the_front_before_its_first_input() {
         let foreground = Foreground::new(App::Radar);
         let (mut shell, _, _) = shell(&foreground);
-        hold_long(&mut shell, Duration::ZERO);
-        shell.on_sample(&press(Control::Wheel), Duration::from_secs(10));
+        click_wheel(&mut shell, Duration::ZERO);
+        shell.on_sample(&press(Button::Long), Duration::from_secs(10));
         assert_eq!(foreground.app(), App::Radar, "the dot started on Radar, where it was opened from");
     }
 
     #[test]
-    fn a_short_long_press_goes_to_the_app_not_the_system() {
+    fn a_press_of_the_long_button_goes_to_the_app() {
         let foreground = Foreground::new(App::Radar);
         let (mut shell, _, radar) = shell(&foreground);
-        assert!(shell.on_sample(&press(Control::Long), Duration::ZERO));
+        assert!(shell.on_sample(&press(Button::Long), Duration::ZERO));
         assert_eq!(foreground.app(), App::Radar);
-        assert_eq!(*radar.inputs.borrow(), [Input::Press(Control::Long)]);
+        assert_eq!(*radar.inputs.borrow(), [Input::Press(Button::Long)]);
     }
 
     #[test]
@@ -250,7 +245,7 @@ mod tests {
         shell.on_sample(&turn(1), Duration::ZERO);
         assert_eq!(render(&mut shell).1, ScreenChange::SameScreen);
 
-        hold_long(&mut shell, Duration::from_secs(10));
+        click_wheel(&mut shell, Duration::from_secs(10));
         assert_eq!(render(&mut shell).1, ScreenChange::NewScreen);
     }
 

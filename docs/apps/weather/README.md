@@ -3,7 +3,7 @@
 Today's weather and the week's at one place, from [Open-Meteo](https://open-meteo.com).
 
 - **Wheel**: today ↔ the week.
-- **Press**: update now.
+- **Long button**: update now.
 - Updates every hour on its own; the foot of the screen says how fresh the forecast is.
 
 ## Configuration

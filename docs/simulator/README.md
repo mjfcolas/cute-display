@@ -6,7 +6,7 @@ The app image on a computer, in a window: `just sim [card]`.
 
 - **Wheel**: ← and → turn it, or the mouse wheel; a left click presses it.
 - **Yellow button**: a right click.
-- **Long button**: space; holding it opens the [system app](../apps/system/README.md).
+- **Long button**: space.
 - **Esc** quits.
 
 The strip under the glass shows the front light and the reading lamp.

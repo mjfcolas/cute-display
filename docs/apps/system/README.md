@@ -2,10 +2,10 @@
 
 The app launcher and the device's settings.
 
-- **Open / close**: hold the long button for a second, from any app.
+- **Open / close**: click the wheel, from any app.
 - **Wheel**: move through the apps, then the settings.
-- **Press**: open an app, or move a setting to its next value.
-- **Long button**: back to the app it was opened from.
+- **Long button**: open an app, or move a setting to its next value.
+- **Yellow**: back to the app it was opened from.
 
 ## Settings
 

@@ -183,8 +183,8 @@ fn main() -> std::io::Result<()> {
         "alarm-days" => {
             foreground.bring_to_front(App::Alarm);
             let press = ButtonSample { presses: 1, held: false };
-            shell.on_sample(&ControlsSample { wheel: press, ..Default::default() }, core::time::Duration::ZERO);
-            shell.on_sample(&ControlsSample { wheel: press, ..Default::default() }, core::time::Duration::ZERO);
+            shell.on_sample(&ControlsSample { long: press, ..Default::default() }, core::time::Duration::ZERO);
+            shell.on_sample(&ControlsSample { long: press, ..Default::default() }, core::time::Duration::ZERO);
         }
         "weather" => foreground.bring_to_front(App::Weather),
         "radar" => {

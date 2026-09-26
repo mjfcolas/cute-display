@@ -4,15 +4,16 @@ The time, large, and a wake-up time for each day of the week. It is the app in f
 when the device starts.
 
 - **Yellow**: alarm on or off, the wake-up times kept.
-- **Press**: the wake-up times, starting on today.
-  - **Wheel**: choose a day; **press**: set its hour, then its minutes.
+- **Long button**: the wake-up times, starting on today.
+  - **Wheel**: choose a day; **long button**: set its hour, then its minutes.
   - Turning the hour past 23 or below 0 takes the alarm off that day.
-  - **Long button**: back to the clock.
+  - **Yellow**: while setting a day, puts its time back; otherwise, back to the clock.
 - Half an hour before, the reading lamp and the front light rise like the sun.
 - Then it rings, softly at first and louder over a minute, and comes to the front
   whatever app was there.
-  - **Press**: stop until the next alarm.
   - **Long button**: snooze for 9 minutes.
+  - **Yellow and long button held together for a second**: stop until the next alarm,
+    ringing or snoozing.
   - Unanswered, it stops after a quarter of an hour.
 - An alarm missed by more than a quarter of an hour, while the device was off, stays
   silent.
