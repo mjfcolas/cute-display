@@ -252,6 +252,7 @@ fn set(light: &mut dyn DimmableLight, brightness: Brightness) -> Result<Brightne
 mod tests {
     use std::sync::{Arc, Mutex};
 
+    use hal::clock::DateTime;
     use hal::display::{Frame, Redraw, Refreshed};
     use hal::radio::AccessPoint;
 
@@ -290,6 +291,9 @@ mod tests {
     struct AbsentClock;
     impl RealTimeClock for AbsentClock {
         fn read(&mut self) -> Result<ClockReading, Fault> {
+            Err(Fault::new("absent"))
+        }
+        fn set(&mut self, _: DateTime) -> Result<(), Fault> {
             Err(Fault::new("absent"))
         }
     }

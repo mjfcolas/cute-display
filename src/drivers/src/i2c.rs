@@ -32,6 +32,11 @@ impl I2cMaster {
         let mut bus = self.0.lock().map_err(|_| Fault::new("I2C bus poisoned"))?;
         bus.write_read(address, bytes, buffer, TIMEOUT).or_fault("I2C read")
     }
+
+    pub(crate) fn write(&self, address: u8, bytes: &[u8]) -> Result<(), Fault> {
+        let mut bus = self.0.lock().map_err(|_| Fault::new("I2C bus poisoned"))?;
+        bus.write(address, bytes, TIMEOUT).or_fault("I2C write")
+    }
 }
 
 impl I2cBus for I2cMaster {

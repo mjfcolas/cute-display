@@ -25,9 +25,9 @@
 
 | Layer            | Holds                                                                                          | Depends on       |
 | ---------------- | ---------------------------------------------------------------------------------------------- | ---------------- |
-| `domain`         | Every functional concept (apps, settings, lighting, weather, radar, places…) and the contracts it needs from the outside world. Speaks in intents (`request_refresh`, `choose_next_backlight`), never in controls ("yellow pressed") | nothing          |
-| `infrastructure` | Implementations of the domain's contracts: settings, places and airports on the SD card, lights, the Internet on demand, Open-Meteo, adsb.fi | `domain`, `hal`  |
-| `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, thermometer, storage, radio, HTTP, I2C bus, power, system | nothing          |
+| `domain`         | Every functional concept (apps, settings, lighting, the time, the alarm, weather, radar, places…) and the contracts it needs from the outside world. Speaks in intents (`request_refresh`, `choose_next_backlight`), never in controls ("yellow pressed") | nothing          |
+| `infrastructure` | Implementations of the domain's contracts on the HAL | `domain`, `hal`  |
+| `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, thermometer, storage, radio, HTTP, UDP, I2C bus, power, system | nothing          |
 | `drivers`        | Implementations of `hal` on the board's chips                                                  | `hal`            |
 | `ui`             | A screen per app, the system app's included: reads the controls, turns them into domain intents, renders domain state. Runs on its own thread | `domain`         |
 | `maintenance`    | The console that serves the SD card on the USB cable                                           | `hal`            |
@@ -75,20 +75,21 @@ a "latest value" out:
 
 | Thread   | Owns                   | Why                                               |
 | -------- | ---------------------- | ------------------------------------------------- |
-| main     | domain services (lighting) | they must keep running whatever is on screen  |
+| main     | domain services (the clock, the alarm, lighting) | they must keep running whatever is on screen |
 | ui       | controls, apps, display | a refresh blocks for 0.35 to 7 s                 |
 | buttons  | the button pins        | presses must be counted while everyone else is busy |
+| speaker  | the speaker            | playing blocks until the alarm is silenced         |
 | maintenance | the USB console's input | it waits for lines from a computer            |
-| network  | the Wi-Fi and HTTPS client, for weather and radar | a fetch waits on the network for seconds; one thread, since each stack is heap TLS needs |
+| network  | the Wi-Fi, HTTPS and UDP clients, for the time, weather and radar | a fetch waits on the network for seconds; one thread, since each stack is heap TLS needs |
 
 ## Where things live
 
 ```
 src/            the sources, one crate per directory
   domain/         what the product does: the apps, the one in front, settings, lighting,
-                  weather, radar, places
-  infrastructure/ the domain's contracts on the HAL: conf files, lights, Internet on
-                  demand, Open-Meteo, adsb.fi, airports
+                  the time and time zones, the alarm, weather, radar, places
+  infrastructure/ the domain's contracts on the HAL: conf files, lights, the RTC, the
+                  ringtone, Internet on demand, NTP, Open-Meteo, adsb.fi, airports
   ui/             app screens (the system app's among them), gestures; host-tested with
                   hal's Frame as a dev-dependency
   hal/            contracts with the hardware, and the Frame the display shows
@@ -111,8 +112,8 @@ The main image (`src/app/`, on the board by `src/firmware/src/bin/app.rs`, on a 
 by `src/simulator/`) runs small apps, one in front at a time.
 
 - **The domain owns the apps**: `domain::apps::App` lists them, `Foreground` says which
-  one is in front. Anything may bring an app forward, not only the controls (an alarm
-  will).
+  one is in front. Anything may bring an app forward, not only the controls (the alarm
+  does).
 - **The UI owns how they are seen and steered**: one `ui::AppScreen` per app turns the
   controls into domain intents and draws the domain's state. `ui::Shell` hosts the one
   in front; `ui::gestures` keeps the long-button hold for the system.

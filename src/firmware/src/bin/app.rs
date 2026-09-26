@@ -4,13 +4,16 @@ use std::time::Duration;
 
 use app::{Devices, Hardware};
 use drivers::button::Button;
+use drivers::ds3231::Ds3231Clock;
 use drivers::esp_http::EspHttpsClient;
 use drivers::esp_system::EspSystem;
 use drivers::esp_wifi::EspWifiRadio;
+use drivers::i2s_speaker::I2sSpeaker;
 use drivers::ledc_light::LedcLight;
 use drivers::pcnt_encoder::PcntEncoder;
 use drivers::sdmmc_card::SdmmcCard;
 use drivers::uc8253::Uc8253;
+use drivers::udp_socket::StdUdpClient;
 use drivers::usb_console;
 use esp_idf_svc::hal::delay::FreeRtos;
 use hal::Fault;
@@ -27,9 +30,12 @@ impl Hardware for Habity {
     type Wheel = PcntEncoder;
     type Button = Button;
     type Light = LedcLight;
+    type Rtc = Ds3231Clock;
+    type Speaker = I2sSpeaker;
     type Card = SdmmcCard;
     type Wifi = EspWifiRadio;
     type Http = EspHttpsClient;
+    type Udp = StdUdpClient;
     type System = EspSystem;
 
     const NETWORK_STACK_BYTES: usize = 24 * 1024;
@@ -54,9 +60,12 @@ fn main() -> Result<(), Fault> {
         long_button: board.long_button,
         front_light: board.front_light,
         reading_lamp: board.reading_lamp,
+        rtc: board.clock,
+        speaker: board.speaker,
         sd_card: board.sd_card,
         wifi: board.wifi,
         https: board.https,
+        udp: StdUdpClient,
         system: board.system,
     };
     match app::run(devices)? {}

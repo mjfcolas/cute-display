@@ -25,6 +25,7 @@ pub trait AppScreen<D: DrawTarget<Color = BinaryColor>> {
 pub fn title(app: App) -> &'static str {
     match app {
         App::System => "System",
+        App::Alarm => "Alarm clock",
         App::Weather => "Weather",
         App::Radar => "Radar",
     }

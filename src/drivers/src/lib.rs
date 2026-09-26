@@ -7,6 +7,7 @@
 pub mod button;
 pub mod detents;
 pub mod ds3231;
+pub mod udp_socket;
 pub mod uc8253;
 
 #[cfg(target_os = "espidf")]

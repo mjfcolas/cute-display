@@ -1,12 +1,14 @@
 use std::thread;
 use std::time::{Duration, Instant};
 
+use domain::clock::Clock;
 use domain::radar::Radar;
 use domain::weather::Weather;
 use hal::http::HttpClient;
 use hal::radio::WifiStation;
 use hal::storage::FileStorage;
 use hal::system::SystemMonitor;
+use hal::udp::UdpClient;
 use hal::Fault;
 use infrastructure::internet::SharedInternet;
 
@@ -14,16 +16,18 @@ const NETWORK_PERIOD: Duration = Duration::from_secs(1);
 
 /// Everything that fetches, on one thread: the requests share one Wi-Fi and take turns
 /// anyway, and each thread's stack is heap that TLS needs.
-pub(crate) fn start<W, H, S, M>(
+pub(crate) fn start<W, H, U, S, M>(
+    clock: Clock,
     weather: Weather,
     radar: Radar,
-    internet: Option<SharedInternet<W, H, S>>,
+    internet: Option<SharedInternet<W, H, U, S>>,
     system: M,
     stack_bytes: usize,
 ) -> Result<(), Fault>
 where
     W: WifiStation + Send + 'static,
     H: HttpClient + Send + 'static,
+    U: UdpClient + Send + 'static,
     S: FileStorage + Send + 'static,
     M: SystemMonitor + Send + 'static,
 {
@@ -39,6 +43,9 @@ where
         .stack_size(stack_bytes)
         .spawn(move || loop {
             let now = Instant::now();
+            if let Err(unavailable) = clock.sync_if_due(now) {
+                log::warn!("clock: not set from the network: {unavailable}");
+            }
             if weather.is_due(now) {
                 log_heap("weather");
                 weather.refresh_if_due(now);

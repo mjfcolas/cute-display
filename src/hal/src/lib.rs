@@ -15,6 +15,7 @@ pub mod radio;
 pub mod storage;
 pub mod system;
 pub mod thermometer;
+pub mod udp;
 
 mod fault;
 

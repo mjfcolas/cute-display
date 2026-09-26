@@ -10,6 +10,7 @@ Both are flashed into `app1`.
 
 - **App**: small apps, one in front at a time.
   - [System](docs/apps/system/README.md)
+  - [Alarm clock](docs/apps/alarm/README.md)
   - [Weather](docs/apps/weather/README.md)
   - [Radar](docs/apps/radar/README.md)
   - [Maintenance console](docs/maintenance/README.md)

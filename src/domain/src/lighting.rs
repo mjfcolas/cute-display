@@ -1,5 +1,6 @@
 //! The light over the screen comes up when the controls are touched and goes out once
-//! the backlight duration has passed; the reading lamp shines at its setting.
+//! the backlight duration has passed; the reading lamp shines at its setting. A sunrise
+//! lights both, as far as it has risen.
 
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
@@ -33,6 +34,7 @@ struct Lights {
     backlight: Box<dyn Light>,
     reading_lamp: Box<dyn Light>,
     last_touched: Option<Instant>,
+    sunrise: Level,
     /// What each light was last set to; `None` before the first time.
     backlight_level: Option<Level>,
     reading_lamp_level: Option<Level>,
@@ -47,7 +49,8 @@ pub struct Lighting {
 
 impl Lighting {
     pub fn new(backlight: Box<dyn Light>, reading_lamp: Box<dyn Light>, settings: Settings) -> Self {
-        let lights = Lights { backlight, reading_lamp, last_touched: None, backlight_level: None, reading_lamp_level: None };
+        let lights =
+            Lights { backlight, reading_lamp, last_touched: None, sunrise: Level::OFF, backlight_level: None, reading_lamp_level: None };
         Self { lights: Arc::new(Mutex::new(lights)), settings }
     }
 
@@ -57,7 +60,13 @@ impl Lighting {
         self.refresh(at);
     }
 
-    /// Puts both lights where the settings and the last touch say they should be.
+    /// Shows at the next refresh.
+    pub fn rise_sun_to(&self, level: Level) {
+        self.lock().sunrise = level;
+    }
+
+    /// Puts both lights where the settings, the last touch and the sunrise say they
+    /// should be.
     pub fn refresh(&self, at: Instant) {
         let backlight_on = match self.settings.backlight() {
             BacklightDuration::Always => true,
@@ -66,10 +75,10 @@ impl Lighting {
                 self.lock().last_touched.is_some_and(|touched| at.saturating_duration_since(touched) < lasts)
             }
         };
-        let backlight_level = if backlight_on { BACKLIGHT_LEVEL } else { Level::OFF };
-        let reading_lamp_level = self.settings.reading_lamp().level();
-
         let mut lights = self.lock();
+        let backlight_level = lights.sunrise.max(if backlight_on { BACKLIGHT_LEVEL } else { Level::OFF });
+        let reading_lamp_level = lights.sunrise.max(self.settings.reading_lamp().level());
+
         if lights.backlight_level != Some(backlight_level) {
             lights.backlight.shine(backlight_level);
             lights.backlight_level = Some(backlight_level);
@@ -154,6 +163,22 @@ mod tests {
         }
         lighting.refresh(Instant::now() + Duration::from_secs(3600));
         assert_eq!(backlight.levels(), [20]);
+    }
+
+    #[test]
+    fn a_sunrise_lights_both_lights_above_their_settings() {
+        let (lighting, settings, backlight, lamp) = lighting();
+        settings.choose_next_reading_lamp();
+        let now = Instant::now();
+        lighting.rise_sun_to(Level::percent(5));
+        lighting.refresh(now);
+        assert_eq!((backlight.levels(), lamp.levels()), (vec![5], vec![10]));
+        lighting.rise_sun_to(Level::percent(60));
+        lighting.refresh(now);
+        assert_eq!((backlight.levels(), lamp.levels()), (vec![5, 60], vec![10, 60]));
+        lighting.rise_sun_to(Level::OFF);
+        lighting.refresh(now);
+        assert_eq!((backlight.levels(), lamp.levels()), (vec![5, 60, 0], vec![10, 60, 10]));
     }
 
     #[test]

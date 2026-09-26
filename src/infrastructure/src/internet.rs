@@ -17,6 +17,7 @@ use domain::fetch::Unavailable;
 use hal::http::HttpClient;
 use hal::radio::WifiStation;
 use hal::storage::FileStorage;
+use hal::udp::UdpClient;
 use hal::Fault;
 
 use crate::conf_text::ConfText;
@@ -25,6 +26,7 @@ pub const WIFI_FILE: &str = "cute-display/wifi.conf";
 pub const LINGER: Duration = Duration::from_secs(60);
 /// What a caller may hold whole with `get`; anything larger has to be streamed.
 pub const MAX_HELD_BYTES: u64 = 32 * 1024;
+pub const DATAGRAM_TIMEOUT: Duration = Duration::from_secs(3);
 
 pub type BodyReader<'a> = dyn FnMut(&mut dyn Read) -> Result<(), Unavailable> + 'a;
 
@@ -46,9 +48,17 @@ pub trait Internet: Send {
     }
 }
 
-pub struct OnDemandInternet<W, H, S> {
+/// Datagrams, for what the web does not carry.
+pub trait Datagrams: Send {
+    /// Sends `request` to `host:port` and puts the datagram that answers in `answer`;
+    /// returns its length.
+    fn exchange(&mut self, host: &str, port: u16, request: &[u8], answer: &mut [u8]) -> Result<usize, Unavailable>;
+}
+
+pub struct OnDemandInternet<W, H, U, S> {
     wifi: W,
     http: H,
+    udp: U,
     storage: S,
     link: Link,
 }
@@ -58,9 +68,9 @@ enum Link {
     Joined { last_used: Instant },
 }
 
-impl<W: WifiStation, H: HttpClient, S: FileStorage> OnDemandInternet<W, H, S> {
-    pub fn new(wifi: W, http: H, storage: S) -> Self {
-        Self { wifi, http, storage, link: Link::Left }
+impl<W: WifiStation, H: HttpClient, U: UdpClient, S: FileStorage> OnDemandInternet<W, H, U, S> {
+    pub fn new(wifi: W, http: H, udp: U, storage: S) -> Self {
+        Self { wifi, http, udp, storage, link: Link::Left }
     }
 
     /// Leaves the network once nothing has asked for [`LINGER`].
@@ -98,10 +108,11 @@ impl<W: WifiStation, H: HttpClient, S: FileStorage> OnDemandInternet<W, H, S> {
     }
 }
 
-impl<W, H, S> Internet for OnDemandInternet<W, H, S>
+impl<W, H, U, S> Internet for OnDemandInternet<W, H, U, S>
 where
     W: WifiStation + Send,
     H: HttpClient + Send,
+    U: UdpClient + Send,
     S: FileStorage + Send,
 {
     fn fetch(&mut self, url: &str, read: &mut BodyReader<'_>) -> Result<(), Unavailable> {
@@ -133,17 +144,39 @@ where
     }
 }
 
-/// One way to the Internet, shared by everything that fetches; requests take turns.
-pub struct SharedInternet<W, H, S>(Arc<Mutex<OnDemandInternet<W, H, S>>>);
+impl<W, H, U, S> Datagrams for OnDemandInternet<W, H, U, S>
+where
+    W: WifiStation + Send,
+    H: HttpClient + Send,
+    U: UdpClient + Send,
+    S: FileStorage + Send,
+{
+    fn exchange(&mut self, host: &str, port: u16, request: &[u8], answer: &mut [u8]) -> Result<usize, Unavailable> {
+        self.join()?;
+        match self.udp.exchange(host, port, request, answer, DATAGRAM_TIMEOUT) {
+            Ok(length) => {
+                self.link = Link::Joined { last_used: Instant::now() };
+                Ok(length)
+            }
+            Err(fault) => {
+                self.leave();
+                Err(Unavailable(fault.to_string()))
+            }
+        }
+    }
+}
 
-impl<W, H, S> Clone for SharedInternet<W, H, S> {
+/// One way to the Internet, shared by everything that fetches; requests take turns.
+pub struct SharedInternet<W, H, U, S>(Arc<Mutex<OnDemandInternet<W, H, U, S>>>);
+
+impl<W, H, U, S> Clone for SharedInternet<W, H, U, S> {
     fn clone(&self) -> Self {
         Self(Arc::clone(&self.0))
     }
 }
 
-impl<W: WifiStation, H: HttpClient, S: FileStorage> SharedInternet<W, H, S> {
-    pub fn new(internet: OnDemandInternet<W, H, S>) -> Self {
+impl<W: WifiStation, H: HttpClient, U: UdpClient, S: FileStorage> SharedInternet<W, H, U, S> {
+    pub fn new(internet: OnDemandInternet<W, H, U, S>) -> Self {
         Self(Arc::new(Mutex::new(internet)))
     }
 
@@ -155,14 +188,27 @@ impl<W: WifiStation, H: HttpClient, S: FileStorage> SharedInternet<W, H, S> {
     }
 }
 
-impl<W, H, S> Internet for SharedInternet<W, H, S>
+impl<W, H, U, S> Internet for SharedInternet<W, H, U, S>
 where
     W: WifiStation + Send,
     H: HttpClient + Send,
+    U: UdpClient + Send,
     S: FileStorage + Send,
 {
     fn fetch(&mut self, url: &str, read: &mut BodyReader<'_>) -> Result<(), Unavailable> {
         self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).fetch(url, read)
+    }
+}
+
+impl<W, H, U, S> Datagrams for SharedInternet<W, H, U, S>
+where
+    W: WifiStation + Send,
+    H: HttpClient + Send,
+    U: UdpClient + Send,
+    S: FileStorage + Send,
+{
+    fn exchange(&mut self, host: &str, port: u16, request: &[u8], answer: &mut [u8]) -> Result<usize, Unavailable> {
+        self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).exchange(host, port, request, answer)
     }
 }
 
@@ -171,6 +217,12 @@ pub struct NoInternet(pub &'static str);
 
 impl Internet for NoInternet {
     fn fetch(&mut self, _: &str, _: &mut BodyReader<'_>) -> Result<(), Unavailable> {
+        Err(Unavailable(self.0.into()))
+    }
+}
+
+impl Datagrams for NoInternet {
+    fn exchange(&mut self, _: &str, _: u16, _: &[u8], _: &mut [u8]) -> Result<usize, Unavailable> {
         Err(Unavailable(self.0.into()))
     }
 }
@@ -216,12 +268,25 @@ mod tests {
         }
     }
 
-    type TestInternet = OnDemandInternet<FakeWifi, FakeHttp, MemoryStorage>;
+    /// Answers every datagram with the same one, or fails.
+    struct FakeUdp(Journal, Result<Vec<u8>, Fault>);
+
+    impl UdpClient for FakeUdp {
+        fn exchange(&mut self, host: &str, port: u16, _: &[u8], answer: &mut [u8], _: Duration) -> Result<usize, Fault> {
+            self.0.note(format!("udp {host}:{port}"));
+            let datagram = self.1.clone()?;
+            answer[..datagram.len()].copy_from_slice(&datagram);
+            Ok(datagram.len())
+        }
+    }
+
+    type TestInternet = OnDemandInternet<FakeWifi, FakeHttp, FakeUdp, MemoryStorage>;
 
     fn internet(joins: bool, answer: Result<Vec<u8>, Fault>) -> (TestInternet, Journal) {
         let journal = Journal::default();
         let storage = MemoryStorage::with(WIFI_FILE, "ssid = Home\npassword = s3cret\n");
-        (OnDemandInternet::new(FakeWifi(journal.clone(), joins), FakeHttp(journal.clone(), answer), storage), journal)
+        let (http, udp) = (FakeHttp(journal.clone(), answer.clone()), FakeUdp(journal.clone(), answer));
+        (OnDemandInternet::new(FakeWifi(journal.clone(), joins), http, udp, storage), journal)
     }
 
     #[test]
@@ -268,10 +333,33 @@ mod tests {
     #[test]
     fn without_wifi_conf_it_says_what_to_do_and_leaves_the_radio_off() {
         let journal = Journal::default();
-        let mut internet =
-            OnDemandInternet::new(FakeWifi(journal.clone(), true), FakeHttp(journal.clone(), Ok(vec![])), MemoryStorage::default());
+        let mut internet = OnDemandInternet::new(
+            FakeWifi(journal.clone(), true),
+            FakeHttp(journal.clone(), Ok(vec![])),
+            FakeUdp(journal.clone(), Ok(vec![])),
+            MemoryStorage::default(),
+        );
         assert_eq!(internet.get("https://x"), Err(Unavailable(format!("no Wi-Fi: put {WIFI_FILE}"))));
         assert!(journal.entries().is_empty());
+    }
+
+    #[test]
+    fn datagrams_share_the_connection_and_a_lost_one_leaves_it() {
+        let (mut internet, journal) = internet(true, Ok(b"pong".to_vec()));
+        let mut answer = [0u8; 8];
+        assert_eq!(internet.exchange("time", 123, b"ping", &mut answer), Ok(4));
+        internet.get("https://a").unwrap();
+        assert_eq!(journal.entries(), ["connect Home s3cret", "udp time:123", "get https://a"]);
+
+        let (mut internet, journal) = internet_failing_udp();
+        assert!(internet.exchange("time", 123, b"ping", &mut answer).is_err());
+        assert_eq!(journal.entries().last().map(String::as_str), Some("disconnect"));
+    }
+
+    fn internet_failing_udp() -> (TestInternet, Journal) {
+        let (internet, journal) = internet(true, Ok(vec![]));
+        let udp = FakeUdp(journal.clone(), Err(Fault::new("no answer")));
+        (OnDemandInternet { udp, ..internet }, journal)
     }
 
     #[test]

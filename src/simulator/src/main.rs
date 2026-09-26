@@ -1,10 +1,12 @@
 //! The app image on a computer: `just sim [card directory]`.
 
 mod card;
+mod clock;
 mod controls;
 mod lights;
 mod network;
 mod panel;
+mod speaker;
 mod system;
 mod window;
 
@@ -12,15 +14,18 @@ use std::path::PathBuf;
 use std::thread;
 
 use app::{Devices, Hardware};
+use drivers::udp_socket::StdUdpClient;
 use hal::storage::FileStorage;
 use hal::Fault;
 use infrastructure::internet::WIFI_FILE;
 
 use crate::card::DirectoryCard;
+use crate::clock::HostClock;
 use crate::controls::{KeyButton, ScrollWheel};
 use crate::lights::SimulatedLight;
 use crate::network::{HostHttpClient, HostWifi};
 use crate::panel::SimulatedPanel;
+use crate::speaker::LoggedSpeaker;
 use crate::system::HostSystem;
 use crate::window::Case;
 
@@ -33,9 +38,12 @@ impl Hardware for Computer {
     type Wheel = ScrollWheel;
     type Button = KeyButton;
     type Light = SimulatedLight;
+    type Rtc = HostClock;
+    type Speaker = LoggedSpeaker;
     type Card = DirectoryCard;
     type Wifi = HostWifi;
     type Http = HostHttpClient;
+    type Udp = StdUdpClient;
     type System = HostSystem;
 
     /// Rust's own default: rustls, unoptimised, needs far more than the ESP32's TLS.
@@ -61,9 +69,12 @@ fn main() -> Result<(), Fault> {
         long_button: case.long_button.clone(),
         front_light: case.front_light.clone(),
         reading_lamp: case.reading_lamp.clone(),
+        rtc: HostClock::default(),
+        speaker: LoggedSpeaker,
         sd_card: card,
         wifi: HostWifi,
         https: HostHttpClient::default(),
+        udp: StdUdpClient,
         system: HostSystem,
     };
     thread::Builder::new()

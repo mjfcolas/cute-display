@@ -3,7 +3,6 @@
 use std::time::Instant;
 
 use domain::apps::App;
-use domain::calendar::Weekday;
 use domain::fetch::FetchStatus;
 use domain::weather::{Degrees, Forecast, Sky, Weather, WeatherReport};
 use embedded_graphics::pixelcolor::BinaryColor;
@@ -11,6 +10,7 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 
 use crate::app_screen::AppScreen;
+use crate::calendar_names;
 use crate::controls::{Control, Input};
 use crate::text::{self, BODY, HINT};
 use crate::weather_icons;
@@ -108,18 +108,6 @@ fn sky_name(sky: Sky) -> &'static str {
     }
 }
 
-fn weekday_name(day: Weekday) -> &'static str {
-    match day {
-        Weekday::Monday => "Mon",
-        Weekday::Tuesday => "Tue",
-        Weekday::Wednesday => "Wed",
-        Weekday::Thursday => "Thu",
-        Weekday::Friday => "Fri",
-        Weekday::Saturday => "Sat",
-        Weekday::Sunday => "Sun",
-    }
-}
-
 fn draw_today<D: DrawTarget<Color = BinaryColor>>(target: &mut D, area: Rectangle, place: &str, forecast: &Forecast) {
     let today = &forecast.today;
     weather_icons::draw(target, today.sky, area.top_left, TODAY_ICON);
@@ -146,7 +134,7 @@ fn draw_week<D: DrawTarget<Color = BinaryColor>>(target: &mut D, area: Rectangle
         if top + WEEK_PITCH > area.top_left.y + area.size.height as i32 {
             break;
         }
-        let name = if n == 0 { "Today" } else { weekday_name(day.date.weekday()) };
+        let name = if n == 0 { "Today" } else { calendar_names::short_weekday(day.date.weekday()) };
         text::write(target, name, Point::new(area.top_left.x, top), (DAY_NAME_CHARS * advance) as u32, &BODY);
         weather_icons::draw(target, day.sky, Point::new(icon_left, top + 2), WEEK_ICON);
         let temperatures = format!("{:>4} / {}", temperature(day.low), temperature(day.high));
@@ -188,7 +176,7 @@ mod tests {
         let week = skies
             .iter()
             .enumerate()
-            .map(|(n, &sky)| DayForecast { date: Date::new(2026, 9, 25 + n as u8).unwrap(), sky, low: Degrees(8), high: Degrees(21) })
+            .map(|(n, &sky)| DayForecast { date: Date::new(2026, 9, 25).unwrap().plus_days(n as i64), sky, low: Degrees(8), high: Degrees(21) })
             .collect();
         Forecast { today: Today { sky: Sky::Cloudy, now: Degrees(19), low: Degrees(12), high: Degrees(21) }, week }
     }

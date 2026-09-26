@@ -25,4 +25,6 @@ The strip under the glass shows the front light and the reading lamp.
 - The glass takes as long to refresh as the real one and flashes on a whole refresh, but
   never ghosts.
 - No maintenance console: the card is a directory already.
-- No RTC, speaker or battery: the app image does not use them.
+- The RTC runs on the computer's clock, from wherever the network time set it.
+- The speaker is a line in the log, with the loudest sample it was given.
+- No battery: the app image does not use it.

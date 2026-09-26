@@ -1,11 +1,15 @@
 //! Writes one screen of the app as a raw frame:
 //!
-//!   cargo run -p ui --example app_screen -- out.fb [system|weather|weather-week|radar]
+//!   cargo run -p ui --example app_screen -- out.fb [system|alarm|alarm-days|weather|weather-week|radar]
 
 use std::time::Instant;
 
+use domain::alarm::{AlarmClock, AlarmSchedule, AlarmScheduleStore, Ringer, Volume};
 use domain::apps::{App, Foreground};
-use domain::calendar::Date;
+use domain::calendar::{Date, Weekday};
+use domain::clock::{Clock, TimeKeeper, TimeSource, TimeZoneSource};
+use domain::time::{TimeOfDay, UtcTime};
+use domain::time_zone::TimeZone;
 use domain::radar::{AirTrafficSource, Aircraft, Airport, AirportSource, Altitude, Radar};
 use domain::settings::{Settings, SettingsRecord, SettingsStore};
 use domain::fetch::Unavailable;
@@ -14,8 +18,8 @@ use domain::weather::{DayForecast, Degrees, Forecast, ForecastSource, Sky, Today
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH};
-use ui::apps::{RadarScreen, SystemScreen, WeatherScreen};
-use ui::controls::ControlsSample;
+use ui::apps::{AlarmScreen, RadarScreen, SystemScreen, WeatherScreen};
+use ui::controls::{ButtonSample, ControlsSample};
 use ui::{AppScreen, Shell};
 
 struct Nowhere;
@@ -25,6 +29,51 @@ impl SettingsStore for Nowhere {
         None
     }
     fn save(&mut self, _: &SettingsRecord) {}
+}
+
+/// Friday 25 September 2026, 21:47 in Paris.
+struct FridayEvening;
+
+impl TimeKeeper for FridayEvening {
+    fn read(&mut self) -> Option<UtcTime> {
+        Some(UtcTime::from_unix_seconds(1_790_365_620))
+    }
+    fn set(&mut self, _: UtcTime) {}
+}
+
+impl TimeSource for FridayEvening {
+    fn fetch(&mut self) -> Result<UtcTime, Unavailable> {
+        Err(Unavailable("offline".into()))
+    }
+}
+
+impl TimeZoneSource for FridayEvening {
+    fn time_zone(&mut self) -> Option<TimeZone> {
+        None
+    }
+}
+
+impl AlarmScheduleStore for Nowhere {
+    fn load(&mut self) -> Option<AlarmSchedule> {
+        None
+    }
+    fn save(&mut self, _: &AlarmSchedule) {}
+}
+
+impl Ringer for Nowhere {
+    fn ring(&mut self, _: Volume) {}
+    fn silence(&mut self) {}
+}
+
+/// Enabled, at 7:00 on weekdays and 9:30 on Saturdays.
+fn alarm_clock(foreground: &Foreground) -> AlarmClock {
+    let alarm = AlarmClock::new(Box::new(Nowhere), Box::new(Nowhere), foreground.clone());
+    for day in [Weekday::Monday, Weekday::Tuesday, Weekday::Wednesday, Weekday::Thursday, Weekday::Friday] {
+        alarm.set_time_on(day, TimeOfDay::new(7, 0));
+    }
+    alarm.set_time_on(Weekday::Saturday, TimeOfDay::new(9, 30));
+    alarm.switch_on();
+    alarm
 }
 
 struct Montreal;
@@ -40,10 +89,11 @@ struct Sample;
 impl ForecastSource for Sample {
     fn fetch(&mut self, _: &Place) -> Result<Forecast, Unavailable> {
         let days = [(Sky::PartlyCloudy, 11, 21), (Sky::Rain, 12, 17), (Sky::Cloudy, 10, 19), (Sky::Clear, 10, 23), (Sky::Fog, 8, 16), (Sky::Snow, -3, 3), (Sky::Storm, 12, 18)];
+        let first = Date::new(2026, 9, 25).ok_or_else(|| Unavailable("no such date".into()))?;
         let week = days
             .iter()
-            .enumerate()
-            .filter_map(|(n, &(sky, low, high))| Some(DayForecast { date: Date::new(2026, 9, 25 + n as u8)?, sky, low: Degrees(low), high: Degrees(high) }))
+            .zip(0..)
+            .map(|(&(sky, low, high), n)| DayForecast { date: first.plus_days(n), sky, low: Degrees(low), high: Degrees(high) })
             .collect();
         Ok(Forecast { today: Today { sky: Sky::PartlyCloudy, now: Degrees(19), low: Degrees(11), high: Degrees(21) }, week })
     }
@@ -112,8 +162,15 @@ fn main() -> std::io::Result<()> {
     let weather = Weather::new(Box::new(Montreal), Box::new(Sample));
     weather.refresh_if_due(Instant::now());
     let radar = Radar::new(Box::new(NotreDame), Box::new(Traffic), Box::new(AroundParis), foreground.clone());
+    let clock = Clock::new(Box::new(FridayEvening), Box::new(FridayEvening), Box::new(FridayEvening));
+    clock.tick(Instant::now());
+    let alarm = alarm_clock(&foreground);
+    if let Some(now) = clock.now() {
+        alarm.tick(now);
+    }
     let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
         Box::new(SystemScreen::new(foreground.clone(), settings)),
+        Box::new(AlarmScreen::new(alarm, clock)),
         Box::new(WeatherScreen::new(weather)),
         Box::new(RadarScreen::new(radar.clone())),
     ];
@@ -122,6 +179,13 @@ fn main() -> std::io::Result<()> {
     };
 
     match screen {
+        "alarm" => foreground.bring_to_front(App::Alarm),
+        "alarm-days" => {
+            foreground.bring_to_front(App::Alarm);
+            let press = ButtonSample { presses: 1, held: false };
+            shell.on_sample(&ControlsSample { wheel: press, ..Default::default() }, core::time::Duration::ZERO);
+            shell.on_sample(&ControlsSample { wheel: press, ..Default::default() }, core::time::Duration::ZERO);
+        }
         "weather" => foreground.bring_to_front(App::Weather),
         "radar" => {
             foreground.bring_to_front(App::Radar);

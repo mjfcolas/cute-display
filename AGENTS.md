@@ -66,7 +66,7 @@ of ours is in one place.
 ```sh
 just test        # host tests
 just lint        # clippy, host and ESP32
-just preview     # render an app screen to a PNG (system, weather, weather-week, radar)
+just preview     # render an app screen to a PNG (screens: just --list)
 just sim         # run the app image in a window, the SD card in sim-sd/
 just fw          # build the app image, flash it into app1, watch the log
 just fw hwtest   # the same with the hardware test image

@@ -7,13 +7,14 @@ use crate::shared::Shared;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum App {
     System,
+    Alarm,
     Weather,
     Radar,
 }
 
 impl App {
     /// Every app but the system one, in the order they are offered.
-    pub const LAUNCHABLE: [App; 2] = [App::Weather, App::Radar];
+    pub const LAUNCHABLE: [App; 3] = [App::Alarm, App::Weather, App::Radar];
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -30,7 +31,7 @@ pub struct Foreground(Shared<Front>);
 
 impl Foreground {
     pub fn new(app: App) -> Self {
-        let before_system = if app == App::System { App::Weather } else { app };
+        let before_system = if app == App::System { App::Alarm } else { app };
         Self(Shared::new(Front { app, before_system }))
     }
 
