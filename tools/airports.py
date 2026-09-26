@@ -6,7 +6,7 @@
 
 Airports come from OurAirports (ourairports.com, public domain): airports of every size,
 airfields included, within 100 km. The download is kept in ~/.cache/cute-display.
-The other end is infrastructure/src/airports_file.rs.
+The other end is src/infrastructure/src/airports_file.rs.
 """
 import csv
 import math

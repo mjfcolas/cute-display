@@ -8,7 +8,7 @@
 
 The device must run the app image, and nothing else may hold the port (close the
 monitor first). The port is found by its USB name; CUTE_DISPLAY_PORT overrides it.
-The other end is maintenance/src/console.rs.
+The other end is src/maintenance/src/console.rs.
 """
 import base64
 import glob

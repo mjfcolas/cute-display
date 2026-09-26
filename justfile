@@ -3,8 +3,8 @@
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-app_bin := justfile_directory() / "firmware/target/cute-display-app.bin"
-elf_dir := "firmware/target/xtensa-esp32s3-espidf/release"
+app_bin := justfile_directory() / "src/firmware/target/cute-display-app.bin"
+elf_dir := "src/firmware/target/xtensa-esp32s3-espidf/release"
 app1 := "0x820000"
 otadata := "0x19000"
 backup_dir := justfile_directory() / "backup"
@@ -21,7 +21,7 @@ test:
 # clippy over the host workspace and the firmware
 lint:
     cargo clippy --workspace --all-targets
-    cd firmware && source ~/export-esp.sh && cargo clippy --release
+    cd src/firmware && source ~/export-esp.sh && cargo clippy --release
 
 # render an app screen to a PNG: system, weather, weather-week or radar
 preview screen="system" zoom="2":
@@ -40,7 +40,7 @@ fw bin="app": (fw-build bin) (fw-flash bin "monitor")
 
 # build an image (release): `app` or `hwtest`
 fw-build bin="app":
-    cd firmware && source ~/export-esp.sh && cargo build --release --bin {{bin}}
+    cd src/firmware && source ~/export-esp.sh && cargo build --release --bin {{bin}}
 
 # flash an image into the spare OTA slot (app1) and boot it
 fw-flash bin="app" monitor="": _check-partitions _save-otadata

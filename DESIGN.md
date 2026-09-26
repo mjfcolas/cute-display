@@ -78,24 +78,27 @@ a "latest value" out:
 ## Where things live
 
 ```
-domain/     what the product does: the apps, the one in front, settings, lighting, weather,
-            radar, places
-infrastructure/ the domain's contracts on the HAL: conf files, lights, Internet on demand,
-            Open-Meteo
-ui/         app screens (the system app's among them), gestures; host-tested with hal's
-            Frame as a dev-dependency
-hal/        contracts with the hardware, and the Frame the display shows
-drivers/    ESP32-S3 implementations of hal; chip logic that needs no ESP32 is host-tested
-maintenance/ the console that serves the SD card on the USB cable
-hwtest/     the hardware test bench (see below)
-firmware/   board pin map + one binary per image (`app`, `hwtest`); the only crate built
-            for the ESP32 only
-tools/      host scripts (frame dump to PNG)
+src/            the sources, one crate per directory
+  domain/         what the product does: the apps, the one in front, settings, lighting,
+                  weather, radar, places
+  infrastructure/ the domain's contracts on the HAL: conf files, lights, Internet on
+                  demand, Open-Meteo
+  ui/             app screens (the system app's among them), gestures; host-tested with
+                  hal's Frame as a dev-dependency
+  hal/            contracts with the hardware, and the Frame the display shows
+  drivers/        ESP32-S3 implementations of hal; chip logic that needs no ESP32 is
+                  host-tested
+  maintenance/    the console that serves the SD card on the USB cable
+  hwtest/         the hardware test bench (see below)
+  firmware/       board pin map + one binary per image (`app`, `hwtest`); the only crate
+                  built for the ESP32 only
+docs/           the hardware, as found on the board
+tools/          host scripts (frame dump to PNG, SD card over USB, radar airports)
 ```
 
 ## Applications
 
-The main image (`firmware/src/bin/app.rs`) is a set of small apps, one in front at a
+The main image (`src/firmware/src/bin/app.rs`) is a set of small apps, one in front at a
 time.
 
 **The domain owns the apps.** `domain::apps::App` lists them and `Foreground` says which
@@ -232,4 +235,4 @@ the way to check a board.
   sensors are read every second.
 - `hwtest::report` — what a check is, and how each reading becomes one.
 - `hwtest::screen` — the report page and the checkerboard, drawn into a `Frame`.
-- `firmware/src/bin/hwtest.rs` — builds the board, hands its devices to the bench.
+- `src/firmware/src/bin/hwtest.rs` — builds the board, hands its devices to the bench.
