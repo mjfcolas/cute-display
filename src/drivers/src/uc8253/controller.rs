@@ -8,7 +8,7 @@ use hal::display::{EpaperDisplay, Frame, Redraw, Refreshed};
 use hal::Fault;
 
 use super::memory::{self, Image, BYTES};
-use super::refresh::{partial_window, Plan, RefreshPolicy};
+use super::refresh::{fast_windows, partial_window, Plan, RefreshPolicy};
 use crate::or_fault::OrFault;
 
 mod command {
@@ -160,6 +160,14 @@ impl Uc8253 {
     }
 
     fn refresh_rows(&mut self, rows: &RangeInclusive<usize>) -> Result<Refreshed, Fault> {
+        let mut took = Duration::ZERO;
+        for window in fast_windows(rows) {
+            took += self.refresh_window(&window)?;
+        }
+        Ok(Refreshed::Columns { count: rows.clone().count() as u16, took })
+    }
+
+    fn refresh_window(&mut self, rows: &RangeInclusive<usize>) -> Result<Duration, Fault> {
         let window = partial_window(rows);
         let Memories { holding_glass, receiving } = self.memories();
         self.power_on()?;
@@ -187,7 +195,7 @@ impl Uc8253 {
         let took = took?;
 
         memory::rows_mut(&mut self.on_glass, rows).copy_from_slice(memory::rows(&self.wanted, rows));
-        Ok(Refreshed::Columns { count: rows.clone().count() as u16, took })
+        Ok(took)
     }
 
     fn refresh(&mut self) -> Result<Duration, Fault> {

@@ -9,7 +9,7 @@ use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 
 use drivers::uc8253::memory::{self, Image};
-use drivers::uc8253::refresh::{Plan, RefreshPolicy};
+use drivers::uc8253::refresh::{fast_windows, Plan, RefreshPolicy};
 use hal::display::{EpaperDisplay, Frame, Redraw, Refreshed, HEIGHT, WIDTH};
 use hal::Fault;
 
@@ -46,7 +46,10 @@ impl Controller {
         self.memory = wanted;
         match plan {
             Plan::Whole => Refreshed::Whole { took: WHOLE_REFRESH },
-            Plan::Rows(rows) => Refreshed::Columns { count: u16::try_from(rows.count()).unwrap_or(WIDTH), took: FAST_REFRESH },
+            Plan::Rows(rows) => Refreshed::Columns {
+                count: u16::try_from(rows.clone().count()).unwrap_or(WIDTH),
+                took: FAST_REFRESH * u32::try_from(fast_windows(&rows).count()).unwrap_or(1),
+            },
             Plan::Nothing => Refreshed::Nothing,
         }
     }
@@ -133,10 +136,10 @@ mod tests {
     }
 
     #[test]
-    fn changes_across_most_of_the_glass_refresh_it_whole_as_the_device_does() {
+    fn changes_across_most_of_the_glass_refresh_fast_in_two_windows_as_the_device_does() {
         let mut controller = Controller::default();
         controller.refresh(&Frame::blank(), Redraw::Whole);
-        assert!(matches!(controller.refresh(&with_columns(&[0, 400]), Redraw::Changes), Refreshed::Whole { .. }));
+        assert_eq!(controller.refresh(&with_columns(&[0, 400]), Redraw::Changes), Refreshed::Columns { count: 401, took: FAST_REFRESH * 2 });
     }
 
     #[test]

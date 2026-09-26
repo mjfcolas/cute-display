@@ -8,7 +8,7 @@ use embedded_graphics::primitives::Rectangle;
 use hal::display::{EpaperDisplay, Frame, Redraw, HEIGHT, VISIBLE_WIDTH};
 use hal::input::{PushButton, RotaryEncoder};
 use ui::apps::{AlarmScreen, RadarScreen, SystemScreen, WeatherScreen};
-use ui::{AppScreen, ScreenChange, Shell};
+use ui::{AppScreen, Shell};
 
 use crate::controls::Controls;
 use crate::Domain;
@@ -53,11 +53,8 @@ impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay> Presentation<E, B, P> {
         }
         let visible = Rectangle::new(Point::zero(), Size::new(VISIBLE_WIDTH.into(), HEIGHT.into()));
         let _ = frame.clear(BinaryColor::Off);
-        let redraw = match shell.draw(frame, visible) {
-            ScreenChange::NewScreen => Redraw::Whole,
-            ScreenChange::SameScreen => Redraw::Changes,
-        };
-        if let Err(fault) = self.panel.show(frame, redraw) {
+        shell.draw(frame, visible);
+        if let Err(fault) = self.panel.show(frame, Redraw::Changes) {
             log::warn!("ui: {fault}");
         }
     }
@@ -141,7 +138,7 @@ mod tests {
     }
 
     #[test]
-    fn a_new_screen_is_redrawn_whole_a_change_on_it_fast_and_nothing_else_is_redrawn() {
+    fn every_redraw_asks_only_for_the_changes() {
         let (wheel, wheel_button, panel) = (FakeWheel::default(), FakeButton::default(), FakePanel::default());
         let mut presentation = Presentation {
             controls: Controls {
@@ -163,7 +160,7 @@ mod tests {
         let mut tick = |at: u64| presentation.tick(&mut shell, &lighting, &mut frame, Duration::from_secs(at));
 
         tick(0);
-        assert_eq!(panel.take(), [Redraw::Whole]);
+        assert_eq!(panel.take(), [Redraw::Changes]);
         tick(1);
         assert_eq!(panel.take(), []);
         assert_eq!(*backlight.lock().unwrap(), Level::OFF);
@@ -171,7 +168,7 @@ mod tests {
         wheel_button.presses.set(1);
         wheel_button.held.set(true);
         tick(2);
-        assert_eq!(panel.take(), [Redraw::Whole], "a click of the wheel opens the system app");
+        assert_eq!(panel.take(), [Redraw::Changes], "a click of the wheel opens the system app");
         assert_ne!(*backlight.lock().unwrap(), Level::OFF, "a touch lights the screen");
 
         wheel_button.held.set(false);

@@ -17,4 +17,4 @@ mod text;
 mod weather_icons;
 
 pub use app_screen::AppScreen;
-pub use shell::{ScreenChange, Shell};
+pub use shell::Shell;

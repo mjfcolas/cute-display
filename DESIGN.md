@@ -118,8 +118,9 @@ by `src/simulator/`) runs small apps, one in front at a time.
   controls into domain intents and draws the domain's state. `ui::Shell` hosts the one
   in front; `ui::gestures` turns the controls into what the shell and the apps
   receive.
-- **Refreshing**: `ui::ScreenChange` says which redraw the glass gets; `AppScreen::version`
-  is how a screen changes on its own.
+- **Refreshing**: the app image only asks for its changes; the panel driver's policy
+  decides when the glass gets a clean refresh. `AppScreen::version` is how a screen
+  changes on its own.
 
 ## Further
 

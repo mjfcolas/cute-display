@@ -1,5 +1,5 @@
 //! Which refresh the glass gets: a clean one on the whole glass, or a fast one on the
-//! rows that changed.
+//! rows that changed. Clean ones are kept rare, ghosts accepted.
 
 use core::ops::RangeInclusive;
 
@@ -10,7 +10,7 @@ use super::memory::{self, Image};
 /// Wider partial windows run the waveform and change nothing.
 const MAX_FAST_ROWS: usize = 320;
 /// Fast refreshes leave ghosts that only a clean one erases.
-const FAST_REFRESHES_BETWEEN_CLEAN: u32 = 120;
+const FAST_REFRESHES_BETWEEN_CLEAN: u32 = 1000;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Plan {
@@ -33,7 +33,6 @@ impl RefreshPolicy {
         }
         match memory::changed_rows(on_glass, wanted) {
             None => Plan::Nothing,
-            Some(rows) if rows.clone().count() > MAX_FAST_ROWS => Plan::Whole,
             Some(rows) => Plan::Rows(rows),
         }
     }
@@ -54,6 +53,12 @@ impl RefreshPolicy {
     pub fn forget_glass(&mut self) {
         self.glass_known = false;
     }
+}
+
+/// The rows in windows the controller accepts, one after the other.
+pub fn fast_windows(rows: &RangeInclusive<usize>) -> impl Iterator<Item = RangeInclusive<usize>> {
+    let last = *rows.end();
+    rows.clone().step_by(MAX_FAST_ROWS).map(move |first| first..=last.min(first + MAX_FAST_ROWS - 1))
 }
 
 /// Always the full height. The last byte leaves "scan every gate line" off: on, a
@@ -106,8 +111,15 @@ mod tests {
     }
 
     #[test]
-    fn too_many_rows_are_refreshed_whole() {
-        assert_eq!(known().plan(Redraw::Changes, &white(), &with_rows_changed(0..=MAX_FAST_ROWS)), Plan::Whole);
+    fn many_rows_are_still_refreshed_fast() {
+        assert_eq!(known().plan(Redraw::Changes, &white(), &with_rows_changed(0..=415)), Plan::Rows(0..=415));
+    }
+
+    #[test]
+    fn rows_too_many_for_one_window_are_split_into_the_widest_windows() {
+        assert_eq!(fast_windows(&(10..=300)).collect::<Vec<_>>(), vec![10..=300]);
+        assert_eq!(fast_windows(&(0..=415)).collect::<Vec<_>>(), [0..=319, 320..=415]);
+        assert_eq!(fast_windows(&(0..=MAX_FAST_ROWS)).collect::<Vec<_>>(), [0..=319, 320..=320]);
     }
 
     #[test]

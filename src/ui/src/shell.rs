@@ -15,15 +15,6 @@ use crate::gestures::{Gesture, Gestures};
 
 const MARGIN: i32 = 8;
 
-/// How what was just drawn relates to what was drawn before.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ScreenChange {
-    /// Another app came to the front: worth a clean redraw.
-    NewScreen,
-    /// The same app shows something else.
-    SameScreen,
-}
-
 pub struct Shell<D> {
     gestures: Gestures,
     foreground: Foreground,
@@ -57,15 +48,12 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
         self.drawn != Some((front, self.version_of(front)))
     }
 
-    pub fn draw(&mut self, target: &mut D, area: Rectangle) -> ScreenChange {
+    pub fn draw(&mut self, target: &mut D, area: Rectangle) {
         let front = self.enter_front();
         if let Some(screen) = self.screens.iter().find(|s| s.app() == front) {
             screen.draw(target, area.offset(-MARGIN));
         }
-
-        let same_app = self.drawn.is_some_and(|(app, _)| app == front);
         self.drawn = Some((front, self.version_of(front)));
-        if same_app { ScreenChange::SameScreen } else { ScreenChange::NewScreen }
     }
 
     fn follow(&mut self, gesture: Gesture) -> bool {
@@ -172,11 +160,11 @@ mod tests {
         shell.on_sample(&ControlsSample { wheel: ButtonSample { presses: 1, held: false }, ..Default::default() }, at);
     }
 
-    fn render(shell: &mut Shell<Frame>) -> (Frame, ScreenChange) {
+    fn render(shell: &mut Shell<Frame>) -> Frame {
         let mut frame = Frame::blank();
         let visible = Rectangle::new(Point::zero(), Size::new(VISIBLE_WIDTH.into(), HEIGHT.into()));
-        let change = shell.draw(&mut frame, visible);
-        (frame, change)
+        shell.draw(&mut frame, visible);
+        frame
     }
 
     /// The weather and radar apps as probes, and the real system app.
@@ -235,18 +223,17 @@ mod tests {
     }
 
     #[test]
-    fn a_new_app_in_front_is_a_new_screen_and_using_it_is_the_same_screen() {
+    fn drawing_brings_the_glass_up_to_date_until_another_app_comes_to_the_front() {
         let foreground = Foreground::new(App::Weather);
         let (mut shell, _, _) = shell(&foreground);
         assert!(shell.is_outdated(), "nothing drawn yet");
-        assert_eq!(render(&mut shell).1, ScreenChange::NewScreen);
+        render(&mut shell);
         assert!(!shell.is_outdated());
 
-        shell.on_sample(&turn(1), Duration::ZERO);
-        assert_eq!(render(&mut shell).1, ScreenChange::SameScreen);
-
         click_wheel(&mut shell, Duration::from_secs(10));
-        assert_eq!(render(&mut shell).1, ScreenChange::NewScreen);
+        assert!(shell.is_outdated());
+        render(&mut shell);
+        assert!(!shell.is_outdated());
     }
 
     #[test]
@@ -256,19 +243,17 @@ mod tests {
         render(&mut shell);
         foreground.bring_to_front(App::Radar);
         assert!(shell.is_outdated());
-        assert_eq!(render(&mut shell).1, ScreenChange::NewScreen);
     }
 
     #[test]
-    fn an_app_that_changed_on_its_own_is_redrawn_as_the_same_screen() {
+    fn an_app_that_changed_on_its_own_outdates_the_glass() {
         let (mut shell, weather, _) = shell(&Foreground::new(App::Weather));
-        let (before, _) = render(&mut shell);
+        let before = render(&mut shell);
         assert!(!shell.is_outdated());
         *weather.text.borrow_mut() = "changed".into();
         *weather.version.borrow_mut() = 2;
         assert!(shell.is_outdated());
-        let (after, change) = render(&mut shell);
-        assert_eq!(change, ScreenChange::SameScreen);
+        let after = render(&mut shell);
         assert!(after != before);
         assert!(!shell.is_outdated());
     }
@@ -278,9 +263,9 @@ mod tests {
         let foreground = Foreground::new(App::Weather);
         let (mut shell, weather, _) = shell(&foreground);
         *weather.text.borrow_mut() = "a line far too long to fit on the glass at all, however small".into();
-        let (app, _) = render(&mut shell);
+        let app = render(&mut shell);
         foreground.open_system();
-        let (system, _) = render(&mut shell);
+        let system = render(&mut shell);
         for frame in [app, system] {
             for x in i32::from(VISIBLE_WIDTH)..i32::from(WIDTH) {
                 for y in 0..i32::from(HEIGHT) {
