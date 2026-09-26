@@ -48,8 +48,8 @@ impl TimeSource for FridayEvening {
 }
 
 impl TimeZoneSource for FridayEvening {
-    fn time_zone(&mut self) -> Option<TimeZone> {
-        None
+    fn time_zone(&mut self) -> Result<Option<TimeZone>, Unavailable> {
+        Ok(None)
     }
 }
 

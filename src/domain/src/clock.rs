@@ -27,9 +27,11 @@ pub trait TimeSource: Send {
     fn fetch(&mut self) -> Result<UtcTime, Unavailable>;
 }
 
+/// A source that cannot read the zone says why itself.
 pub trait TimeZoneSource: Send {
-    /// `None` when none was chosen, or it cannot be read.
-    fn time_zone(&mut self) -> Option<TimeZone>;
+    /// `Ok(None)` when none was chosen. A zone that cannot be read leaves the clock on
+    /// the one it had, rather than jumping hours to the default and back.
+    fn time_zone(&mut self) -> Result<Option<TimeZone>, Unavailable>;
 }
 
 #[derive(Clone, Copy)]
@@ -77,11 +79,13 @@ impl Clock {
         let zone_read = self.state.get().zone_read;
         let zone = zone_read
             .is_none_or(|read| now.saturating_duration_since(read) >= READ_ZONE_EVERY)
-            .then(|| lock(&self.zones).time_zone().unwrap_or_default());
+            .then(|| lock(&self.zones).time_zone());
         self.state.update(|state| {
             state.time = time;
-            if let Some(zone) = zone {
-                state.zone = zone;
+            if let Some(reading) = zone {
+                if let Ok(chosen) = reading {
+                    state.zone = chosen.unwrap_or_default();
+                }
                 state.zone_read = Some(now);
             }
         });
@@ -146,12 +150,18 @@ mod tests {
         }
     }
 
-    #[derive(Clone, Default)]
-    struct FakeZones(Arc<Mutex<Option<TimeZone>>>);
+    #[derive(Clone)]
+    struct FakeZones(Arc<Mutex<Result<Option<TimeZone>, Unavailable>>>);
+
+    impl Default for FakeZones {
+        fn default() -> Self {
+            Self(Arc::new(Mutex::new(Ok(None))))
+        }
+    }
 
     impl TimeZoneSource for FakeZones {
-        fn time_zone(&mut self) -> Option<TimeZone> {
-            *self.0.lock().unwrap()
+        fn time_zone(&mut self) -> Result<Option<TimeZone>, Unavailable> {
+            self.0.lock().unwrap().clone()
         }
     }
 
@@ -208,10 +218,26 @@ mod tests {
         let clock = clock(&keeper, vec![], &zones);
         let start = Instant::now();
         clock.tick(start);
-        *zones.0.lock().unwrap() = Some(TimeZone::UTC);
+        *zones.0.lock().unwrap() = Ok(Some(TimeZone::UTC));
         clock.tick(start + READ_ZONE_EVERY - Duration::from_secs(1));
         assert_eq!(hour(&clock), Some(9));
         clock.tick(start + READ_ZONE_EVERY);
         assert_eq!(hour(&clock), Some(7));
+    }
+
+    #[test]
+    fn a_zone_that_cannot_be_read_leaves_the_one_in_use_and_none_chosen_is_the_default() {
+        let (keeper, zones) = (FakeKeeper::default(), FakeZones::default());
+        keeper.clone().set(MORNING);
+        *zones.0.lock().unwrap() = Ok(Some(TimeZone::UTC));
+        let clock = clock(&keeper, vec![], &zones);
+        let start = Instant::now();
+        clock.tick(start);
+        *zones.0.lock().unwrap() = Err(Unavailable("the SD card did not answer".into()));
+        clock.tick(start + READ_ZONE_EVERY);
+        assert_eq!(hour(&clock), Some(7));
+        *zones.0.lock().unwrap() = Ok(None);
+        clock.tick(start + READ_ZONE_EVERY * 2);
+        assert_eq!(hour(&clock), Some(9));
     }
 }

@@ -2,6 +2,11 @@
 //! before, the lights rise like the sun; then it rings, softly at first, until it is
 //! stopped, snoozed, or has rung for a quarter of an hour. Wherever the device is, it
 //! comes to the front to be stopped.
+//!
+//! An alarm rings when the clock goes past its time between two readings: a clock set
+//! forward over it by less than [`RING_FOR`] still rings it, and a time set, or the alarm
+//! switched on, after it passed does not. Nothing is caught up at start, and a clock set
+//! back over an alarm that rang rings it again.
 
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
@@ -13,8 +18,7 @@ use crate::time::{LocalTime, TimeOfDay};
 
 pub const SUNRISE: Duration = Duration::from_secs(30 * 60);
 pub const SNOOZE: Duration = Duration::from_secs(9 * 60);
-/// Also how late an alarm may still ring: one missed by more, while the device was off
-/// or the clock was being set, stays silent.
+/// Also how far behind the clock an alarm it jumped over may be and still ring.
 pub const RING_FOR: Duration = Duration::from_secs(15 * 60);
 pub const VOLUME_RISES_OVER: Duration = Duration::from_secs(60);
 const FIRST_VOLUME: Volume = Volume::percent(10);
@@ -89,16 +93,14 @@ pub enum AlarmState {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Phase {
     Waiting,
-    Ringing { alarm: LocalTime, since: LocalTime },
-    Snoozed { alarm: LocalTime, until: LocalTime },
+    Ringing { since: LocalTime },
+    Snoozed { until: LocalTime },
 }
 
 struct Inner {
     schedule: AlarmSchedule,
     phase: Phase,
-    /// The last alarm that rang, so that it rings once even when the clock goes back.
-    rung: Option<LocalTime>,
-    now: Option<LocalTime>,
+    last_reading: Option<LocalTime>,
     sounding: bool,
     /// Moves on at every change a screen shows.
     revision: u64,
@@ -115,7 +117,7 @@ impl AlarmClock {
     /// On the schedule the store kept, or on one with no alarm.
     pub fn new(mut store: Box<dyn AlarmScheduleStore>, ringer: Box<dyn Ringer>, foreground: Foreground) -> Self {
         let schedule = store.load().unwrap_or_default();
-        let inner = Inner { schedule, phase: Phase::Waiting, rung: None, now: None, sounding: false, revision: 0, store, ringer, foreground };
+        let inner = Inner { schedule, phase: Phase::Waiting, last_reading: None, sounding: false, revision: 0, store, ringer, foreground };
         Self(Arc::new(Mutex::new(inner)))
     }
 
@@ -128,7 +130,7 @@ impl AlarmClock {
         match inner.phase {
             Phase::Waiting => AlarmState::Waiting { next: inner.next_alarm() },
             Phase::Ringing { .. } => AlarmState::Ringing,
-            Phase::Snoozed { until, .. } => AlarmState::Snoozed { until },
+            Phase::Snoozed { until } => AlarmState::Snoozed { until },
         }
     }
 
@@ -157,8 +159,7 @@ impl AlarmClock {
     /// Until the next alarm.
     pub fn stop(&self) {
         let mut inner = self.lock();
-        if let Phase::Ringing { alarm, .. } | Phase::Snoozed { alarm, .. } = inner.phase {
-            inner.rung = Some(alarm);
+        if let Phase::Ringing { .. } | Phase::Snoozed { .. } = inner.phase {
             inner.enter(Phase::Waiting);
         }
     }
@@ -166,9 +167,9 @@ impl AlarmClock {
     /// Rings again [`SNOOZE`] from now.
     pub fn snooze(&self) {
         let mut inner = self.lock();
-        if let (Phase::Ringing { alarm, .. }, Some(now)) = (inner.phase, inner.now) {
+        if let (Phase::Ringing { .. }, Some(now)) = (inner.phase, inner.last_reading) {
             let until = LocalTime::from_seconds_since_epoch(now.seconds_since_epoch() + seconds(SNOOZE));
-            inner.enter(Phase::Snoozed { alarm, until });
+            inner.enter(Phase::Snoozed { until });
         }
     }
 
@@ -176,7 +177,7 @@ impl AlarmClock {
     /// light there is once it rings.
     pub fn sunrise(&self) -> Level {
         let inner = self.lock();
-        match (inner.phase, inner.now) {
+        match (inner.phase, inner.last_reading) {
             (Phase::Ringing { .. } | Phase::Snoozed { .. }, _) => Level::percent(100),
             (Phase::Waiting, Some(now)) => inner.next_alarm().map_or(Level::OFF, |alarm| {
                 let ahead = alarm.seconds_since_epoch() - now.seconds_since_epoch();
@@ -186,25 +187,29 @@ impl AlarmClock {
         }
     }
 
-    /// Moves on to `now`: rings when an alarm comes, stops after [`RING_FOR`].
+    /// Moves on to `now`: rings when the clock went past an alarm since the last
+    /// reading, stops after [`RING_FOR`].
     pub fn tick(&self, now: LocalTime) {
         let mut inner = self.lock();
-        inner.now = Some(now);
+        let previous = inner.last_reading.replace(now);
         let now_seconds = now.seconds_since_epoch();
         match inner.phase {
             Phase::Waiting => {
-                if let Some(alarm) = inner.next_alarm().filter(|alarm| alarm.seconds_since_epoch() <= now_seconds) {
-                    inner.enter(Phase::Ringing { alarm, since: now });
+                let enabled = inner.schedule.enabled;
+                let passed = previous
+                    .and_then(|previous| inner.schedule.next_from(one_second_after(previous)))
+                    .is_some_and(|alarm| (0..seconds(RING_FOR)).contains(&(now_seconds - alarm.seconds_since_epoch())));
+                if enabled && passed {
+                    inner.enter(Phase::Ringing { since: now });
                     inner.foreground.bring_to_front(App::Alarm);
                 }
             }
-            Phase::Ringing { alarm, since } if now_seconds - since.seconds_since_epoch() >= seconds(RING_FOR) => {
-                inner.rung = Some(alarm);
+            Phase::Ringing { since } if now_seconds - since.seconds_since_epoch() >= seconds(RING_FOR) => {
                 inner.enter(Phase::Waiting);
             }
             Phase::Ringing { .. } => {}
-            Phase::Snoozed { alarm, until } if now_seconds >= until.seconds_since_epoch() => {
-                inner.enter(Phase::Ringing { alarm, since: now });
+            Phase::Snoozed { until } if now_seconds >= until.seconds_since_epoch() => {
+                inner.enter(Phase::Ringing { since: now });
                 inner.foreground.bring_to_front(App::Alarm);
             }
             Phase::Snoozed { .. } => {}
@@ -226,16 +231,13 @@ impl AlarmClock {
 }
 
 impl Inner {
-    /// The next alarm to ring, if the schedule is enabled: one that already came but
-    /// less than [`RING_FOR`] ago and has not rung yet counts.
+    /// The next alarm to ring, if the schedule is enabled.
     fn next_alarm(&self) -> Option<LocalTime> {
-        let now = self.now?;
+        let now = self.last_reading?;
         if !self.schedule.enabled {
             return None;
         }
-        let late = now.seconds_since_epoch() - seconds(RING_FOR) + 1;
-        let after_rung = self.rung.map_or(i64::MIN, |rung| rung.seconds_since_epoch() + 1);
-        self.schedule.next_from(LocalTime::from_seconds_since_epoch(late.max(after_rung)))
+        self.schedule.next_from(one_second_after(now))
     }
 
     fn enter(&mut self, phase: Phase) {
@@ -246,7 +248,7 @@ impl Inner {
     /// Rings louder and louder while ringing, and silences the ringer once otherwise.
     fn sound(&mut self, now_seconds: i64) {
         match self.phase {
-            Phase::Ringing { since, .. } => {
+            Phase::Ringing { since } => {
                 let rising = percent_of(now_seconds - since.seconds_since_epoch(), seconds(VOLUME_RISES_OVER));
                 let first = FIRST_VOLUME.as_percent();
                 let risen = u16::from(100 - first) * u16::from(rising.as_percent()) / 100;
@@ -260,6 +262,10 @@ impl Inner {
             _ => {}
         }
     }
+}
+
+fn one_second_after(time: LocalTime) -> LocalTime {
+    LocalTime::from_seconds_since_epoch(time.seconds_since_epoch() + 1)
 }
 
 fn seconds(duration: Duration) -> i64 {
@@ -318,13 +324,14 @@ mod tests {
         TimeOfDay::new(7, 30)
     }
 
-    /// Enabled, at 7:30 on Saturdays and Sundays.
+    /// Enabled, at 7:30 on Saturdays and Sundays, and running since Saturday 6:00.
     fn alarm_clock() -> (AlarmClock, FakeRinger, Foreground) {
         let (ringer, foreground) = (FakeRinger::default(), Foreground::new(App::Weather));
         let alarm = AlarmClock::new(Box::new(FakeStore::default()), Box::new(ringer.clone()), foreground.clone());
         alarm.set_time_on(Weekday::Saturday, seven_thirty());
         alarm.set_time_on(Weekday::Sunday, seven_thirty());
         alarm.switch_on();
+        alarm.tick(at(0, 6, 0, 0));
         (alarm, ringer, foreground)
     }
 
@@ -402,24 +409,39 @@ mod tests {
     }
 
     #[test]
-    fn an_alarm_missed_by_less_than_a_quarter_of_an_hour_still_rings_and_not_one_missed_by_more() {
+    fn a_clock_set_forward_over_an_alarm_rings_it() {
         let (alarm, _, _) = alarm_clock();
-        alarm.tick(at(0, 7, 44, 59));
+        alarm.tick(at(0, 7, 29, 59));
+        alarm.tick(at(0, 7, 30, 2));
         assert_eq!(alarm.state(), AlarmState::Ringing);
+    }
 
+    #[test]
+    fn a_clock_set_forward_far_over_an_alarm_does_not_ring_it() {
         let (alarm, _, _) = alarm_clock();
+        alarm.tick(at(0, 7, 29, 59));
         alarm.tick(at(0, 7, 45, 0));
         assert_eq!(alarm.state(), AlarmState::Waiting { next: Some(at(1, 7, 30, 0)) });
     }
 
     #[test]
-    fn a_clock_set_back_does_not_ring_the_same_alarm_twice() {
+    fn a_clock_set_back_over_an_alarm_that_rang_rings_it_again() {
         let (alarm, _, _) = alarm_clock();
         alarm.tick(at(0, 7, 30, 0));
         alarm.stop();
         alarm.tick(at(0, 7, 20, 0));
         alarm.tick(at(0, 7, 30, 0));
-        assert_eq!(alarm.state(), AlarmState::Waiting { next: Some(at(1, 7, 30, 0)) });
+        assert_eq!(alarm.state(), AlarmState::Ringing);
+    }
+
+    #[test]
+    fn an_alarm_passed_while_the_device_was_off_stays_silent() {
+        let alarm = AlarmClock::new(Box::new(FakeStore::default()), Box::new(FakeRinger::default()), Foreground::new(App::Weather));
+        alarm.set_time_on(Weekday::Saturday, seven_thirty());
+        alarm.switch_on();
+        assert_eq!(alarm.sunrise(), Level::OFF, "before any reading, the time is unknown");
+        alarm.tick(at(0, 7, 30, 1));
+        assert_eq!(alarm.state(), AlarmState::Waiting { next: Some(at(7, 7, 30, 0)) });
     }
 
     #[test]
@@ -430,18 +452,36 @@ mod tests {
         assert_eq!(alarm.state(), AlarmState::Waiting { next: None });
 
         alarm.switch_on();
-        alarm.tick(at(0, 7, 31, 0));
+        alarm.tick(at(1, 7, 30, 0));
         assert_eq!(alarm.state(), AlarmState::Ringing);
         alarm.switch_off();
-        alarm.tick(at(0, 7, 31, 1));
+        alarm.tick(at(1, 7, 30, 1));
         assert_eq!(alarm.state(), AlarmState::Waiting { next: None });
+        assert_eq!(ringer.volume(), None);
+    }
+
+    #[test]
+    fn a_time_set_or_switched_on_just_past_waits_for_next_week() {
+        let (alarm, ringer, _) = alarm_clock();
+        alarm.tick(at(0, 7, 30, 0));
+        alarm.stop();
+        alarm.tick(at(0, 7, 45, 0));
+        alarm.set_time_on(Weekday::Saturday, TimeOfDay::new(7, 40));
+        alarm.tick(at(0, 7, 45, 1));
+        assert_eq!(alarm.state(), AlarmState::Waiting { next: Some(at(1, 7, 30, 0)) });
+
+        alarm.switch_off();
+        alarm.tick(at(1, 7, 29, 0));
+        alarm.tick(at(1, 7, 35, 0));
+        alarm.switch_on();
+        alarm.tick(at(1, 7, 35, 1));
+        assert_eq!(alarm.state(), AlarmState::Waiting { next: Some(at(7, 7, 40, 0)) });
         assert_eq!(ringer.volume(), None);
     }
 
     #[test]
     fn the_sun_rises_over_the_half_hour_before_and_stays_up_until_stopped() {
         let (alarm, _, _) = alarm_clock();
-        assert_eq!(alarm.sunrise(), Level::OFF, "before any tick, the time is unknown");
         alarm.tick(at(0, 6, 59, 59));
         assert_eq!(alarm.sunrise(), Level::OFF);
         alarm.tick(at(0, 7, 15, 0));

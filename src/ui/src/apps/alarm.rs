@@ -309,8 +309,8 @@ mod tests {
 
     struct Utc;
     impl TimeZoneSource for Utc {
-        fn time_zone(&mut self) -> Option<TimeZone> {
-            Some(TimeZone::UTC)
+        fn time_zone(&mut self) -> Result<Option<TimeZone>, Unavailable> {
+            Ok(Some(TimeZone::UTC))
         }
     }
 
@@ -427,9 +427,9 @@ mod tests {
     #[test]
     fn ringing_the_long_button_snoozes_and_holding_both_stops() {
         let mut bench = Bench::new();
-        bench.alarm.set_time_on(Weekday::Saturday, TimeOfDay::new(7, 0));
+        bench.alarm.set_time_on(Weekday::Saturday, TimeOfDay::new(7, 1));
         bench.alarm.switch_on();
-        bench.at(saturday_at_seven());
+        bench.at(UtcTime::from_unix_seconds(saturday_at_seven().unix_seconds() + 60));
         assert_eq!(bench.alarm.state(), AlarmState::Ringing);
         bench.press(Button::Yellow);
         bench.input(Input::Turn(3));

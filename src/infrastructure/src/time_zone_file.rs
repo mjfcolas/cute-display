@@ -5,6 +5,7 @@
 //! ```
 
 use domain::clock::TimeZoneSource;
+use domain::fetch::Unavailable;
 use domain::time_zone::TimeZone;
 use hal::storage::FileStorage;
 
@@ -26,20 +27,20 @@ impl<S: FileStorage> TimeZoneFile<S> {
 }
 
 impl<S: FileStorage + Send> TimeZoneSource for TimeZoneFile<S> {
-    fn time_zone(&mut self) -> Option<TimeZone> {
-        let text = match ConfText::read(&self.storage, CLOCK_FILE) {
-            Ok(conf) => conf?.get(TIME_ZONE)?.to_owned(),
-            Err(fault) => {
-                log::warn!("clock: {fault}");
-                return None;
-            }
+    fn time_zone(&mut self) -> Result<Option<TimeZone>, Unavailable> {
+        let conf = ConfText::read(&self.storage, CLOCK_FILE).map_err(|fault| {
+            log::warn!("clock: {fault}");
+            Unavailable(fault.to_string())
+        })?;
+        let Some(text) = conf.as_ref().and_then(|conf| conf.get(TIME_ZONE)) else {
+            return Ok(None);
         };
-        let zone = TimeZone::parse(&text);
-        if zone.is_none() && self.unreadable.as_ref() != Some(&text) {
+        let zone = TimeZone::parse(text);
+        if zone.is_none() && self.unreadable.as_deref() != Some(text) {
             log::warn!("clock: {CLOCK_FILE}: cannot read the time zone {text:?}");
-            self.unreadable = Some(text);
+            self.unreadable = Some(text.to_owned());
         }
-        zone
+        zone.map(Some).ok_or_else(|| Unavailable(format!("{CLOCK_FILE}: cannot read the time zone {text:?}")))
     }
 }
 
@@ -47,8 +48,8 @@ impl<S: FileStorage + Send> TimeZoneSource for TimeZoneFile<S> {
 pub struct NoTimeZone;
 
 impl TimeZoneSource for NoTimeZone {
-    fn time_zone(&mut self) -> Option<TimeZone> {
-        None
+    fn time_zone(&mut self) -> Result<Option<TimeZone>, Unavailable> {
+        Ok(None)
     }
 }
 
@@ -60,13 +61,13 @@ mod tests {
     #[test]
     fn reads_the_time_zone_of_the_file() {
         let storage = MemoryStorage::with(CLOCK_FILE, "time_zone = UTC0\n");
-        assert_eq!(TimeZoneFile::new(storage).time_zone(), Some(TimeZone::UTC));
+        assert_eq!(TimeZoneFile::new(storage).time_zone(), Ok(Some(TimeZone::UTC)));
     }
 
     #[test]
-    fn no_file_no_line_or_nonsense_is_no_time_zone() {
-        assert_eq!(TimeZoneFile::new(MemoryStorage::default()).time_zone(), None);
-        assert_eq!(TimeZoneFile::new(MemoryStorage::with(CLOCK_FILE, "# nothing\n")).time_zone(), None);
-        assert_eq!(TimeZoneFile::new(MemoryStorage::with(CLOCK_FILE, "time_zone = Europe/Paris\n")).time_zone(), None);
+    fn no_file_or_no_line_is_none_chosen_and_nonsense_cannot_be_read() {
+        assert_eq!(TimeZoneFile::new(MemoryStorage::default()).time_zone(), Ok(None));
+        assert_eq!(TimeZoneFile::new(MemoryStorage::with(CLOCK_FILE, "# nothing\n")).time_zone(), Ok(None));
+        assert!(TimeZoneFile::new(MemoryStorage::with(CLOCK_FILE, "time_zone = Europe/Paris\n")).time_zone().is_err());
     }
 }

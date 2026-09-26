@@ -15,8 +15,8 @@ when the device starts.
   - **Yellow and long button held together for a second**: stop until the next alarm,
     ringing or snoozing.
   - Unanswered, it stops after a quarter of an hour.
-- An alarm missed by more than a quarter of an hour, while the device was off, stays
-  silent.
+- A wake-up time passed while the device was off, or set after it passed, waits for its
+  next day.
 
 ## The time
 
