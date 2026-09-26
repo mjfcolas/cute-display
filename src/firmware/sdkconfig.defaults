@@ -22,6 +22,5 @@ CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
 CONFIG_MBEDTLS_DYNAMIC_FREE_CONFIG_DATA=y
 CONFIG_MBEDTLS_DYNAMIC_FREE_CA_CERT=y
 
-# NVS holds the stock firmware's Wi-Fi credentials and must stay untouched: the PHY
-# recalibrates at every boot instead of caching there.
+# Nothing of ours is in NVS: the PHY recalibrates at every boot instead of caching there.
 CONFIG_ESP_PHY_CALIBRATION_AND_DATA_STORAGE=n

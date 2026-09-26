@@ -7,6 +7,8 @@ pub const ADDRESS: u8 = 0x68;
 /// Time, alarms, control and status: 0x00 to 0x0F.
 pub const CLOCK_REGISTERS: usize = 0x10;
 pub const TEMPERATURE_REGISTER: u8 = 0x11;
+/// Clock registers, then aging offset and temperature: everything the chip holds.
+pub const ALL_REGISTERS: usize = 0x13;
 
 const STATUS: usize = 0x0f;
 const OSCILLATOR_STOPPED: u8 = 0x80;
@@ -57,7 +59,7 @@ mod chip {
     use hal::thermometer::{Temperature, Thermometer};
     use hal::Fault;
 
-    use super::{decode_clock, decode_temperature, ADDRESS, CLOCK_REGISTERS, TEMPERATURE_REGISTER};
+    use super::{decode_clock, decode_temperature, ADDRESS, ALL_REGISTERS, CLOCK_REGISTERS, TEMPERATURE_REGISTER};
     use crate::i2c::I2cMaster;
 
     pub struct Ds3231Clock {
@@ -69,6 +71,13 @@ mod chip {
     impl Ds3231Clock {
         pub fn new(bus: I2cMaster, interrupt: PinDriver<'static, Input>) -> Self {
             Self { bus, interrupt }
+        }
+
+        /// Every register as it is, for a copy of what the stock firmware set: its alarm.
+        pub fn registers(&mut self) -> Result<[u8; ALL_REGISTERS], Fault> {
+            let mut registers = [0u8; ALL_REGISTERS];
+            self.bus.write_read(ADDRESS, &[0x00], &mut registers)?;
+            Ok(registers)
         }
     }
 

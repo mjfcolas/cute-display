@@ -55,14 +55,10 @@ the device keeps running.
 - The code is the reference for behaviour and details: docs do not repeat what a name,
   a type or a module comment already says.
 
-### 6. The device is not ours alone
+### 6. On the SD card, ours is under `cute-display/`
 
-- Flash only through the `just` recipes: they write `app1` and `otadata` and nothing
-  else, after checking the partition table.
-- Never write `nvs` (the stock Wi-Fi credentials), `factory`, `app0` (the stock
-  firmware) or the RTC. On the SD card, the app and its maintenance console write only
-  under `cute-display/`; the hardware test writes nothing.
-- `just fw-stock` must always bring the stock firmware back.
+The device and its maintenance console write nowhere else on the card, so everything
+of ours is in one place.
 
 ## Commands
 

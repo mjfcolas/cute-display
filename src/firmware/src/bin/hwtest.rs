@@ -13,7 +13,14 @@ fn main() -> Result<(), Fault> {
     FreeRtos::delay_ms(1500);
     log::info!("cute-display hardware test, {BUILD}");
 
-    let board = Board::bring_up()?;
+    let mut board = Board::bring_up()?;
+    match board.clock.registers() {
+        Ok(registers) => {
+            let hex: Vec<String> = registers.iter().map(|b| format!("{b:02x}")).collect();
+            log::info!("DS3231 registers: {}", hex.join(" "));
+        }
+        Err(fault) => log::warn!("DS3231 registers: {fault}"),
+    }
     let bench = Bench::start(
         Controls {
             wheel: Box::new(board.wheel),

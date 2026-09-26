@@ -3,7 +3,7 @@ use esp_idf_svc::hal::sd::mmc::SdMmcHostDriver;
 use esp_idf_svc::hal::sd::{SdCardConfiguration, SdCardDriver};
 use esp_idf_svc::io::vfs::MountedFatfs;
 use esp_idf_svc::sys::{esp_vfs_fat_info, ESP_OK};
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use std::path::PathBuf;
 
 use hal::storage::{Entry, FileStorage};
@@ -57,6 +57,19 @@ impl FileStorage for SdmmcCard {
             Err(e) if e.kind() == ErrorKind::NotFound => Ok(None),
             Err(e) => Err(Fault::new(format!("reading {path} on the SD card: {e}"))),
         }
+    }
+
+    fn read_range(&self, path: &str, offset: u64, max_bytes: usize) -> Result<Option<Vec<u8>>, Fault> {
+        let mut file = match std::fs::File::open(on_card(path)) {
+            Ok(file) => file,
+            Err(e) if e.kind() == ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(Fault::new(format!("reading {path} on the SD card: {e}"))),
+        };
+        let mut contents = Vec::with_capacity(max_bytes);
+        file.seek(SeekFrom::Start(offset))
+            .and_then(|_| file.take(max_bytes as u64).read_to_end(&mut contents))
+            .map_err(|e| Fault::new(format!("reading {path} on the SD card: {e}")))?;
+        Ok(Some(contents))
     }
 
     fn write(&self, path: &str, contents: &[u8]) -> Result<(), Fault> {

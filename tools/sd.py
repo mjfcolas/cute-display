@@ -5,6 +5,7 @@
   tools/sd.py get <path on the card> [local file]     (to stdout without a local file)
   tools/sd.py put <local file> <path on the card>
   tools/sd.py rm <path on the card>
+  tools/sd.py pull <dir on the card> <local dir>      (the whole card with "")
 
 The device must run the app image, and nothing else may hold the port (close the
 monitor first). The port is found by its USB name; CUTE_DISPLAY_PORT overrides it.
@@ -23,6 +24,8 @@ import serial
 PORT_PATTERN = '/dev/serial/by-id/*Espressif*'
 CHUNK_BYTES = 48
 REPLY_TIMEOUT_S = 10
+# The console drops output nobody reads in time: a range that arrives damaged is asked again.
+RANGE_ATTEMPTS = 5
 
 
 class Refused(Exception):
@@ -70,28 +73,47 @@ class Console:
         return rest
 
 
-def ls(link, directory=''):
+def entries(link, directory):
     console = Console(link)
     console.send(f'ls {directory}')
+    found = []
     for kind, rest in console.replies():
         if kind == 'ok':
-            return
+            return found
         entry_type, size, name = rest.split(' ', 2)
-        print(f'{"d" if entry_type == "d" else "-"} {int(size):>10} {name}')
+        found.append((entry_type == 'd', int(size), name))
+
+
+def ls(link, directory=''):
+    for is_dir, size, name in entries(link, directory):
+        print(f'{"d" if is_dir else "-"} {size:>10} {name}')
+
+
+def read_range(link, path, offset):
+    for _ in range(RANGE_ATTEMPTS):
+        console = Console(link)
+        console.send(f'get {offset} {path}')
+        contents = bytearray()
+        for kind, rest in console.replies():
+            if kind == 'data':
+                contents += base64.b64decode(rest)
+            elif kind == 'ok':
+                size, crc = (int(n) for n in rest.split())
+                if len(contents) == size and zlib.crc32(contents) == crc:
+                    return contents
+                break
+    raise Refused(f'{path} keeps arriving damaged at byte {offset}')
+
+
+def read_file(link, path):
+    contents = bytearray()
+    while chunk := read_range(link, path, len(contents)):
+        contents += chunk
+    return contents
 
 
 def get(link, path, destination=None):
-    console = Console(link)
-    console.send(f'get {path}')
-    contents = bytearray()
-    for kind, rest in console.replies():
-        if kind == 'data':
-            contents += base64.b64decode(rest)
-        elif kind == 'ok':
-            size, crc = (int(n) for n in rest.split())
-            if len(contents) != size or zlib.crc32(contents) != crc:
-                raise Refused('the file arrived damaged; try again')
-            break
+    contents = read_file(link, path)
     if destination:
         with open(destination, 'wb') as f:
             f.write(contents)
@@ -104,7 +126,7 @@ def put(link, source, path):
     with open(source, 'rb') as f:
         contents = f.read()
     console = Console(link)
-    console.send(f'put {path} {len(contents)} {zlib.crc32(contents)}')
+    console.send(f'put {len(contents)} {zlib.crc32(contents)} {path}')
     console.expect('ready')
     for at in range(0, len(contents), CHUNK_BYTES):
         console.send(f'data {base64.b64encode(contents[at:at + CHUNK_BYTES]).decode()}')
@@ -121,7 +143,28 @@ def rm(link, path):
     print(f'removed {path}')
 
 
-COMMANDS = {'ls': (ls, 0, 1), 'get': (get, 1, 2), 'put': (put, 2, 2), 'rm': (rm, 1, 1)}
+def pull(link, directory, destination):
+    """Every file under the directory, skipping those already there at the same size."""
+    for is_dir, size, name in entries(link, directory):
+        path = f'{directory}/{name}' if directory else name
+        local = os.path.join(destination, name)
+        if is_dir:
+            pull(link, path, local)
+        elif os.path.exists(local) and os.path.getsize(local) == size:
+            print(f'{path}: already there')
+        else:
+            started = time.monotonic()
+            contents = read_file(link, path)
+            os.makedirs(destination, exist_ok=True)
+            with open(local + '.part', 'wb') as f:
+                f.write(contents)
+            os.rename(local + '.part', local)
+            elapsed = time.monotonic() - started
+            print(f'{path} ({len(contents)} bytes, {len(contents) / 1024 / elapsed:.0f} KB/s)')
+
+
+COMMANDS = {'ls': (ls, 0, 1), 'get': (get, 1, 2), 'put': (put, 2, 2), 'rm': (rm, 1, 1),
+            'pull': (pull, 2, 2)}
 
 
 def main():

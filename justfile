@@ -1,4 +1,4 @@
-# Flashing writes app1 and otadata only; docs/hardware.md explains the layout.
+# Flashing writes app1, then otadata to boot it; docs/hardware.md explains the layout.
 # `just --list` shows the comment line right above each recipe.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
@@ -52,7 +52,7 @@ fw-flash bin="app" monitor="": _check-partitions _save-otadata
 fw-monitor bin="app":
     espflash monitor --baud 115200 --elf {{elf_dir}}/{{bin}}
 
-# Refuses a partition table other than the expected one, and a stock image in app1.
+# Refuses a partition table other than the expected one.
 _check-partitions:
     #!/usr/bin/env python3
     import os, struct, subprocess, sys, tempfile
@@ -77,19 +77,6 @@ _check-partitions:
             sys.exit(f'partition table mismatch: expected {name} at 0x{off:x}, found {got}.\n'
                      'Refusing to flash — this is not the layout the recipes were written for.')
     print('partition table OK: otadata and ota_1 are where the recipes expect them')
-
-    # The app descriptor sits 0x20 into an image.
-    subprocess.run(['espflash', 'read-flash', '{{app1}}', '0x100', path], check=True,
-                   stdout=subprocess.DEVNULL)
-    head = open(path, 'rb').read()
-    if head[:1] == b'\xe9':
-        project = head[0x20 + 48:0x20 + 80].split(b'\0')[0].decode(errors='replace')
-        version = head[0x20 + 16:0x20 + 48].split(b'\0')[0].decode(errors='replace')
-        if project == 'habity':
-            sys.exit(f'app1 holds the stock Habity v{version} — refusing to overwrite it.')
-        print(f'app1 holds a previous build ({project} {version}); replacing it')
-    else:
-        print('app1 is empty')
 
 # The first time only, and never a copy that already points at app1.
 _save-otadata:
@@ -183,3 +170,12 @@ backup:
     mkdir -p {{backup_dir}}
     espflash read-flash --baud 921600 0x0 0x1000000 {{backup_dir}}/habity-full-16MB-$(date +%Y%m%d-%H%M%S).bin
     sha256sum {{backup_dir}}/*.bin
+
+# copy the whole SD card into backup/sd/, resuming where it stopped (app image, monitor closed)
+backup-sd:
+    python3 tools/sd.py pull "" {{backup_dir}}/sd
+
+# copy the RTC's registers, the stock alarm among them, into backup/ (hardware test image)
+backup-rtc:
+    mkdir -p {{backup_dir}}
+    python3 tools/rtc_backup.py {{backup_dir}}/ds3231-registers-$(date +%Y%m%d-%H%M%S).bin

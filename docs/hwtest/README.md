@@ -12,4 +12,4 @@ just fw hwtest   # build, flash into app1, watch the log
 - **Wheel press**: a chime.
 - **Yellow button**: cycles the reading lamp.
 - **Long button**: swaps in a checkerboard.
-- Writes nothing: not the RTC, not NVS, not the SD card.
+- Logs the RTC's registers as it starts: `just backup-rtc` keeps them in `backup/`.

@@ -12,7 +12,7 @@ pub struct EspWifiRadio {
 }
 
 impl EspWifiRadio {
-    /// Without NVS: that partition belongs to the stock firmware.
+    /// Without NVS: the credentials come from the SD card at every connection.
     pub fn new(modem: Modem<'static>, events: EspSystemEventLoop) -> Result<Self, Fault> {
         let wifi = EspWifi::new(modem, events.clone(), None).or_fault("Wi-Fi driver")?;
         Ok(Self { wifi: BlockingWifi::wrap(wifi, events).or_fault("Wi-Fi driver")? })

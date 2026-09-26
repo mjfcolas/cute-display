@@ -18,7 +18,6 @@ look for:
   and has no host test; a HAL consumer tested without a fake; new logic without a test.
 - **Panics** (rule 4): `unwrap`, `expect`, `[i]`, `panic!` outside tests, or an
   `#[allow]` that silences them. A hardware failure that is not a `hal::Fault`.
-- **The device** (rule 6): anything that could write `nvs`, `factory`, `app0`, the RTC,
-  or the SD card outside `cute-display/`; flashing outside the `just` recipes.
+- **The SD card** (rule 6): a write or a removal outside `cute-display/`.
 
-Tags: `naming`, `layers`, `tests`, `panic`, `device`.
+Tags: `naming`, `layers`, `tests`, `panic`, `sd card`.

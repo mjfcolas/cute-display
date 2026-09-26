@@ -1,5 +1,5 @@
 //! Paths on the card. Everything may be read; only the device's own directory may be
-//! written, so the stock firmware's sounds are out of reach.
+//! written, so everything of ours is in one place.
 
 /// Where the device keeps its own files.
 pub const DEVICE_DIR: &str = "cute-display";

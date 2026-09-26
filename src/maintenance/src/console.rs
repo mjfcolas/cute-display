@@ -7,8 +7,11 @@ use crate::protocol::{self, Request};
 
 /// A put is for configuration, not for media.
 pub const MAX_PUT_BYTES: usize = 64 * 1024;
-/// Bytes per `data` line: 64 characters once in base64.
-const DATA_CHUNK_BYTES: usize = 48;
+/// The most a get sends: the computer asks again from where it stopped, so a file of any
+/// size is never held whole.
+pub const GET_RANGE_BYTES: usize = 8 * 1024;
+/// Bytes per `data` line: 320 characters once in base64.
+const DATA_CHUNK_BYTES: usize = 240;
 
 struct PendingPut {
     id: String,
@@ -59,7 +62,7 @@ impl<S: FileStorage> MaintenanceConsole<S> {
                     .collect(),
                 Err(fault) => vec![protocol::error(id, fault.reason())],
             },
-            Request::Get(path) => match self.storage.read(path.as_str()) {
+            Request::Get { path, offset } => match self.storage.read_range(path.as_str(), offset, GET_RANGE_BYTES) {
                 Ok(Some(contents)) => contents
                     .chunks(DATA_CHUNK_BYTES)
                     .map(|chunk| protocol::data(id, chunk))
@@ -192,7 +195,7 @@ mod tests {
     }
 
     fn put_lines(id: &str, path: &str, contents: &[u8], crc32: u32) -> Vec<String> {
-        let mut lines = vec![format!("@@ {id} put {path} {} {crc32}", contents.len())];
+        let mut lines = vec![format!("@@ {id} put {} {crc32} {path}", contents.len())];
         lines.extend(contents.chunks(10).map(|c| format!("@@ {id} data {}", STANDARD.encode(c))));
         lines.push(format!("@@ {id} end"));
         lines
@@ -213,7 +216,7 @@ mod tests {
         assert_eq!(replies, ["@@ 1 ok"]);
         assert_eq!(card.file("cute-display/wifi.conf").as_deref(), Some(contents.as_slice()));
 
-        let replies = talk(&mut console, &["@@ 2 get cute-display/wifi.conf".into()]);
+        let replies = talk(&mut console, &["@@ 2 get 0 cute-display/wifi.conf".into()]);
         assert_eq!(decode_get(&replies, "2"), contents);
         assert_eq!(replies.last().unwrap(), &format!("@@ 2 ok 1000 {}", crc32fast::hash(&contents)));
     }
@@ -255,10 +258,27 @@ mod tests {
     fn anything_may_be_listed_and_read() {
         let card = FakeCard::with("sounds/alarm.wav", b"RIFF");
         let mut console = MaintenanceConsole::new(card);
-        let replies = talk(&mut console, &["@@ 1 ls sounds".into(), "@@ 2 get sounds/alarm.wav".into()]);
+        let replies = talk(&mut console, &["@@ 1 ls sounds".into(), "@@ 2 get 0 sounds/alarm.wav".into()]);
         assert_eq!(replies[0], "@@ 1 entry f 4 alarm.wav");
         assert_eq!(replies[1], "@@ 1 ok");
         assert_eq!(decode_get(&replies, "2"), b"RIFF");
+    }
+
+    #[test]
+    fn a_large_file_is_read_a_range_at_a_time() {
+        let contents: Vec<u8> = (0..=255u8).cycle().take(GET_RANGE_BYTES * 2 + 100).collect();
+        let mut console = MaintenanceConsole::new(FakeCard::with("sounds/Snow storm_loop.wav", &contents));
+        let mut read = Vec::new();
+        loop {
+            let replies = talk(&mut console, &[format!("@@ 1 get {} sounds/Snow storm_loop.wav", read.len())]);
+            let range = decode_get(&replies, "1");
+            assert_eq!(replies.last().unwrap(), &format!("@@ 1 ok {} {}", range.len(), crc32fast::hash(&range)));
+            read.extend_from_slice(&range);
+            if range.len() < GET_RANGE_BYTES {
+                break;
+            }
+        }
+        assert_eq!(read, contents);
     }
 
     #[test]
@@ -272,7 +292,7 @@ mod tests {
     #[test]
     fn a_put_too_large_is_refused_before_any_data() {
         let mut console = MaintenanceConsole::new(FakeCard::default());
-        let replies = talk(&mut console, &[format!("@@ 1 put cute-display/big {} 0", MAX_PUT_BYTES + 1)]);
+        let replies = talk(&mut console, &[format!("@@ 1 put {} 0 cute-display/big", MAX_PUT_BYTES + 1)]);
         assert!(replies[0].starts_with("@@ 1 error"));
     }
 

@@ -34,5 +34,5 @@ path/to/file.rs:42 — [comment: restates] `// increment the counter`
 ```
 
 Quote the text, say why in one line, give the fix. End with one line: how many findings,
-and whether any blocks a commit (`layers`, `panic` and `device` do). Nothing found: say
+and whether any blocks a commit (`layers` and `panic` do). Nothing found: say
 so in one line.

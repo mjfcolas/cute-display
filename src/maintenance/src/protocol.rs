@@ -10,39 +10,50 @@ pub const PREFIX: &str = "@@";
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Request {
     List(SdPath),
-    Get(SdPath),
+    Get { path: SdPath, offset: u64 },
     Put { path: SdPath, size_bytes: usize, crc32: u32 },
     Data(Vec<u8>),
     End,
     Remove(SdPath),
 }
 
-/// One line of the protocol: `None` for any other line.
+/// One line of the protocol: `None` for any other line. A path comes last and runs to
+/// the end of the line, since names on the card have spaces.
 pub fn parse(line: &str) -> Option<(String, Result<Request, String>)> {
-    let mut words = line.trim().split(' ').filter(|w| !w.is_empty());
-    if words.next() != Some(PREFIX) {
+    let rest = line.trim_end_matches(['\r', '\n']).strip_prefix(PREFIX)?.strip_prefix(' ')?;
+    let (id, rest) = first_word(rest);
+    if id.is_empty() {
         return None;
     }
-    let id = words.next()?.to_owned();
-    let verb = words.next().unwrap_or_default();
-    let args: Vec<&str> = words.collect();
-    let path = |n: usize| SdPath::parse(args.get(n).copied().unwrap_or_default()).map_err(str::to_owned);
-    let number = |n: usize| args.get(n).and_then(|a| a.parse::<u64>().ok()).ok_or(format!("{verb}: a number is missing"));
+    let (verb, rest) = first_word(rest);
+    let path = |text: &str| SdPath::parse(text).map_err(str::to_owned);
+    let number = |word: &str| word.parse::<u64>().map_err(|_| format!("{verb}: a number is missing"));
 
     let request = match verb {
-        "ls" => path(0).map(Request::List),
-        "get" => path(0).map(Request::Get),
-        "rm" => path(0).map(Request::Remove),
-        "put" => path(0).and_then(|path| {
-            let size_bytes = number(1)? as usize;
-            let crc32 = u32::try_from(number(2)?).map_err(|_| "put: the CRC is not 32 bits".to_owned())?;
-            Ok(Request::Put { path, size_bytes, crc32 })
-        }),
-        "data" => STANDARD.decode(args.first().copied().unwrap_or_default()).map(Request::Data).map_err(|e| format!("data: {e}")),
+        "ls" => path(rest).map(Request::List),
+        "rm" => path(rest).map(Request::Remove),
+        "get" => {
+            let (offset, rest) = first_word(rest);
+            number(offset).and_then(|offset| Ok(Request::Get { path: path(rest)?, offset }))
+        }
+        "put" => {
+            let (size_bytes, rest) = first_word(rest);
+            let (crc32, rest) = first_word(rest);
+            (|| {
+                let size_bytes = usize::try_from(number(size_bytes)?).map_err(|_| "put: too large".to_owned())?;
+                let crc32 = u32::try_from(number(crc32)?).map_err(|_| "put: the CRC is not 32 bits".to_owned())?;
+                Ok(Request::Put { path: path(rest)?, size_bytes, crc32 })
+            })()
+        }
+        "data" => STANDARD.decode(rest).map(Request::Data).map_err(|e| format!("data: {e}")),
         "end" => Ok(Request::End),
         other => Err(format!("unknown request '{other}'")),
     };
-    Some((id, request))
+    Some((id.to_owned(), request))
+}
+
+fn first_word(text: &str) -> (&str, &str) {
+    text.split_once(' ').unwrap_or((text, ""))
 }
 
 pub fn ok(id: &str, detail: &str) -> String {
@@ -92,7 +103,7 @@ mod tests {
         assert_eq!(parse("@@ 7 ls cute-display"), Some(("7".into(), Ok(Request::List(SdPath::parse("cute-display").unwrap())))));
         assert_eq!(parse("@@ 3 ls"), Some(("3".into(), Ok(Request::List(SdPath::parse("").unwrap())))));
         assert_eq!(
-            parse("@@ 9 put cute-display/wifi.conf 12 305419896"),
+            parse("@@ 9 put 12 305419896 cute-display/wifi.conf"),
             Some((
                 "9".into(),
                 Ok(Request::Put { path: SdPath::parse("cute-display/wifi.conf").unwrap(), size_bytes: 12, crc32: 0x1234_5678 })
@@ -102,8 +113,14 @@ mod tests {
     }
 
     #[test]
+    fn a_path_runs_to_the_end_of_the_line() {
+        let path = SdPath::parse("sounds/alarm/Lost Ark.mp3").unwrap();
+        assert_eq!(parse("@@ 2 get 4096 sounds/alarm/Lost Ark.mp3"), Some(("2".into(), Ok(Request::Get { path, offset: 4096 }))));
+    }
+
+    #[test]
     fn a_bad_request_is_an_error_for_its_id() {
-        for bad in ["@@ 4 frobnicate", "@@ 4 get ../x", "@@ 4 put cute-display/a nope 1", "@@ 4 data !!!"] {
+        for bad in ["@@ 4 frobnicate", "@@ 4 get 0 ../x", "@@ 4 get x", "@@ 4 put nope 1 cute-display/a", "@@ 4 data !!!"] {
             assert!(matches!(parse(bad), Some((id, Err(_))) if id == "4"), "{bad}");
         }
     }
