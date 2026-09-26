@@ -1,8 +1,10 @@
 # AGENTS.md
 
 Firmware for the Habity bedside clock (ESP32-S3, e-paper, wheel, buttons, RTC, SD,
-speaker, lights). Read [`DESIGN.md`](DESIGN.md) for the architecture and
-[`docs/hardware.md`](docs/hardware.md) for what the board is.
+speaker, lights).
+
+- [`DESIGN.md`](DESIGN.md): the architecture.
+- [`docs/hardware.md`](docs/hardware.md): the board.
 
 ## Rules
 
@@ -42,7 +44,18 @@ The panic family is linted (`unwrap_used`, `indexing_slicing`, …; tests are ex
 Hardware failures are `hal::Fault` values that end up on the screen or in the log, and
 the device keeps running.
 
-### 5. The device is not ours alone
+### 5. Documentation works by reference
+
+- Small files, one subject each, linked from where they are needed; never one large
+  file. `README.md` and `DESIGN.md` at the root are indexes that point to the details.
+- Each app (`docs/apps/<app>/`), the maintenance console and the hardware test has a
+  `README.md` for people: what it does, its controls, its conf files, in short bullet
+  points. A `DESIGN.md` beside it only for design decisions no module comment holds.
+- The root `README.md` only names and links; what a part does is in its own README.
+- The code is the reference for behaviour and details: docs do not repeat what a name,
+  a type or a module comment already says.
+
+### 6. The device is not ours alone
 
 - Flash only through the `just` recipes: they write `app1` and `otadata` and nothing
   else, after checking the partition table.
@@ -68,5 +81,8 @@ The ESP32 build needs the `esp` toolchain (`espup`, sourcing `~/export-esp.sh`),
 
 ## Before finishing a change
 
-`just test` and `just lint` pass with no warnings; DESIGN.md and docs/hardware.md still
-tell the truth.
+`just test` and `just lint` pass with no warnings; the docs a change touches still tell
+the truth.
+
+The [`rules-reviewer`](.claude/agents/rules-reviewer.md) agent reviews a change against
+these rules.
