@@ -1,11 +1,14 @@
-//! The alarm clock: the time, large, and the next alarm; the wake-up time of each day,
-//! set with the wheel.
+//! The alarm clock: the time, large, today's weather beside it and the next alarm; the
+//! wake-up time of each day, set with the wheel.
+
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use domain::alarm::{AlarmClock, AlarmState, SNOOZE};
 use domain::apps::App;
 use domain::calendar::Weekday;
 use domain::clock::Clock;
 use domain::time::{LocalTime, TimeOfDay};
+use domain::weather::Weather;
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Circle, PrimitiveStyle, Rectangle};
@@ -14,6 +17,7 @@ use crate::app_screen::AppScreen;
 use crate::big_digits;
 use crate::calendar_names;
 use crate::controls::{Button, Input};
+use crate::day_weather;
 use crate::text::{self, BODY, HINT, TITLE};
 
 /// What a day with no alarm starts at when it is given one.
@@ -36,12 +40,15 @@ enum Mode {
 pub struct AlarmScreen {
     alarm: AlarmClock,
     clock: Clock,
+    weather: Weather,
     mode: Mode,
+    /// How many hours after the one under way the weather column starts.
+    hours_ahead: usize,
 }
 
 impl AlarmScreen {
-    pub fn new(alarm: AlarmClock, clock: Clock) -> Self {
-        Self { alarm, clock, mode: Mode::Clock }
+    pub fn new(alarm: AlarmClock, clock: Clock, weather: Weather) -> Self {
+        Self { alarm, clock, weather, mode: Mode::Clock, hours_ahead: 0 }
     }
 
     fn time_on(&self, day: Weekday) -> Option<TimeOfDay> {
@@ -64,8 +71,20 @@ impl AlarmScreen {
                 let today = self.clock.now().map_or(Weekday::Monday, |now| now.date.weekday());
                 self.mode = Self::days_row_of(today);
             }
+            (AlarmState::Waiting { .. }, Input::Turn(detents)) => self.scroll_hours(detents),
             (AlarmState::Waiting { .. }, _) => {}
         }
+    }
+
+    /// Stops with the last hours of the forecast in the column.
+    fn scroll_hours(&mut self, detents: i32) {
+        let known = match (self.weather.report().forecast, self.clock.now()) {
+            (Some(forecast), Some(now)) => forecast.hours_from(now).count(),
+            _ => 0,
+        };
+        let last = known.saturating_sub(day_weather::HOURS_SHOWN) as i64;
+        let ahead = self.hours_ahead as i64 + i64::from(detents);
+        self.hours_ahead = usize::try_from(ahead.clamp(0, last)).unwrap_or(0);
     }
 
     /// Turning the hour past 23 or below 0 takes the alarm off that day.
@@ -93,12 +112,15 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for AlarmScreen {
 
     fn entered(&mut self) {
         self.mode = Mode::Clock;
+        self.hours_ahead = 0;
     }
 
-    /// The alarm's revision, and the minute on the clock.
+    /// The alarm's and the weather's revisions, and the minute on the clock.
     fn version(&self) -> u64 {
         let minute = self.clock.now().map_or(0, |now| now.seconds_since_epoch().div_euclid(60));
-        (self.alarm.revision() << 32) ^ minute as u64
+        let mut hasher = DefaultHasher::new();
+        (self.alarm.revision(), self.weather.report().revision, minute).hash(&mut hasher);
+        hasher.finish()
     }
 
     fn on_input(&mut self, input: Input) {
@@ -147,19 +169,27 @@ impl AlarmScreen {
     fn draw_clock<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle) {
         let now = self.clock.now();
         let top = area.top_left.y;
-        let date = now.map_or_else(|| "The time is not known yet".into(), |now| long_date(&now));
-        text::write(target, &date, area.top_left, area.size.width, &BODY);
-
-        let digits_left = area.top_left.x + (area.size.width.saturating_sub(big_digits::TIME_WIDTH) / 2) as i32;
+        let right = area.top_left.x + area.size.width as i32;
         let digits_top = top + BODY.character_size.height as i32 + 2 * GAP;
-        big_digits::draw_time(target, now.map(|now| now.time_of_day), Point::new(digits_left, digits_top));
+        let forecast = self.weather.report().forecast;
+        let mut date_width = area.size.width;
+        if let (Some(forecast), Some(now)) = (&forecast, now) {
+            if let Some(today) = forecast.day(now.date) {
+                day_weather::draw_range(target, today, Point::new(right, top));
+                date_width = date_width.saturating_sub(day_weather::range_width(today) + GAP as u32);
+            }
+            day_weather::draw_hours(target, forecast.hours_from(now).skip(self.hours_ahead), hours_column(area));
+        }
+        let date = now.map_or_else(|| "The time is not known yet".into(), |now| long_date(&now));
+        text::write(target, &date, area.top_left, date_width, &BODY);
+        big_digits::draw_time(target, now.map(|now| now.time_of_day), Point::new(area.top_left.x, digits_top));
 
         let line_top = digits_top + big_digits::HEIGHT as i32 + 2 * GAP;
-        text::write(target, &self.alarm_line(now), Point::new(area.top_left.x, line_top), area.size.width, &BODY);
+        text::write(target, &self.alarm_line(now), Point::new(area.top_left.x, line_top), big_digits::TIME_WIDTH, &BODY);
         let hint = match self.alarm.state() {
             AlarmState::Ringing => format!("long: snooze {} min   hold yellow and long: stop", SNOOZE.as_secs() / 60),
             AlarmState::Snoozed { .. } => "hold yellow and long: stop".into(),
-            AlarmState::Waiting { .. } => "yellow: alarm on/off   long: wake-up times".into(),
+            AlarmState::Waiting { .. } => "yellow: alarm on/off   long: wake-up times   wheel: hours".into(),
         };
         write_hint(target, &hint, area);
     }
@@ -217,9 +247,22 @@ impl AlarmScreen {
     }
 }
 
+/// Centred in the room right of the time, between the date and the hint.
+fn hours_column(area: Rectangle) -> Rectangle {
+    let right = area.top_left.x + area.size.width as i32;
+    let room_beside_time = right - area.top_left.x - big_digits::TIME_WIDTH as i32;
+    let left = right - (room_beside_time + day_weather::HOURS_WIDTH as i32) / 2;
+    let below_date = area.top_left.y + BODY.character_size.height as i32;
+    let top = below_date + (hint_top(area) - below_date - day_weather::HOURS_HEIGHT as i32) / 2;
+    Rectangle::new(Point::new(left, top), Size::new(day_weather::HOURS_WIDTH, day_weather::HOURS_HEIGHT))
+}
+
+fn hint_top(area: Rectangle) -> i32 {
+    area.top_left.y + area.size.height as i32 - HINT.character_size.height as i32
+}
+
 fn write_hint<D: DrawTarget<Color = BinaryColor>>(target: &mut D, hint: &str, area: Rectangle) {
-    let top = area.top_left.y + area.size.height as i32 - HINT.character_size.height as i32;
-    text::write(target, hint, Point::new(area.top_left.x, top), area.size.width, &HINT);
+    text::write(target, hint, Point::new(area.top_left.x, hint_top(area)), area.size.width, &HINT);
 }
 
 /// The part of a wake-up time the wheel sets.
@@ -268,7 +311,9 @@ mod tests {
     use domain::calendar::Date;
     use domain::clock::{TimeKeeper, TimeSource, TimeZoneSource};
     use domain::fetch::Unavailable;
+    use domain::place::{GeoPoint, Place, PlaceSource};
     use domain::time::UtcTime;
+    use domain::weather::{DayForecast, Degrees, Forecast, ForecastSource, HourForecast, Sky, Today};
     use domain::time_zone::TimeZone;
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
 
@@ -314,6 +359,27 @@ mod tests {
         }
     }
 
+    struct Paris;
+    impl PlaceSource for Paris {
+        fn place(&mut self) -> Option<Place> {
+            Some(Place { name: "Paris".into(), point: GeoPoint { latitude: 48.85, longitude: 2.35 } })
+        }
+    }
+
+    /// Saturday's, from 06:00, rain all day.
+    struct Rainy;
+    impl ForecastSource for Rainy {
+        fn fetch(&mut self, _: &Place) -> Result<Forecast, Unavailable> {
+            let saturday = Date::new(2026, 9, 26).unwrap();
+            let six = LocalTime { date: saturday, time_of_day: TimeOfDay::new(6, 0).unwrap(), second: 0 }.seconds_since_epoch();
+            let hours = (0..24)
+                .map(|n| HourForecast { start: LocalTime::from_seconds_since_epoch(six + n * 3600), sky: Sky::Rain, temperature: Degrees(12) })
+                .collect();
+            let week = vec![DayForecast { date: saturday, sky: Sky::Rain, low: Degrees(9), high: Degrees(14) }];
+            Ok(Forecast { today: Today { sky: Sky::Rain, now: Degrees(11), low: Degrees(9), high: Degrees(14) }, hours, week })
+        }
+    }
+
     /// Saturday 26 September 2026, 07:00 UTC.
     fn saturday_at_seven() -> UtcTime {
         UtcTime::from_unix_seconds(Date::new(2026, 9, 26).unwrap().days_since_epoch() * 86_400 + 7 * 3600)
@@ -323,6 +389,7 @@ mod tests {
         screen: AlarmScreen,
         alarm: AlarmClock,
         clock: Clock,
+        weather: Weather,
         keeper: StoppedKeeper,
     }
 
@@ -331,9 +398,10 @@ mod tests {
             let keeper = StoppedKeeper::default();
             let clock = Clock::new(Box::new(keeper.clone()), Box::new(Offline), Box::new(Utc));
             let alarm = AlarmClock::new(Box::new(Nowhere), Box::new(Mute), Foreground::new(App::Alarm));
-            let mut screen = AlarmScreen::new(alarm.clone(), clock.clone());
+            let weather = Weather::new(Box::new(Paris), Box::new(Rainy));
+            let mut screen = AlarmScreen::new(alarm.clone(), clock.clone(), weather.clone());
             AppScreen::<Frame>::entered(&mut screen);
-            let bench = Self { screen, alarm, clock, keeper };
+            let bench = Self { screen, alarm, clock, weather, keeper };
             bench.at(saturday_at_seven());
             bench
         }
@@ -460,6 +528,33 @@ mod tests {
     }
 
     #[test]
+    fn the_weather_shows_once_forecast_and_the_screen_changes_with_it() {
+        let bench = Bench::new();
+        let (version, without) = (AppScreen::<Frame>::version(&bench.screen), bench.render());
+        bench.weather.refresh_if_due(std::time::Instant::now());
+        assert_ne!(AppScreen::<Frame>::version(&bench.screen), version);
+        assert!(bench.render() != without);
+    }
+
+    #[test]
+    fn the_wheel_moves_through_the_hours_and_stops_at_either_end() {
+        let mut bench = Bench::new();
+        bench.input(Input::Turn(3));
+        assert_eq!(bench.screen.hours_ahead, 0, "no forecast, nothing to move through");
+        bench.weather.refresh_if_due(std::time::Instant::now());
+        let first_hours = bench.render();
+        bench.input(Input::Turn(3));
+        assert_eq!(bench.screen.hours_ahead, 3);
+        assert!(bench.render() != first_hours);
+        bench.input(Input::Turn(-10));
+        assert_eq!(bench.screen.hours_ahead, 0);
+        bench.input(Input::Turn(100));
+        assert_eq!(bench.screen.hours_ahead, 23 - day_weather::HOURS_SHOWN, "the last hours still fill the column");
+        AppScreen::<Frame>::entered(&mut bench.screen);
+        assert_eq!(bench.screen.hours_ahead, 0, "back to the hour under way");
+    }
+
+    #[test]
     fn the_next_alarm_is_named_by_its_day() {
         let bench = Bench::new();
         bench.alarm.set_time_on(Weekday::Sunday, TimeOfDay::new(8, 30));
@@ -474,6 +569,7 @@ mod tests {
     #[test]
     fn every_mode_draws_within_the_glass() {
         let mut bench = Bench::new();
+        bench.weather.refresh_if_due(std::time::Instant::now());
         let mut frames = vec![bench.render()];
         for _ in 0..3 {
             bench.press(Button::Long);

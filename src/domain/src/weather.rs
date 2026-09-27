@@ -1,5 +1,6 @@
-//! The weather at one place: today, and the days ahead. Fetched from outside every hour,
-//! and on request; a failed fetch keeps the last forecast rather than showing nothing.
+//! The weather at one place: today, the hours ahead and the days ahead. Fetched from
+//! outside every hour, and on request; a failed fetch keeps the last forecast rather than
+//! showing nothing.
 
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -7,6 +8,7 @@ use std::time::{Duration, Instant};
 use crate::calendar::Date;
 use crate::fetch::{FetchStatus, Unavailable};
 use crate::place::{Place, PlaceSource};
+use crate::time::LocalTime;
 
 pub const REFRESH_EVERY: Duration = Duration::from_secs(60 * 60);
 pub const RETRY_AFTER: Duration = Duration::from_secs(10 * 60);
@@ -43,11 +45,33 @@ pub struct DayForecast {
     pub high: Degrees,
 }
 
+/// The place's time zone is taken to be the clock's.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HourForecast {
+    pub start: LocalTime,
+    pub sky: Sky,
+    pub temperature: Degrees,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Forecast {
     pub today: Today,
+    /// In order, from the hour of the fetch.
+    pub hours: Vec<HourForecast>,
     /// Today first.
     pub week: Vec<DayForecast>,
+}
+
+impl Forecast {
+    pub fn day(&self, date: Date) -> Option<&DayForecast> {
+        self.week.iter().find(|day| day.date == date)
+    }
+
+    /// The hour `now` is in, and the ones after it.
+    pub fn hours_from(&self, now: LocalTime) -> impl Iterator<Item = &HourForecast> {
+        let this_hour = (now.date, now.time_of_day.hour());
+        self.hours.iter().filter(move |hour| (hour.start.date, hour.start.time_of_day.hour()) >= this_hour)
+    }
 }
 
 pub trait ForecastSource: Send {
@@ -166,6 +190,7 @@ impl Weather {
 mod tests {
     use super::*;
     use crate::place::GeoPoint;
+    use crate::time::TimeOfDay;
 
     struct Fixed(Option<Place>);
 
@@ -207,7 +232,7 @@ mod tests {
 
     fn forecast(now: i16) -> Forecast {
         let today = Today { sky: Sky::Clear, now: Degrees(now), low: Degrees(10), high: Degrees(20) };
-        Forecast { today, week: vec![] }
+        Forecast { today, hours: vec![], week: vec![] }
     }
 
     fn weather(results: Vec<Result<Forecast, Unavailable>>) -> (Weather, Scripted) {
@@ -270,5 +295,31 @@ mod tests {
         let before = weather.report().revision;
         weather.refresh_if_due(Instant::now());
         assert!(weather.report().revision >= before + 2, "updating, then up to date");
+    }
+
+    #[test]
+    fn a_day_is_found_by_its_date() {
+        let saturday = Date::new(2026, 9, 26).unwrap();
+        let week = (0..7).map(|n| DayForecast { date: saturday.plus_days(n), sky: Sky::Clear, low: Degrees(n as i16), high: Degrees(20) }).collect();
+        let forecast = Forecast { week, ..forecast(15) };
+        assert_eq!(forecast.day(saturday.plus_days(2)).map(|day| day.low), Some(Degrees(2)));
+        assert_eq!(forecast.day(saturday.plus_days(-1)), None);
+        assert_eq!(forecast.day(saturday.plus_days(7)), None);
+    }
+
+    #[test]
+    fn the_hours_shown_start_with_the_one_under_way() {
+        let saturday = Date::new(2026, 9, 26).unwrap();
+        let at = |date: Date, hour: u8, minute: u8| LocalTime { date, time_of_day: TimeOfDay::new(hour, minute).unwrap(), second: 0 };
+        let hours = [(saturday, 22), (saturday, 23), (saturday.plus_days(1), 0), (saturday.plus_days(1), 1)]
+            .iter()
+            .map(|&(date, hour)| HourForecast { start: at(date, hour, 0), sky: Sky::Clear, temperature: Degrees(hour.into()) })
+            .collect();
+        let forecast = Forecast { hours, ..forecast(15) };
+        let from = |now: LocalTime| forecast.hours_from(now).map(|hour| hour.temperature.0).collect::<Vec<_>>();
+        assert_eq!(from(at(saturday, 23, 59)), [23, 0, 1]);
+        assert_eq!(from(at(saturday.plus_days(1), 0, 0)), [0, 1]);
+        assert_eq!(from(at(saturday, 21, 10)), [22, 23, 0, 1]);
+        assert!(from(at(saturday.plus_days(1), 2, 0)).is_empty());
     }
 }

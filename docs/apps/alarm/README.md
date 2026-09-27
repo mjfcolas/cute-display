@@ -1,9 +1,10 @@
 # Alarm clock
 
-The time, large, and a wake-up time for each day of the week. It is the app in front
-when the device starts.
+The time, large, today's weather, and a wake-up time for each day of the week. It is
+the app in front when the device starts.
 
 - **Yellow**: alarm on or off, the wake-up times kept.
+- **Wheel**: the weather's later hours, and back.
 - **Long button**: the wake-up times, starting on today.
   - **Wheel**: choose a day; **long button**: set its hour, then its minutes.
   - Turning the hour past 23 or below 0 takes the alarm off that day.
@@ -17,6 +18,13 @@ when the device starts.
   - Unanswered, it stops after a quarter of an hour.
 - A wake-up time passed while the device was off, or set after it passed, waits for its
   next day.
+
+## The weather
+
+- Beside the date, the day's sky and its low and high; beside the time, seven hours from
+  the one under way. Coming back to the clock goes back to the hour under way.
+- It is the [weather app](../weather/README.md)'s forecast, at its place; it shows
+  nothing until that app has one.
 
 ## The time
 

@@ -8,13 +8,13 @@ use domain::alarm::{AlarmClock, AlarmSchedule, AlarmScheduleStore, Ringer, Volum
 use domain::apps::{App, Foreground};
 use domain::calendar::{Date, Weekday};
 use domain::clock::{Clock, TimeKeeper, TimeSource, TimeZoneSource};
-use domain::time::{TimeOfDay, UtcTime};
+use domain::time::{LocalTime, TimeOfDay, UtcTime};
 use domain::time_zone::TimeZone;
 use domain::radar::{AirTrafficSource, Aircraft, Airport, AirportSource, Altitude, Radar};
 use domain::settings::{Settings, SettingsRecord, SettingsStore};
 use domain::fetch::Unavailable;
 use domain::place::{GeoPoint, Place, PlaceSource};
-use domain::weather::{DayForecast, Degrees, Forecast, ForecastSource, Sky, Today, Weather};
+use domain::weather::{DayForecast, Degrees, Forecast, ForecastSource, HourForecast, Sky, Today, Weather};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH};
@@ -95,7 +95,18 @@ impl ForecastSource for Sample {
             .zip(0..)
             .map(|(&(sky, low, high), n)| DayForecast { date: first.plus_days(n), sky, low: Degrees(low), high: Degrees(high) })
             .collect();
-        Ok(Forecast { today: Today { sky: Sky::PartlyCloudy, now: Degrees(19), low: Degrees(11), high: Degrees(21) }, week })
+        let hours = [(Sky::PartlyCloudy, 17), (Sky::Clear, 15), (Sky::Clear, 14), (Sky::Cloudy, 13), (Sky::Cloudy, 13), (Sky::Rain, 12), (Sky::Rain, 12), (Sky::Rain, 12), (Sky::Cloudy, 12)];
+        let friday_at_nine = LocalTime { date: first, time_of_day: TimeOfDay::MIDNIGHT, second: 0 }.seconds_since_epoch() + 21 * 3600;
+        let hours = hours
+            .iter()
+            .zip(0..)
+            .map(|(&(sky, temperature), n)| HourForecast {
+                start: LocalTime::from_seconds_since_epoch(friday_at_nine + n * 3600),
+                sky,
+                temperature: Degrees(temperature),
+            })
+            .collect();
+        Ok(Forecast { today: Today { sky: Sky::PartlyCloudy, now: Degrees(19), low: Degrees(11), high: Degrees(21) }, hours, week })
     }
 }
 
@@ -170,7 +181,7 @@ fn main() -> std::io::Result<()> {
     }
     let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
         Box::new(SystemScreen::new(foreground.clone(), settings)),
-        Box::new(AlarmScreen::new(alarm, clock)),
+        Box::new(AlarmScreen::new(alarm, clock, weather.clone())),
         Box::new(WeatherScreen::new(weather)),
         Box::new(RadarScreen::new(radar.clone())),
     ];

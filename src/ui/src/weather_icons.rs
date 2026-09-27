@@ -67,7 +67,7 @@ pub fn draw<D: DrawTarget<Color = BinaryColor>>(target: &mut D, sky: Sky, top_le
         Sky::Storm => {
             cloud(target, 4, 0, 96, 60);
             let _ = Triangle::new(at(56, 62), at(34, 84), at(52, 84)).into_styled(fill).draw(target);
-            let _ = Triangle::new(at(52, 76), at(64, 76), at(42, 100)).into_styled(fill).draw(target);
+            let _ = Triangle::new(at(52, 76), at(64, 76), at(42, 98)).into_styled(fill).draw(target);
         }
     }
 }
@@ -96,7 +96,7 @@ mod tests {
                     for x in 0..i32::from(WIDTH) {
                         if frame.is_ink(x, y) {
                             inked += 1;
-                            let inside = (20..20 + side as i32 + 1).contains(&x) && (20..20 + side as i32 + 1).contains(&y);
+                            let inside = (20..20 + side as i32).contains(&x) && (20..20 + side as i32).contains(&y);
                             assert!(inside, "{sky:?} at {side} px inks ({x},{y})");
                         }
                     }

@@ -4,13 +4,14 @@ use std::time::Instant;
 
 use domain::apps::App;
 use domain::fetch::FetchStatus;
-use domain::weather::{Degrees, Forecast, Sky, Weather, WeatherReport};
+use domain::weather::{Forecast, Sky, Weather, WeatherReport};
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 
 use crate::app_screen::AppScreen;
 use crate::calendar_names;
+use crate::degrees::temperature;
 use crate::controls::{Button, Input};
 use crate::text::{self, BODY, HINT};
 use crate::weather_icons;
@@ -92,10 +93,6 @@ fn status_line(report: &WeatherReport) -> String {
     }
 }
 
-fn temperature(degrees: Degrees) -> String {
-    format!("{}°", degrees.0)
-}
-
 fn sky_name(sky: Sky) -> &'static str {
     match sky {
         Sky::Clear => "Clear",
@@ -149,7 +146,7 @@ mod tests {
     use domain::calendar::Date;
     use domain::fetch::Unavailable;
     use domain::place::{GeoPoint, Place, PlaceSource};
-    use domain::weather::{DayForecast, ForecastSource, Today};
+    use domain::weather::{DayForecast, Degrees, ForecastSource, Today};
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
 
     use super::*;
@@ -178,7 +175,7 @@ mod tests {
             .enumerate()
             .map(|(n, &sky)| DayForecast { date: Date::new(2026, 9, 25).unwrap().plus_days(n as i64), sky, low: Degrees(8), high: Degrees(21) })
             .collect();
-        Forecast { today: Today { sky: Sky::Cloudy, now: Degrees(19), low: Degrees(12), high: Degrees(21) }, week }
+        Forecast { today: Today { sky: Sky::Cloudy, now: Degrees(19), low: Degrees(12), high: Degrees(21) }, hours: vec![], week }
     }
 
     fn weather(answers: Vec<Result<Forecast, Unavailable>>) -> Weather {

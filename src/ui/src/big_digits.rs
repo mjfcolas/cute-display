@@ -6,10 +6,10 @@ use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyle, Rectangle};
 
-pub(crate) const DIGIT_WIDTH: u32 = 56;
-pub(crate) const HEIGHT: u32 = 100;
-const STROKE: u32 = 12;
-const GAP: u32 = 14;
+pub(crate) const DIGIT_WIDTH: u32 = 48;
+pub(crate) const HEIGHT: u32 = 86;
+const STROKE: u32 = 10;
+const GAP: u32 = 12;
 /// The colon, and a gap on each side.
 const COLON_WIDTH: u32 = STROKE + 2 * GAP;
 

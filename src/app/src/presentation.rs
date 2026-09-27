@@ -25,7 +25,7 @@ impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay> Presentation<E, B, P> {
     pub fn run(mut self, domain: Domain) {
         let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
             Box::new(SystemScreen::new(domain.foreground.clone(), domain.settings)),
-            Box::new(AlarmScreen::new(domain.alarm, domain.clock)),
+            Box::new(AlarmScreen::new(domain.alarm, domain.clock, domain.weather.clone())),
             Box::new(WeatherScreen::new(domain.weather)),
             Box::new(RadarScreen::new(domain.radar)),
         ];

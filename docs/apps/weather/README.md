@@ -1,6 +1,7 @@
 # Weather app
 
 Today's weather and the week's at one place, from [Open-Meteo](https://open-meteo.com).
+The [alarm clock](../alarm/README.md) shows today's and the coming hours.
 
 - **Wheel**: today ↔ the week.
 - **Long button**: update now.
