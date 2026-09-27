@@ -103,7 +103,7 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
             top += ROW_PITCH;
         }
         let hint_top = area.top_left.y + area.size.height as i32 - HINT.character_size.height as i32;
-        text::write(target, "wheel: choose   long: open or change   yellow: back", Point::new(area.top_left.x, hint_top), area.size.width, &HINT);
+        text::write(target, "wheel: choose   click or long: open or change   yellow: back", Point::new(area.top_left.x, hint_top), area.size.width, &HINT);
     }
 }
 

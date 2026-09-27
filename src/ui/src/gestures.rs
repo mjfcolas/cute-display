@@ -1,5 +1,5 @@
-//! A click of the wheel is the system's: it opens and closes the system app, and never
-//! reaches an app. The yellow and long buttons are held together to mean something of
+//! A click of the wheel is the system's: it is a `Gesture::System`, never an app's
+//! `Input`. The yellow and long buttons are held together to mean something of
 //! their own, so a press of either only reaches an app once it is released, and not at
 //! all when it was part of that hold.
 
@@ -12,7 +12,7 @@ pub const HOLD_TOGETHER: Duration = Duration::from_secs(1);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Gesture {
     Input(Input),
-    Switch,
+    System,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -55,7 +55,7 @@ impl Default for Gestures {
 impl Gestures {
     /// `now` is any monotonic time, as long as it is always the same clock.
     pub fn interpret(&mut self, sample: &ControlsSample, now: Duration) -> Vec<Gesture> {
-        let mut gestures: Vec<Gesture> = (0..sample.wheel.presses).map(|_| Gesture::Switch).collect();
+        let mut gestures: Vec<Gesture> = (0..sample.wheel.presses).map(|_| Gesture::System).collect();
         if sample.detents != 0 {
             gestures.push(Gesture::Input(Input::Turn(sample.detents)));
         }
@@ -100,10 +100,10 @@ mod tests {
     const HOLD: Gesture = Gesture::Input(Input::HoldYellowAndLong);
 
     #[test]
-    fn a_click_of_the_wheel_switches_at_once() {
+    fn a_click_of_the_wheel_is_the_system_gesture_at_once() {
         let mut g = Gestures::default();
         let clicked = ControlsSample { wheel: button(1, true), ..Default::default() };
-        assert_eq!(g.interpret(&clicked, at(0)), [Gesture::Switch]);
+        assert_eq!(g.interpret(&clicked, at(0)), [Gesture::System]);
     }
 
     #[test]

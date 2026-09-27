@@ -1,6 +1,6 @@
 //! Shows the screen of the app in front, on the whole glass. Which app is in front is the
-//! domain's; the shell follows it, and turns the system gesture into opening or closing
-//! the system app.
+//! domain's; the shell follows it, and turns the system gesture into opening the system
+//! app, or into confirming there as the long button does.
 
 use core::time::Duration;
 
@@ -10,7 +10,7 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 
 use crate::app_screen::AppScreen;
-use crate::controls::{ControlsSample, Input};
+use crate::controls::{Button, ControlsSample, Input};
 use crate::gestures::{Gesture, Gestures};
 
 const MARGIN: i32 = 8;
@@ -58,8 +58,8 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
 
     fn follow(&mut self, gesture: Gesture) -> bool {
         match gesture {
-            Gesture::Switch if self.foreground.app() == App::System => self.foreground.close_system(),
-            Gesture::Switch => self.foreground.open_system(),
+            Gesture::System if self.foreground.app() == App::System => return self.deliver(Input::Press(Button::Long)),
+            Gesture::System => self.foreground.open_system(),
             Gesture::Input(input) => return self.deliver(input),
         }
         true
@@ -179,13 +179,14 @@ mod tests {
     }
 
     #[test]
-    fn a_click_of_the_wheel_opens_the_system_app_and_another_closes_it() {
+    fn a_click_of_the_wheel_opens_the_system_app_and_there_confirms_like_the_long_button() {
         let foreground = Foreground::new(App::Radar);
         let (mut shell, _, _) = shell(&foreground);
         click_wheel(&mut shell, Duration::ZERO);
         assert_eq!(foreground.app(), App::System);
+        shell.on_sample(&turn(-1), Duration::from_secs(5));
         click_wheel(&mut shell, Duration::from_secs(10));
-        assert_eq!(foreground.app(), App::Radar);
+        assert_eq!(foreground.app(), App::Weather, "the app under the dot, not the one it was opened from");
     }
 
     #[test]

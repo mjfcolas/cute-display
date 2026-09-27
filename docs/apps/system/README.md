@@ -2,9 +2,9 @@
 
 The app launcher and the device's settings.
 
-- **Open / close**: click the wheel, from any app.
+- **Open**: click the wheel, from any app.
 - **Wheel**: move through the apps, then the settings.
-- **Long button**: open an app, or move a setting to its next value.
+- **Wheel click or long button**: open an app, or move a setting to its next value.
 - **Yellow**: back to the app it was opened from.
 
 ## Settings
