@@ -15,7 +15,7 @@ use infrastructure::internet::SharedInternet;
 const NETWORK_PERIOD: Duration = Duration::from_secs(1);
 
 /// Everything that fetches, on one thread: the requests share one Wi-Fi and take turns
-/// anyway, and each thread's stack is heap that TLS needs.
+/// anyway, and each thread's stack is internal RAM.
 pub(crate) fn start<W, H, U, S, M>(
     clock: Clock,
     weather: Weather,
@@ -32,8 +32,9 @@ where
     M: SystemMonitor + Send + 'static,
 {
     let log_heap = move |what: &str| {
+        let psram = system.free_psram_bytes().map(|bytes| format!(", PSRAM {} KiB free", bytes / 1024)).unwrap_or_default();
         log::info!(
-            "{what}: updating, {} KiB free, largest block {} KiB",
+            "{what}: updating, internal {} KiB free, largest block {} KiB{psram}",
             system.free_heap_bytes() / 1024,
             system.largest_free_block_bytes() / 1024
         );

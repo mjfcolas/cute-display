@@ -1,5 +1,5 @@
 # The main task only brings the board up and runs light work; everything heavy has a
-# thread of its own. Every byte here is taken from the heap TLS needs.
+# thread of its own. Stacks are internal RAM, which Wi-Fi and DMA need.
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=24576
 CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096
 CONFIG_FREERTOS_IDLE_TASK_STACKSIZE=4096
@@ -16,11 +16,15 @@ CONFIG_I2C_SKIP_LEGACY_CONFLICT_CHECK=y
 CONFIG_FATFS_LFN_HEAP=y
 CONFIG_FATFS_MAX_LFN=255
 
-# No PSRAM, so a TLS handshake has to fit in what the heap has left: buffers sized to
-# what is sent, and the configuration and root certificates freed once connected.
-CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
-CONFIG_MBEDTLS_DYNAMIC_FREE_CONFIG_DATA=y
-CONFIG_MBEDTLS_DYNAMIC_FREE_CA_CERT=y
+# 8 MB of octal PSRAM in the chip's package (eFuse PSRAM_CAP), in the heap. Small
+# allocations still go to internal RAM first and fall back on it; TLS, Wi-Fi and lwIP
+# buffers live there, leaving internal RAM to stacks and DMA.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
 
 # Nothing of ours is in NVS: the PHY recalibrates at every boot instead of caching there.
 CONFIG_ESP_PHY_CALIBRATION_AND_DATA_STORAGE=n

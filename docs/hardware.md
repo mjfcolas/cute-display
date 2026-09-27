@@ -28,7 +28,7 @@ The console is the USB Serial/JTAG (`303a:1001`); there is no reachable UART.
 
 ## Parts
 
-- **MCU**: ESP32-S3, 16 MB flash, no PSRAM established.
+- **MCU**: ESP32-S3, 16 MB flash, 8 MB octal PSRAM in the package (eFuse `PSRAM_CAP`).
 - **Panel**: GDEY037T03, 416 × 240, controller **UC8253** (a UC8xxx, not an SSD16xx).
   The case hides columns 398 to 415.
 - **RTC**: DS3231, battery-backed. The stock firmware arms alarm 1 daily from settings it

@@ -80,7 +80,7 @@ a "latest value" out:
 | buttons  | the button pins        | presses must be counted while everyone else is busy |
 | speaker  | the speaker            | playing blocks until the alarm is silenced         |
 | maintenance | the USB console's input | it waits for lines from a computer            |
-| network  | the Wi-Fi, HTTPS and UDP clients, for the time, weather and radar | a fetch waits on the network for seconds; one thread, since each stack is heap TLS needs |
+| network  | the Wi-Fi, HTTPS and UDP clients, for the time, weather and radar | a fetch waits on the network for seconds; one thread, since each stack is internal RAM |
 
 ## Where things live
 
