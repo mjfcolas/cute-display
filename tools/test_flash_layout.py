@@ -19,7 +19,7 @@ HABITY_TABLE = [
 ]
 
 HABITY_1_1_0, HABITY_1_1_1 = AppImage('habity', '1.1.0'), AppImage('habity', '1.1.1')
-OURS = AppImage('libespidf', '0.1.0')
+OURS = AppImage('cute-display', '0.1.0')
 OPEN = Security(secure_boot=False, flash_encryption=False)
 
 
@@ -56,14 +56,15 @@ class AppImages(unittest.TestCase):
         self.assertIsNone(app_image(b'\xff' * APP_HEADER_SIZE))
 
     def test_cute_display_may_go_into_app1(self):
-        self.assertEqual(image_refusals(header('libespidf', '0.1.0')), [])
+        self.assertEqual(image_refusals(header('cute-display', '0.1.0')), [])
 
     def test_what_is_not_cute_display_does_not_go_into_app1(self):
         self.assertIn('not an app image', ' '.join(image_refusals(b'\xff' * APP_HEADER_SIZE)))
-        self.assertIn("Habity's firmware", ' '.join(image_refusals(header('habity', '1.1.1'))))
+        self.assertIn('it says Habity 1.1.1', ' '.join(image_refusals(header('habity', '1.1.1'))))
+        self.assertIn('it says libespidf', ' '.join(image_refusals(header('libespidf', 'c62cace'))))
         undescribed = (b'\xe9' + b'\0' * 31).ljust(APP_HEADER_SIZE, b'\0')
         self.assertIn('does not say what it is', ' '.join(image_refusals(undescribed)))
-        too_large = header('libespidf', '0.1.0').ljust(APP_SIZE + 1, b'\0')
+        too_large = header('cute-display', '0.1.0').ljust(APP_SIZE + 1, b'\0')
         self.assertIn('larger than app1', ' '.join(image_refusals(too_large)))
 
     def test_an_image_without_a_description_is_not_taken_for_habity(self):

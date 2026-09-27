@@ -24,7 +24,7 @@ pub(crate) struct Presentation<E, B, P> {
 impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay> Presentation<E, B, P> {
     pub fn run(mut self, domain: Domain) {
         let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
-            Box::new(SystemScreen::new(domain.foreground.clone(), domain.settings)),
+            Box::new(SystemScreen::new(domain.foreground.clone(), domain.settings, crate::VERSION)),
             Box::new(AlarmScreen::new(domain.alarm, domain.clock.clone(), domain.weather.clone())),
             Box::new(WeatherScreen::new(domain.weather, domain.clock)),
             Box::new(RadarScreen::new(domain.radar)),
@@ -152,7 +152,7 @@ mod tests {
         let foreground = Foreground::new(App::Weather);
         let settings = Settings::load(Box::new(Nowhere));
         let screens: Vec<Box<dyn AppScreen<Frame>>> =
-            vec![Box::new(Weather), Box::new(SystemScreen::new(foreground.clone(), settings.clone()))];
+            vec![Box::new(Weather), Box::new(SystemScreen::new(foreground.clone(), settings.clone(), crate::VERSION))];
         let mut shell = Shell::new(foreground, screens).unwrap();
         let backlight = Arc::new(Mutex::new(Level::OFF));
         let lighting = Lighting::new(Box::new(FakeLight(backlight.clone())), Box::new(FakeLight(Arc::default())), settings);

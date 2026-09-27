@@ -7,6 +7,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 app_bin := justfile_directory() / "src/firmware/target/cute-display-app.bin"
 elf_dir := "src/firmware/target/xtensa-esp32s3-espidf/release"
 backup_dir := justfile_directory() / "backup"
+release_dir := justfile_directory() / "release"
 cute_display := "uv run --quiet --script " + justfile_directory() / "tools/cute_display.py"
 
 # list recipes
@@ -50,6 +51,23 @@ fw-build bin="app":
 fw-flash bin="app":
     espflash save-image --chip esp32s3 {{elf_dir}}/{{bin}} {{app_bin}}
     {{cute_display}} install {{app_bin}}
+
+# build the app image of a release into release/, with its SHA-256, from a committed tree
+release:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -n "$(git status --porcelain)" ]; then
+        echo 'Commit first: a release is built from a commit, and its log says which.' >&2
+        exit 1
+    fi
+    version=$(sed -n 's/^version = "\(.*\)"/\1/p' src/app/Cargo.toml)
+    just fw-build app
+    mkdir -p {{release_dir}}
+    image={{release_dir}}/cute-display-$version.bin
+    espflash save-image --chip esp32s3 {{elf_dir}}/app "$image"
+    (cd {{release_dir}} && sha256sum "$(basename "$image")" > "$(basename "$image").sha256")
+    cat "$image.sha256"
+    echo "Next: tag v$version, push it, and attach both files to its GitHub release."
 
 # attach to the serial log of an image (ctrl-C to quit)
 fw-monitor bin="app":

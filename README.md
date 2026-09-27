@@ -31,6 +31,7 @@ just fw-boot app0  # back to Habity's firmware (factory: as shipped)
 just fw-check      # which app boots, and whether the device can take this one
 just backup        # dump the whole flash to backup/ (gitignored)
 just sd-ls         # list the SD card; also sd-get, sd-put, sd-rm (monitor closed)
+just release       # the app image of a release, in release/ (docs/releasing.md)
 just               # every recipe
 ```
 
@@ -40,6 +41,7 @@ Building and flashing need the `esp` toolchain (`espup`, sourcing `~/export-esp.
 ## Further
 
 - [`NOTICE.md`](NOTICE.md): license, data sources, not affiliated with Habity.
+- [`CHANGELOG.md`](CHANGELOG.md): what each release changes.
 - [`AGENTS.md`](AGENTS.md): how this project is written.
 - [`DESIGN.md`](DESIGN.md): the architecture.
 - [`docs/hardware.md`](docs/hardware.md): the board: pin map, panel controller, flash

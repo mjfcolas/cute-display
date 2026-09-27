@@ -1,4 +1,5 @@
-//! The system app: the other apps to choose from, and the device's settings.
+//! The system app: the other apps to choose from, the device's settings, and which
+//! version of cute-display runs.
 
 use domain::apps::{App, Foreground};
 use domain::settings::{BacklightDuration, ReadingLamp, Settings};
@@ -82,12 +83,13 @@ fn reading_lamp_label(lamp: ReadingLamp) -> String {
 pub struct SystemScreen {
     foreground: Foreground,
     settings: Settings,
+    version: &'static str,
     chosen_row: usize,
 }
 
 impl SystemScreen {
-    pub fn new(foreground: Foreground, settings: Settings) -> Self {
-        Self { foreground, settings, chosen_row: 0 }
+    pub fn new(foreground: Foreground, settings: Settings, version: &'static str) -> Self {
+        Self { foreground, settings, version, chosen_row: 0 }
     }
 
     fn mark(&self, row: Row) -> Mark {
@@ -187,6 +189,10 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
         let bottom = top + area.size.height as i32;
         let stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
         text::write(target, title(App::System), area.top_left, area.size.width, &TITLE);
+        let version = format!("cute-display {}", self.version);
+        let version_width = text::width(&version, &HINT);
+        let version_top = top + (TITLE.character_size.height - HINT.character_size.height) as i32;
+        text::write(target, &version, Point::new(right - version_width as i32, version_top), version_width, &HINT);
         let rule = top + TITLE.character_size.height as i32 + SECTION_GAP;
         let _ = Line::new(Point::new(left, rule), Point::new(right - 1, rule)).into_styled(stroke).draw(target);
 
@@ -234,7 +240,7 @@ mod tests {
         let foreground = Foreground::new(app);
         let settings = Settings::load(Box::new(Nowhere));
         foreground.open_system();
-        let mut screen = SystemScreen::new(foreground.clone(), settings.clone());
+        let mut screen = SystemScreen::new(foreground.clone(), settings.clone(), "0.1.0");
         AppScreen::<Frame>::entered(&mut screen);
         (screen, foreground, settings)
     }
@@ -352,6 +358,15 @@ mod tests {
         (AREA.top_left.y..AREA.top_left.y + AREA.size.height as i32)
             .filter(|&y| (left..left + 100).all(|x| frame.is_ink(x, y)) && !frame.is_ink(right, y))
             .count()
+    }
+
+    #[test]
+    fn the_version_is_on_the_title_line_at_the_right() {
+        let (screen, _, _) = opened_from(App::Weather);
+        let frame = render(&screen);
+        let right = AREA.top_left.x + AREA.size.width as i32;
+        let title_line = AREA.top_left.y..AREA.top_left.y + TITLE.character_size.height as i32;
+        assert!(title_line.clone().any(|y| (right - 20..right).any(|x| frame.is_ink(x, y))));
     }
 
     #[test]

@@ -21,6 +21,9 @@ use maintenance::MaintenanceConsole;
 
 use firmware::board::Board;
 
+// See Cargo.toml.
+esp_idf_svc::sys::esp_app_desc!();
+
 const BUILD: &str = concat!("build ", env!("BUILD_TIME"), " @", env!("BUILD_GIT"));
 
 enum Habity {}
@@ -46,7 +49,7 @@ fn main() -> Result<(), Fault> {
     esp_idf_svc::log::EspLogger::initialize_default();
     // The monitor re-attaches after resetting the chip; anything logged before is lost.
     FreeRtos::delay_ms(1500);
-    log::info!("cute-display, {BUILD}");
+    log::info!("cute-display {}, {BUILD}", app::VERSION);
 
     let board = Board::bring_up()?;
     if let Ok(card) = &board.sd_card {

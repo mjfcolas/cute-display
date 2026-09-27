@@ -309,6 +309,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17"
 
 [[package]]
+name = "cute-display"
+version = "0.1.0"
+dependencies = [
+ "app",
+ "drivers",
+ "embuild",
+ "esp-idf-svc",
+ "hal",
+ "hwtest",
+ "log",
+ "maintenance",
+]
+
+[[package]]
 name = "cvt"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -688,20 +702,6 @@ name = "find-msvc-tools"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26b73573e6edcd2af0cdf47bd6cb58f0b3839491263c314eaad1ccf24430e1de"
-
-[[package]]
-name = "firmware"
-version = "0.1.0"
-dependencies = [
- "app",
- "drivers",
- "embuild",
- "esp-idf-svc",
- "hal",
- "hwtest",
- "log",
- "maintenance",
-]
 
 [[package]]
 name = "float-cmp"

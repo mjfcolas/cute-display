@@ -19,6 +19,7 @@ OTADATA_SECTOR = 0x1000
 APP_SIZE = 0x400000
 
 STOCK_PROJECT = 'habity'
+OUR_PROJECT = 'cute-display'
 TESTED_STOCK_VERSIONS = {'1.1.0', '1.1.1'}
 
 _APP_TYPE, _DATA_TYPE = 0, 1
@@ -95,7 +96,7 @@ class AppImage:
         return f'Habity {self.version}' if self.is_stock else f'{self.project} {self.version}'
 
 
-UNDESCRIBED = AppImage(project='unknown', version='unknown')
+_UNDESCRIBED = AppImage(project='unknown', version='unknown')
 
 
 @dataclass(frozen=True)
@@ -122,7 +123,7 @@ def app_image(header):
         return None
     desc = header[_APP_DESC_OFFSET:]
     if struct.unpack_from('<I', desc)[0] != _APP_DESC_MAGIC:
-        return UNDESCRIBED
+        return _UNDESCRIBED
     return AppImage(project=_c_string(desc[_APP_DESC_PROJECT]), version=_c_string(desc[_APP_DESC_VERSION]))
 
 
@@ -132,10 +133,10 @@ def image_refusals(contents):
     if held is None:
         return ['it is not an app image.']
     refusals = []
-    if held == UNDESCRIBED:
+    if held == _UNDESCRIBED:
         refusals.append('the image does not say what it is.')
-    if held.is_stock:
-        refusals.append(f"it is Habity's firmware ({held}).")
+    elif held.project != OUR_PROJECT:
+        refusals.append(f'it is not a cute-display image: it says {held}.')
     if len(contents) > APP_SIZE:
         refusals.append(f'it is larger than app1 ({len(contents) // 1024} KB, app1 holds {APP_SIZE // 1024}).')
     return refusals
