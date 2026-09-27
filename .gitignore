@@ -10,3 +10,6 @@ backup/
 
 # Release images are attached to GitHub releases, not committed.
 release/
+
+# Whole-flash test images: they hold the backup's Wi-Fi password.
+tools/test_flashes/test-bins/

@@ -33,6 +33,9 @@ just release         # the app image of a release, in release/ (releasing.md)
 just                 # every recipe
 ```
 
+The installer's cases on the device: `just test-bins <backup>`, `just test-flash <name>`
+and `just test-on-device` ([`tools/test_flashes/`](../tools/test_flashes/)).
+
 The README's screenshots are `just preview alarm`, `weather`, `radar` and `system`, each
 `/tmp/cute-display.png` copied into `images/<screen>.png`.
 

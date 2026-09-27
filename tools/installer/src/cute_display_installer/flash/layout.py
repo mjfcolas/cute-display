@@ -59,18 +59,18 @@ _EXPECTED_PARTITIONS = [Partition('otadata', _DATA_TYPE, _OTADATA_SUBTYPE, OTADA
     Partition(slot.label, _APP_TYPE, slot.subtype, slot.offset, APP_SIZE) for slot in Slot
 ]
 
-_PARTITION_MAGIC = b'\xaa\x50'
-_PARTITION_ENTRY_SIZE = 32
-_PARTITION_LABEL = slice(12, 28)
+PARTITION_MAGIC = b'\xaa\x50'
+PARTITION_ENTRY_SIZE = 32
+PARTITION_LABEL = slice(12, 28)
 
 _IMAGE_MAGIC = 0xe9
 # esp_app_desc_t sits right after the image header and its first segment's header.
-_APP_DESC_OFFSET = 0x20
+APP_DESC_OFFSET = 0x20
 _APP_DESC_SIZE = 0x100
 _APP_DESC_MAGIC = 0xabcd5432
-_APP_DESC_VERSION = slice(16, 48)
+APP_DESC_VERSION = slice(16, 48)
 _APP_DESC_PROJECT = slice(48, 80)
-APP_HEADER_SIZE = _APP_DESC_OFFSET + _APP_DESC_SIZE
+APP_HEADER_SIZE = APP_DESC_OFFSET + _APP_DESC_SIZE
 
 _OTA_SEQ_BLANK = 0xffffffff
 _OTA_STATE_OFFSET = 24
@@ -113,12 +113,12 @@ class Security:
 
 def partitions(table):
     found = []
-    for at in range(0, len(table) - _PARTITION_ENTRY_SIZE + 1, _PARTITION_ENTRY_SIZE):
-        entry = table[at:at + _PARTITION_ENTRY_SIZE]
-        if entry[:2] != _PARTITION_MAGIC:
+    for at in range(0, len(table) - PARTITION_ENTRY_SIZE + 1, PARTITION_ENTRY_SIZE):
+        entry = table[at:at + PARTITION_ENTRY_SIZE]
+        if entry[:2] != PARTITION_MAGIC:
             break
         offset, size = struct.unpack_from('<II', entry, 4)
-        found.append(Partition(_c_string(entry[_PARTITION_LABEL]), entry[2], entry[3], offset, size))
+        found.append(Partition(_c_string(entry[PARTITION_LABEL]), entry[2], entry[3], offset, size))
     return found
 
 
@@ -127,10 +127,10 @@ def app_image(header):
     no image."""
     if len(header) < APP_HEADER_SIZE or header[0] != _IMAGE_MAGIC:
         return None
-    desc = header[_APP_DESC_OFFSET:]
+    desc = header[APP_DESC_OFFSET:]
     if struct.unpack_from('<I', desc)[0] != _APP_DESC_MAGIC:
         return _UNDESCRIBED
-    return AppImage(project=_c_string(desc[_APP_DESC_PROJECT]), version=_c_string(desc[_APP_DESC_VERSION]))
+    return AppImage(project=_c_string(desc[_APP_DESC_PROJECT]), version=_c_string(desc[APP_DESC_VERSION]))
 
 
 def image_refusals(contents):

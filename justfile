@@ -14,10 +14,11 @@ cute_display := "uv run --quiet --project " + justfile_directory() / "tools/inst
 default:
     @just --list
 
-# run the host crates' tests
+# run the host tests: the crates, the installer, and the test images' maker
 test:
     cargo test --workspace
     uv run --quiet --project tools/installer python -m unittest discover --start-directory tools/installer/tests --quiet
+    uv run --quiet --project tools/installer python -m unittest discover --start-directory tools/test_flashes/tests --quiet
 
 # clippy over the host workspace and the firmware
 lint:
@@ -110,6 +111,19 @@ fw-check:
 # dump the whole 16 MB flash into backup/ (gitignored)
 backup:
     {{cute_display}} backup {{backup_dir}}
+
+# make whole-flash test images into tools/test_flashes/test-bins/, one per case the installer meets, from a backup
+test-bins backup bin="app":
+    espflash save-image --chip esp32s3 {{elf_dir}}/{{bin}} {{app_bin}}
+    uv run --quiet --project tools/installer python tools/test_flashes/make_test_flashes.py {{backup}} {{app_bin}}
+
+# write one of tools/test_flashes/test-bins/ onto the device, the way a backup is put back
+test-flash name:
+    uvx --quiet --from "esptool>=5.1,<6" esptool --chip esp32s3 write-flash 0x0 tools/test_flashes/test-bins/{{name}}.bin
+
+# run the installer on the device against each test image (`just test-bins` first); NVS goes back to the backup's
+test-on-device:
+    uv run --quiet --project tools/installer python tools/test_flashes/on_device.py
 
 # copy the whole SD card into backup/sd/, resuming where it stopped (app image, monitor closed)
 backup-sd:
