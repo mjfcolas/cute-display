@@ -102,8 +102,8 @@ src/            the sources, one crate per directory
                   built for the ESP32 only
   simulator/      the app image on a computer
 docs/           the board, and a README per app, console and test image
-tools/          host scripts (frame dump to PNG, SD card over USB, radar airports, RTC
-                registers backup)
+tools/          host scripts (installing cute-display and going back to Habity's firmware,
+                frame dump to PNG, SD card over USB, radar airports, RTC registers backup)
 ```
 
 ## Applications

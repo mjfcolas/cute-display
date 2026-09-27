@@ -21,12 +21,21 @@ The [simulator](docs/simulator/README.md) runs the app image on a computer.
 ## Commands
 
 ```sh
-just sim         # the app image in a window, no device needed
-just fw          # build the app image, flash it into app1, watch the log
-just fw-stock    # back to the stock firmware
-just backup      # dump the whole flash to backup/ (gitignored)
-just             # every recipe
+just test          # host tests
+just lint          # clippy, host and ESP32
+just preview       # render an app screen to a PNG (screens: just --list)
+just sim           # the app image in a window, the SD card in sim-sd/
+just fw            # build the app image, flash it into app1, watch the log
+just fw hwtest     # the same with the hardware test image
+just fw-boot app0  # back to Habity's firmware (factory: as shipped)
+just fw-check      # which app boots, and whether the device can take this one
+just backup        # dump the whole flash to backup/ (gitignored)
+just sd-ls         # list the SD card; also sd-get, sd-put, sd-rm (monitor closed)
+just               # every recipe
 ```
+
+Building and flashing need the `esp` toolchain (`espup`, sourcing `~/export-esp.sh`),
+`espflash`, `ldproxy`, `just` and `uv`; `just test` needs `python3`.
 
 ## Further
 

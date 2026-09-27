@@ -19,5 +19,7 @@ look for:
 - **Panics** (rule 4): `unwrap`, `expect`, `[i]`, `panic!` outside tests, or an
   `#[allow]` that silences them. A hardware failure that is not a `hal::Fault`.
 - **The SD card** (rule 6): a write or a removal outside `cute-display/`.
+- **NVS** (rule 7): a key outside the `cute_display` namespace; an erase of the
+  partition; an ESP-IDF component left to write NVS on its own.
 
-Tags: `naming`, `layers`, `tests`, `panic`, `sd card`.
+Tags: `naming`, `layers`, `tests`, `panic`, `sd card`, `nvs`.

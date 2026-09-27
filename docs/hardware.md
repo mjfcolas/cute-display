@@ -29,6 +29,7 @@ The console is the USB Serial/JTAG (`303a:1001`); there is no reachable UART.
 ## Parts
 
 - **MCU**: ESP32-S3, 16 MB flash, 8 MB octal PSRAM in the package (eFuse `PSRAM_CAP`).
+  Secure boot and flash encryption are off: any image boots.
 - **Panel**: GDEY037T03, 416 × 240, controller **UC8253** (a UC8xxx, not an SSD16xx).
   The case hides columns 398 to 415.
 - **RTC**: DS3231, battery-backed. The stock firmware arms alarm 1 daily from settings it
@@ -49,7 +50,7 @@ to 6.9 s cold); fast partial ≈ 350 ms.
 | Partition | Offset   | Size    | Content                                             |
 | --------- | -------- | ------- | --------------------------------------------------- |
 | nvs       | 0x9000   | 64 KB   | stock Wi-Fi credentials                             |
-| otadata   | 0x19000  | 8 KB    | which app boots; stock copy in `backup/`            |
+| otadata   | 0x19000  | 8 KB    | which app boots                                     |
 | phy_init  | 0x1b000  | 20 KB   |                                                     |
 | factory   | 0x20000  | 4 MB    | stock Habity v1.1.0                                 |
 | app0      | 0x420000 | 4 MB    | stock Habity v1.1.1 (OTA), what the device ran      |

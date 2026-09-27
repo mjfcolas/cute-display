@@ -61,21 +61,21 @@ the device keeps running.
 The device and its maintenance console write nowhere else on the card, so everything
 of ours is in one place.
 
+### 7. In NVS, ours is in the `cute_display` namespace
+
+The `nvs` partition is Habity's: its settings and Wi-Fi credentials, which it needs when
+the device boots it again.
+
+- What we keep goes on the SD card first; NVS only for what cannot wait for the card.
+- Our keys go in the `cute_display` namespace, and nowhere else.
+- Never erase the partition, not even when `nvs_flash_init` asks for it: that would
+  wipe Habity's settings.
+- ESP-IDF components that would write NVS on their own are configured not to (the Wi-Fi
+  driver without NVS, PHY calibration not stored).
+
 ## Commands
 
-```sh
-just test        # host tests
-just lint        # clippy, host and ESP32
-just preview     # render an app screen to a PNG (screens: just --list)
-just sim         # run the app image in a window, the SD card in sim-sd/
-just fw          # build the app image, flash it into app1, watch the log
-just fw hwtest   # the same with the hardware test image
-just sd-ls       # list the SD card; also sd-get, sd-put, sd-rm (monitor closed)
-just fw-stock    # boot the stock firmware again
-```
-
-The ESP32 build needs the `esp` toolchain (`espup`, sourcing `~/export-esp.sh`),
-`espflash`, `ldproxy` and `just`.
+In the [README](README.md#commands), with what they need.
 
 ## Before finishing a change
 
