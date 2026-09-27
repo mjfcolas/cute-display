@@ -1,9 +1,9 @@
 """The Habity's flash: its partitions, which app the bootloader starts, what each app slot
 holds, and whether cute-display can go in app1 and come back out.
 
-Everything here works on bytes read from the flash; tools/cute_display.py reads and
-writes them. Only app1 and otadata are ever written: Habity's firmware stays in factory
-and app0, and going back to it is a matter of otadata alone.
+Everything here works on bytes read from the flash; device.py reads and writes them.
+Only app1 and otadata are ever written: Habity's firmware stays in factory and app0,
+and going back to it is a matter of otadata alone.
 """
 import struct
 import zlib

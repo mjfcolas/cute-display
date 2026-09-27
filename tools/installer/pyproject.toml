@@ -1,0 +1,19 @@
+[project]
+name = "cute-display-installer"
+# The app image's version, which tests/test_version.py holds it to.
+version = "2026.9.0"
+description = "Install cute-display on a Habity bedside clock, and go back to Habity's firmware."
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+requires-python = ">=3.11"
+dependencies = [
+    "esptool>=5.1,<6",
+    "pyserial>=3.5,<4",
+]
+
+[project.scripts]
+cute-display = "cute_display_installer.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"

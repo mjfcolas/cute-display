@@ -1,5 +1,5 @@
-# Flashing, booting a slot and backing up the flash go through tools/cute_display.py;
-# docs/hardware.md explains the layout.
+# The device's flash and SD card go through the installer, tools/installer/;
+# docs/hardware.md explains the flash layout.
 # `just --list` shows the comment line right above each recipe.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
@@ -8,7 +8,7 @@ app_bin := justfile_directory() / "src/firmware/target/cute-display-app.bin"
 elf_dir := "src/firmware/target/xtensa-esp32s3-espidf/release"
 backup_dir := justfile_directory() / "backup"
 release_dir := justfile_directory() / "release"
-cute_display := "uv run --quiet --script " + justfile_directory() / "tools/cute_display.py"
+cute_display := "uv run --quiet --project " + justfile_directory() / "tools/installer" + " cute-display"
 
 # list recipes
 default:
@@ -17,7 +17,7 @@ default:
 # run the host crates' tests
 test:
     cargo test --workspace
-    python3 -m unittest discover --start-directory tools --quiet
+    uv run --quiet --project tools/installer python -m unittest discover --start-directory tools/installer/tests --quiet
 
 # clippy over the host workspace and the firmware
 lint:
@@ -27,7 +27,7 @@ lint:
 # render an app screen to a PNG: system, system-settings, alarm, alarm-days, weather, weather-week or radar
 preview screen="system" zoom="2":
     cargo run --quiet -p ui --example app_screen -- /tmp/cute-display.fb {{screen}}
-    python3 tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
+    uv run --quiet --no-project python tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
     xdg-open /tmp/cute-display.png >/dev/null 2>&1 &
 
 # run the app image on this computer, the SD card being a directory
@@ -37,7 +37,7 @@ sim card="sim-sd":
 # render the hardware test's report page to a PNG (`pattern` for the checkerboard)
 preview-hwtest page="" zoom="2":
     cargo run --quiet -p hwtest --example report_page -- /tmp/cute-display.fb {{page}}
-    python3 tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
+    uv run --quiet --no-project python tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
     xdg-open /tmp/cute-display.png >/dev/null 2>&1 &
 
 # build + flash + monitor an image: `app` (default) or `hwtest`
@@ -75,23 +75,23 @@ fw-monitor bin="app":
 
 # list a directory of the SD card (the root without one); close the monitor first
 sd-ls dir="":
-    python3 tools/sd.py ls {{dir}}
+    {{cute_display}} card ls {{dir}}
 
 # copy a file off the SD card (to the terminal without a destination)
 sd-get path dest="":
-    python3 tools/sd.py get {{path}} {{dest}}
+    {{cute_display}} card get {{path}} {{dest}}
 
 # put a local file on the SD card, somewhere under cute-display/
 sd-put file path:
-    python3 tools/sd.py put {{file}} {{path}}
+    {{cute_display}} card put {{file}} {{path}}
 
 # remove a file from the SD card, somewhere under cute-display/
 sd-rm path:
-    python3 tools/sd.py rm {{path}}
+    {{cute_display}} card rm {{path}}
 
 # put the airports within 100 km of radar.conf's place on the device (from OurAirports)
 radar-airports:
-    python3 tools/airports.py
+    {{cute_display}} radar-airports
 
 # boot the firmware in one slot: app0 (Habity updated), factory (Habity as shipped) or app1 (cute-display)
 fw-boot slot:
@@ -107,9 +107,9 @@ backup:
 
 # copy the whole SD card into backup/sd/, resuming where it stopped (app image, monitor closed)
 backup-sd:
-    python3 tools/sd.py pull "" {{backup_dir}}/sd
+    {{cute_display}} card pull "" {{backup_dir}}/sd
 
 # copy the RTC's registers into backup/ (hardware test image)
 backup-rtc:
     mkdir -p {{backup_dir}}
-    python3 tools/rtc_backup.py {{backup_dir}}/ds3231-registers-$(date +%Y%m%d-%H%M%S).bin
+    {{cute_display}} rtc-registers {{backup_dir}}/ds3231-registers-$(date +%Y%m%d-%H%M%S).bin

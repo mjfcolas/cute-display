@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Turn a hal::display::Frame dump (416x240, row-major, MSB leftmost, 1 = ink) into a PNG.
 
-  python3 tools/fb2png.py frame.fb frame.png [zoom]
+  python tools/fb2png.py frame.fb frame.png [zoom]
 
 Stdlib only.
 """

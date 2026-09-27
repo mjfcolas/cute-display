@@ -6,7 +6,7 @@
 //! LFPO 48.7233 2.3794 Paris-Orly Airport
 //! ```
 //!
-//! `tools/airports.py` (`just radar-airports`) writes it from OurAirports. A line that does
+//! The installer (`just radar-airports`) writes it from OurAirports. A line that does
 //! not read is skipped, and so is a `#` comment.
 //!
 //! Which airports are named on the scope is the radar's own setting, since this file is

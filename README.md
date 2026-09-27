@@ -36,10 +36,11 @@ just               # every recipe
 ```
 
 Building and flashing need the `esp` toolchain (`espup`, sourcing `~/export-esp.sh`),
-`espflash`, `ldproxy`, `just` and `uv`; `just test` needs `python3`.
+`espflash`, `ldproxy`, `just` and `uv`.
 
 ## Further
 
+- [Installer](tools/installer/README.md): the device's flash and SD card from a computer.
 - [`NOTICE.md`](NOTICE.md): license, data sources, not affiliated with Habity.
 - [`CHANGELOG.md`](CHANGELOG.md): what each release changes.
 - [`AGENTS.md`](AGENTS.md): how this project is written.

@@ -2,6 +2,7 @@
 /target
 **/target
 __pycache__/
+.venv/
 
 # Flash dumps are secret: they carry nvs (the stock firmware's Wi-Fi credentials).
 *.bin
