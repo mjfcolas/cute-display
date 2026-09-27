@@ -15,7 +15,7 @@ The device's flash, whatever runs:
 ```sh
 cute-display check                # what each slot holds, which one boots, whether cute-display can go in
 cute-display backup [directory]   # the whole flash into a file; it holds the Wi-Fi password
-cute-display install <image.bin>  # cute-display into app1, and boot it
+cute-display install [image.bin]  # cute-display into app1, and boot it; the latest release's without an image
 cute-display boot <slot>          # boot app0 (Habity updated), factory (Habity as shipped) or app1
 ```
 

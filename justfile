@@ -52,7 +52,7 @@ fw-flash bin="app":
     espflash save-image --chip esp32s3 {{elf_dir}}/{{bin}} {{app_bin}}
     {{cute_display}} install {{app_bin}}
 
-# build the app image of a release into release/, with its SHA-256, from a committed tree
+# build a release into release/ from a committed tree: the app image, its SHA-256, the installer
 release:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -67,7 +67,9 @@ release:
     espflash save-image --chip esp32s3 {{elf_dir}}/app "$image"
     (cd {{release_dir}} && sha256sum "$(basename "$image")" > "$(basename "$image").sha256")
     cat "$image.sha256"
-    echo "Next: tag v$version, push it, and attach both files to its GitHub release."
+    uv build --quiet --wheel --out-dir {{release_dir}} tools/installer
+    ls {{release_dir}}/*$version*
+    echo "Next: tag v$version, push it, and attach these three files to its GitHub release."
 
 # attach to the serial log of an image (ctrl-C to quit)
 fw-monitor bin="app":

@@ -8,6 +8,15 @@ Versions are dates: `<year>.<month>.<n>`, `n` counting the month's releases from
 1. Set the new version in `src/app/Cargo.toml`, `src/firmware/Cargo.toml` and
    `tools/installer/pyproject.toml`: the build and `just test` refuse them different.
 2. Say what changed under that version in [`CHANGELOG.md`](../CHANGELOG.md).
-3. Commit, then `just release`: `release/cute-display-<version>.bin` and its `.sha256`.
-4. Tag the commit `v<version>`, push the tag, and attach both files to the GitHub
-   release of that tag, its notes being the version's changelog.
+3. Commit, then `just release`: in `release/`, the image `cute-display-<version>.bin`,
+   its `.sha256`, and the installer `cute_display_installer-<version>-py3-none-any.whl`.
+4. Tag the commit `v<version>`, push the tag, and attach the three files to the GitHub
+   release of that tag. Its notes are the version's changelog, then how to run the
+   installer from it:
+
+   ```sh
+   uvx --from https://github.com/mjfcolas/cute-display/releases/download/v<version>/cute_display_installer-<version>-py3-none-any.whl cute-display install
+   ```
+
+A release carries exactly one `cute-display-*.bin` and its `.sha256`: the installer's
+`install` takes the latest release's.

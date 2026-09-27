@@ -3,12 +3,12 @@ import argparse
 import os
 import sys
 import time
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 from esptool.cmds import FatalError
 from serial import SerialException
 
-from . import rtc, usb
+from . import releases, rtc, usb
 from .card import console
 from .card.copy import pull
 from .config import airports, radar
@@ -58,8 +58,11 @@ def backup(directory):
 
 
 def install(image):
-    with open(image, 'rb') as f:
-        contents = f.read()
+    if image:
+        with open(image, 'rb') as f:
+            contents = f.read()
+    else:
+        image, contents = releases.latest_image()
     refusals = image_refusals(contents)
     if refusals:
         sys.exit('\n'.join(f'Cannot install {image}: {r}' for r in refusals))
@@ -185,7 +188,8 @@ def parser():
     command(commands, 'check', check, 'what the device holds, and whether it can take cute-display')
     command(commands, 'backup', backup, 'the whole flash into a file (holds the Wi-Fi password)') \
         .add_argument('directory', nargs='?', default='.')
-    command(commands, 'install', install, 'cute-display into app1, and boot it').add_argument('image')
+    command(commands, 'install', install, 'cute-display into app1, and boot it') \
+        .add_argument('image', nargs='?', help="an image file; the latest release's without one")
     command(commands, 'boot', boot, 'boot the firmware in one slot') \
         .add_argument('slot', type=Slot.named, choices=list(Slot))
 
@@ -223,8 +227,12 @@ def main():
         sys.exit(f'SD card: {error}')
     except rtc.NoRegisters as error:
         sys.exit(str(error))
+    except releases.ReleaseError as error:
+        sys.exit(f'GitHub: {error}.')
+    except HTTPError as error:
+        sys.exit(f'{error.url} answered {error.code} {error.reason}.')
     except URLError as error:
-        sys.exit(f'OurAirports: {error.reason}. Is this computer online?')
+        sys.exit(f'{error.reason}: is this computer online?')
     except FileNotFoundError as error:
         sys.exit(f'{error.filename}: no such file.')
     except (FatalError, SerialException) as error:
