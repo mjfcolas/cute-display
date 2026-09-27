@@ -2,7 +2,7 @@
 # The name and version the images describe themselves with (their esp_app_desc), which
 # tools/flash_layout.py reads; the version is the app image's, `app::VERSION`.
 name = "cute-display"
-version = "0.1.0"
+version = "2026.9.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 resolver = "2"

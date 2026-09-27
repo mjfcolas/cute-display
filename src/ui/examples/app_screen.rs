@@ -225,7 +225,7 @@ fn main() -> std::io::Result<()> {
         alarm.tick(now);
     }
     let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
-        Box::new(SystemScreen::new(foreground.clone(), settings, "0.1.0")),
+        Box::new(SystemScreen::new(foreground.clone(), settings, "2026.9.0")),
         Box::new(AlarmScreen::new(alarm, clock.clone(), weather.clone())),
         Box::new(WeatherScreen::new(weather, clock)),
         Box::new(RadarScreen::new(radar.clone())),

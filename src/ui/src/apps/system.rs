@@ -240,7 +240,7 @@ mod tests {
         let foreground = Foreground::new(app);
         let settings = Settings::load(Box::new(Nowhere));
         foreground.open_system();
-        let mut screen = SystemScreen::new(foreground.clone(), settings.clone(), "0.1.0");
+        let mut screen = SystemScreen::new(foreground.clone(), settings.clone(), "2026.9.0");
         AppScreen::<Frame>::entered(&mut screen);
         (screen, foreground, settings)
     }

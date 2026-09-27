@@ -37,7 +37,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "app"
-version = "0.1.0"
+version = "2026.9.0"
 dependencies = [
  "domain",
  "embedded-graphics",
@@ -310,7 +310,7 @@ checksum = "61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17"
 
 [[package]]
 name = "cute-display"
-version = "0.1.0"
+version = "2026.9.0"
 dependencies = [
  "app",
  "drivers",

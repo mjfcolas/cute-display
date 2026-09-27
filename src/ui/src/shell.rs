@@ -173,7 +173,7 @@ mod tests {
         let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
             Box::new(weather.clone()),
             Box::new(radar.clone()),
-            Box::new(SystemScreen::new(foreground.clone(), Settings::load(Box::new(Nowhere)), "0.1.0")),
+            Box::new(SystemScreen::new(foreground.clone(), Settings::load(Box::new(Nowhere)), "2026.9.0")),
         ];
         (Shell::new(foreground.clone(), screens).unwrap(), weather, radar)
     }
