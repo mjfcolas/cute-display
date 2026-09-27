@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use crate::apps::{App, Foreground};
 use crate::fetch::{FetchStatus, Unavailable};
-use crate::place::{GeoPoint, PlaceSource};
+use crate::place::{GeoPoint, Place, PlaceSource};
 
 pub const REFRESH_EVERY: Duration = Duration::from_secs(15);
 pub const RETRY_AFTER: Duration = Duration::from_secs(30);
@@ -78,6 +78,7 @@ pub struct Airport {
     pub labelled: bool,
 }
 
+/// Read again only when the place changes, since the list is written for a place.
 pub trait AirportSource: Send {
     /// Empty when none are known.
     fn airports(&mut self) -> Vec<Airport>;
@@ -101,6 +102,7 @@ struct Sources {
     place: Box<dyn PlaceSource>,
     traffic: Box<dyn AirTrafficSource>,
     airports: Box<dyn AirportSource>,
+    airports_read_for: Option<Place>,
 }
 
 struct State {
@@ -136,7 +138,7 @@ impl Radar {
         };
         Self {
             state: Arc::new(Mutex::new(State { report, last_attempt: None, requested: false })),
-            sources: Arc::new(Mutex::new(Sources { place, traffic, airports })),
+            sources: Arc::new(Mutex::new(Sources { place, traffic, airports, airports_read_for: None })),
             foreground,
         }
     }
@@ -199,13 +201,18 @@ impl Radar {
             return;
         };
         let fetched = sources.traffic.nearby(place.point, range.km());
-        let airports = sources.airports.airports();
+        let airports = (sources.airports_read_for.as_ref() != Some(&place)).then(|| {
+            sources.airports_read_for = Some(place.clone());
+            sources.airports.airports()
+        });
         drop(sources);
 
         self.change(|state| {
             state.report.place = Some(place.name);
             state.report.center = Some(place.point);
-            state.report.airports = airports;
+            if let Some(airports) = airports {
+                state.report.airports = airports;
+            }
             match fetched {
                 Ok(mut aircraft) => {
                     aircraft.sort_by(|a, b| a.point.distance_km(place.point).total_cmp(&b.point.distance_km(place.point)));
@@ -233,23 +240,33 @@ impl Radar {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::place::Place;
 
     const NOTRE_DAME: GeoPoint = GeoPoint { latitude: 48.8530, longitude: 2.3499 };
 
-    struct Orly;
+    /// Orly, and how many times it was read.
+    #[derive(Clone, Default)]
+    struct Orly(Arc<Mutex<usize>>);
 
     impl AirportSource for Orly {
         fn airports(&mut self) -> Vec<Airport> {
+            *self.0.lock().unwrap() += 1;
             vec![Airport { code: "LFPO".into(), point: GeoPoint { latitude: 48.7233, longitude: 2.3794 }, labelled: true }]
         }
     }
 
-    struct NotreDame;
+    /// Notre-Dame, until somebody names another place.
+    #[derive(Clone)]
+    struct Settable(Arc<Mutex<Place>>);
 
-    impl PlaceSource for NotreDame {
+    impl Settable {
+        fn notre_dame() -> Self {
+            Self(Arc::new(Mutex::new(Place { name: "Notre-Dame".into(), point: NOTRE_DAME })))
+        }
+    }
+
+    impl PlaceSource for Settable {
         fn place(&mut self) -> Option<Place> {
-            Some(Place { name: "Notre-Dame".into(), point: NOTRE_DAME })
+            Some(self.0.lock().unwrap().clone())
         }
     }
 
@@ -272,7 +289,8 @@ mod tests {
     fn radar(traffic: Vec<Aircraft>, front: App) -> (Radar, Foreground, Arc<Mutex<Vec<u32>>>) {
         let asked = Arc::new(Mutex::new(Vec::new()));
         let foreground = Foreground::new(front);
-        let radar = Radar::new(Box::new(NotreDame), Box::new(Sky(Arc::clone(&asked), traffic)), Box::new(Orly), foreground.clone());
+        let radar =
+            Radar::new(Box::new(Settable::notre_dame()), Box::new(Sky(Arc::clone(&asked), traffic)), Box::new(Orly::default()), foreground.clone());
         (radar, foreground, asked)
     }
 
@@ -318,6 +336,21 @@ mod tests {
         assert_eq!(report.aircraft[0].callsign.as_deref(), Some("CLOSEST"));
         assert_eq!(report.status, FetchStatus::UpToDate);
         assert_eq!(report.airports.iter().map(|a| a.code.as_str()).collect::<Vec<_>>(), ["LFPO"]);
+    }
+
+    #[test]
+    fn airports_are_read_once_per_place() {
+        let (place, orly) = (Settable::notre_dame(), Orly::default());
+        let radar = Radar::new(Box::new(place.clone()), Box::new(Sky(Arc::default(), vec![])), Box::new(orly.clone()), Foreground::new(App::Radar));
+        let start = Instant::now();
+        radar.refresh_if_due(start);
+        radar.refresh_if_due(start + REFRESH_EVERY);
+        assert_eq!(*orly.0.lock().unwrap(), 1);
+        assert_eq!(radar.report().airports.len(), 1, "the airports read stay in the report");
+
+        place.0.lock().unwrap().name = "Orly".into();
+        radar.refresh_if_due(start + REFRESH_EVERY * 2);
+        assert_eq!(*orly.0.lock().unwrap(), 2);
     }
 
     #[test]

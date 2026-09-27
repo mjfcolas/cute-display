@@ -24,3 +24,4 @@ airport_labels = LFPG, LFPO, LFPB
   OurAirports) and writes `cute-display/airports.conf`. Run it again when the place
   changes.
 - `airport_labels` says which airports carry their code; the others are plain dots.
+- Airports and labels are read at start and when the place changes.
