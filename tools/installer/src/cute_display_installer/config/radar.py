@@ -1,27 +1,37 @@
-"""The radar's place, in radar.conf on the card, and the airports put beside it."""
-from ..card import console
-from . import airports, conf_text
+"""radar.conf: the radar's place and which of its airports carry their code; the
+airports themselves go beside it, in airports.conf."""
+import re
 
-RADAR_FILE = 'cute-display/radar.conf'
-AIRPORTS_FILE = 'cute-display/airports.conf'
+from ..card import console
+from . import airports, conf_text, place
+
+FILE = 'cute-display/radar.conf'
 
 
 class NoPlace(Exception):
     pass
 
 
-def place(radar_conf):
-    """Latitude and longitude from radar.conf's text."""
-    values = conf_text.parse(radar_conf)
-    try:
-        return float(values['latitude']), float(values['longitude'])
-    except (KeyError, ValueError):
-        raise NoPlace(f'No place in {RADAR_FILE} on the device: put it there first.') from None
+def place_of(radar_conf):
+    found = place.read(radar_conf)
+    if found is None:
+        raise NoPlace(f'No place in {FILE} on the device: put it there first.')
+    return found
+
+
+def labels(radar_conf):
+    listed = conf_text.parse(radar_conf).get('airport_labels', '')
+    # As src/infrastructure/src/airports_file.rs splits them: on commas and spaces.
+    return [code.upper() for code in re.split(r'[,\s]+', listed) if code]
+
+
+def render(at, labelled):
+    return conf_text.render(place.pairs(at) + [('airport_labels', ', '.join(labelled))])
 
 
 def put_airports(link, rows):
-    """Writes airports.conf for the place in radar.conf; the lines written, and the place."""
-    latitude, longitude = place(console.read_file(link, RADAR_FILE).decode(errors='replace'))
-    lines = airports.around(latitude, longitude, rows)
-    console.write_file(link, AIRPORTS_FILE, airports.render(lines).encode())
-    return lines, (latitude, longitude)
+    """Writes airports.conf for the place in radar.conf; the airports written, and the place."""
+    at = place_of(console.read_file(link, FILE).decode(errors='replace'))
+    found = airports.around(at.latitude, at.longitude, rows)
+    console.write_file(link, airports.FILE, airports.render(found).encode())
+    return found, at

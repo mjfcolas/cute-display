@@ -34,7 +34,7 @@ the app in front when the device starts.
 ## Configuration
 
 - `cute-display/clock.conf`: the time zone, in POSIX `TZ` form; Central European time
-  without it. Changes show within a minute.
+  without it. Changes show within a minute. A `time_zone_name` beside it is ignored.
 
 ```text
 # cute-display/clock.conf

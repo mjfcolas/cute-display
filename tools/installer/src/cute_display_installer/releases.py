@@ -3,8 +3,9 @@ before anything is written. docs/releasing.md says what a release carries."""
 import hashlib
 import json
 import re
-import urllib.request
 from urllib.error import HTTPError
+
+from .web import fetch as fetch_from_web
 
 REPOSITORY = 'mjfcolas/cute-display'
 LATEST = f'https://api.github.com/repos/{REPOSITORY}/releases/latest'
@@ -16,12 +17,6 @@ _CHECKSUM_LINE = re.compile(r'^([0-9a-fA-F]{64}) [ *](\S+)\s*$')
 
 class ReleaseError(Exception):
     pass
-
-
-def download(url):
-    request = urllib.request.Request(url, headers={'User-Agent': 'cute-display-installer'})
-    with urllib.request.urlopen(request) as response:
-        return response.read()
 
 
 def image_assets(release):
@@ -48,7 +43,7 @@ def checked(name, contents, checksum_file):
     return contents
 
 
-def latest_image(fetch=download, report=print):
+def latest_image(fetch=fetch_from_web, report=print):
     """The latest release's image, checked: its name and its bytes."""
     try:
         release = json.loads(fetch(LATEST))

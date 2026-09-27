@@ -8,12 +8,15 @@ from urllib.error import HTTPError, URLError
 from esptool.cmds import FatalError
 from serial import SerialException
 
-from . import releases, rtc, usb
+from . import releases, rtc, usb, web
 from .card import console
 from .card.copy import pull
-from .config import airports, radar
+from .config import airports, places, radar
 from .flash import device
 from .flash.layout import APP_HEADER_SIZE, FLASH_SIZE, Slot, app_image, image_refusals
+from .setup import card as setup_card
+from .setup.answers import CARD_FILES, Answers
+from .setup.app import SetupApp
 
 RTC_LOG_TIMEOUT_S = 20
 
@@ -132,11 +135,29 @@ def card_pull(directory, destination):
 def radar_airports(at):
     rows = airports.ourairports(report=lambda message: print(message, file=sys.stderr))
     if at:
-        print('\n'.join(airports.around(*at, rows)))
+        print('\n'.join(airport.line for airport in airports.around(*at, rows)))
         return
     with usb.open_link() as link:
-        lines, (latitude, longitude) = radar.put_airports(link, rows)
-    print(f'{len(lines)} airports within {airports.RADIUS_KM} km of {latitude}, {longitude}')
+        found, place = radar.put_airports(link, rows)
+    print(f'{len(found)} airports within {airports.RADIUS_KM} km of {place.name} ({place.latitude}, {place.longitude})')
+
+
+def setup():
+    print('Reading what the card holds...')
+    with usb.open_link() as link:
+        answers = Answers.from_card(setup_card.read_texts(link, CARD_FILES))
+
+    def airports_around(place):
+        return airports.around(place.latitude, place.longitude, airports.ourairports(report=lambda _: None))
+
+    def write(files):
+        try:
+            with usb.open_link() as link:
+                setup_card.write(link, files)
+        except (usb.NoDevice, console.ConsoleError, SerialException) as error:
+            raise setup_card.Unreachable(explain(error) if isinstance(error, SerialException) else str(error)) from None
+
+    SetupApp(answers, lambda name: places.search(name, web.fetch), airports_around, write).run()
 
 
 def rtc_registers(destination):
@@ -207,6 +228,7 @@ def parser():
     pull_parser.add_argument('directory')
     pull_parser.add_argument('destination')
 
+    command(commands, 'setup', setup, 'the Wi-Fi, the place, the time zone and the radar\'s airports, onto the card, cute-display running')
     command(commands, 'radar-airports', radar_airports,
             "the airports around radar.conf's place onto the card") \
         .add_argument('--at', nargs=2, type=float, metavar=('LATITUDE', 'LONGITUDE'),

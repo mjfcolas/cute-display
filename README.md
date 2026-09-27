@@ -27,9 +27,11 @@ just preview       # render an app screen to a PNG (screens: just --list)
 just sim           # the app image in a window, the SD card in sim-sd/
 just fw            # build the app image, flash it into app1, watch the log
 just fw hwtest     # the same with the hardware test image
+just fw-flash      # flash the image last built (`hwtest` for the test one), no build, no log
 just fw-boot app0  # back to Habity's firmware (factory: as shipped)
 just fw-check      # which app boots, and whether the device can take this one
 just backup        # dump the whole flash to backup/ (gitignored)
+just setup         # the Wi-Fi, the place, the time zone, the radar's airports (monitor closed)
 just sd-ls         # list the SD card; also sd-get, sd-put, sd-rm (monitor closed)
 just release       # the app image of a release, in release/ (docs/releasing.md)
 just               # every recipe

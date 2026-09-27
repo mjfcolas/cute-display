@@ -1,7 +1,8 @@
 # Installer
 
-Installs cute-display on a Habity bedside clock and boots Habity's firmware again; reads
-and writes its SD card, puts the radar's airports on it, and reads the RTC's registers.
+Installs cute-display on a Habity bedside clock, sets it up, and boots Habity's firmware
+again; reads and writes its SD card, puts the radar's airports on it, and reads the RTC's
+registers.
 
 - Needs [uv](https://docs.astral.sh/uv/); `uv run --project tools/installer cute-display …`
   from the repository, which is what the `justfile` does.
@@ -22,6 +23,7 @@ cute-display boot <slot>          # boot app0 (Habity updated), factory (Habity 
 The SD card, cute-display running and no serial monitor open:
 
 ```sh
+cute-display setup                                # an assistant: the Wi-Fi, the place, the time zone, the radar's airports
 cute-display card ls [directory]
 cute-display card get <path> [destination]        # to the terminal without a destination
 cute-display card put <file> <path>               # under cute-display/ only

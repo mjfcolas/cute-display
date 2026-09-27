@@ -9,6 +9,9 @@ requires-python = ">=3.11"
 dependencies = [
     "esptool>=5.1,<6",
     "pyserial>=3.5,<4",
+    "textual>=6,<8",
+    "tzdata>=2025.1",
+    "tzlocal>=5,<6",
 ]
 
 [project.scripts]

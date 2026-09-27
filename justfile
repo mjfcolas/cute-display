@@ -91,6 +91,10 @@ sd-put file path:
 sd-rm path:
     {{cute_display}} card rm {{path}}
 
+# set the device up: the Wi-Fi, the place, the time zone, the radar's airports (app image, monitor closed)
+setup:
+    {{cute_display}} setup
+
 # put the airports within 100 km of radar.conf's place on the device (from OurAirports)
 radar-airports:
     {{cute_display}} radar-airports

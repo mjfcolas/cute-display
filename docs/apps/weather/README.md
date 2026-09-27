@@ -16,7 +16,7 @@ The [alarm clock](../alarm/README.md) shows today's and the coming hours.
 
 ## Configuration
 
-Two files on the SD card, put there with `just sd-put`:
+Two files on the SD card:
 
 ```text
 # cute-display/weather.conf
@@ -31,4 +31,4 @@ ssid = MyNetwork
 password = secret
 ```
 
-Changes are picked up at the next update, with no restart.
+Changes are picked up at the next update, with no restart; a long press updates now.

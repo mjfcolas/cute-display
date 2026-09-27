@@ -20,8 +20,7 @@ airport_labels = LFPG, LFPO, LFPB
 ```
 
 - Also needs `cute-display/wifi.conf`, see the [weather app](../weather/README.md).
-- **Airports**: `just radar-airports` fetches those within 100 km of the place (from
-  OurAirports) and writes `cute-display/airports.conf`. Run it again when the place
-  changes.
+- **Airports**: `cute-display/airports.conf`, one per line: its code, latitude,
+  longitude and name. The radar draws those within its range.
 - `airport_labels` says which airports carry their code; the others are plain dots.
 - Airports and labels are read at start and when the place changes.

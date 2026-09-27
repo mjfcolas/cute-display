@@ -103,7 +103,8 @@ src/            the sources, one crate per directory
   simulator/      the app image on a computer
 docs/           the board, and a README per app, console and test image
 tools/          host tools: the [installer](tools/installer/README.md) (the device's flash
-                and SD card, radar airports, RTC registers), frame dump to PNG
+                and SD card, the setup assistant, radar airports, RTC registers), frame dump to
+                PNG
 ```
 
 ## Applications
