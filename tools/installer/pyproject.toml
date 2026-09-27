@@ -2,7 +2,7 @@
 name = "cute-display-installer"
 # The app image's version, which tests/test_version.py holds it to.
 version = "2026.9.0"
-description = "Install cute-display on a Habity bedside clock, and go back to Habity's firmware."
+description = "Install Cute Display on a Habity bedside clock, and go back to Habity's firmware."
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 requires-python = ">=3.11"

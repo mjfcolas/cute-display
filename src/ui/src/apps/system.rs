@@ -1,5 +1,5 @@
 //! The system app: the other apps to choose from, the device's settings, and which
-//! version of cute-display runs.
+//! version of Cute Display runs.
 
 use domain::apps::{App, Foreground};
 use domain::settings::{BacklightDuration, ReadingLamp, Settings};
@@ -189,7 +189,7 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
         let bottom = top + area.size.height as i32;
         let stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
         text::write(target, title(App::System), area.top_left, area.size.width, &TITLE);
-        let version = format!("cute-display {}", self.version);
+        let version = format!("Cute Display {}", self.version);
         let version_width = text::width(&version, &HINT);
         let version_top = top + (TITLE.character_size.height - HINT.character_size.height) as i32;
         text::write(target, &version, Point::new(right - version_width as i32, version_top), version_width, &HINT);

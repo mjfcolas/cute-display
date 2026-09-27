@@ -13,7 +13,7 @@ from .card import console
 from .card.copy import pull
 from .config import airports, places, radar
 from .flash import device
-from .flash.layout import APP_HEADER_SIZE, FLASH_SIZE, Slot, app_image, image_refusals
+from .flash.layout import APP_HEADER_SIZE, FLASH_SIZE, Slot, Target, app_image, image_refusals
 from .setup import card as setup_card
 from .setup.answers import CARD_FILES, Answers
 from .setup.app import SetupApp
@@ -25,8 +25,12 @@ def describe(unit):
     for slot in Slot:
         image = unit.slots[slot] or 'empty'
         print(f'  {slot.label:<8} {image}{"   <- boots" if slot == unit.booting else ""}')
-    for warning in unit.install_warnings():
-        print(f'Warning: {warning}')
+
+
+def placement_said(placement):
+    if placement.erases:
+        return f'into {placement.slot}, erasing {placement.erases} there, the older of the two'
+    return f'into {placement.slot}'
 
 
 def refuse(esp, doing, refusals):
@@ -45,7 +49,7 @@ def check():
         print(f'Cannot install: {refusal}')
     if refusals:
         sys.exit(1)
-    print('This device can take cute-display.')
+    print(f'This device can take Cute Display, {placement_said(unit.placement())}.')
 
 
 def backup(directory):
@@ -60,7 +64,11 @@ def backup(directory):
     print('It holds your Wi-Fi password: keep it to yourself, never attach it to an issue.')
 
 
-def install(image):
+def confirmed(question):
+    return input(f'{question} [y/N] ').strip().lower() in ('y', 'yes')
+
+
+def install(image, yes):
     if image:
         with open(image, 'rb') as f:
             contents = f.read()
@@ -77,21 +85,25 @@ def install(image):
         refusals = unit.install_refusals()
         if refusals:
             refuse(esp, 'install', refusals)
-        print(f'Writing {new} into app1; this takes a minute...')
-        device.write_app1(esp, contents)
-        device.boot_into(esp, Slot.APP1)
-    print(f"Installed. The device now starts {new}; `boot app0` or `boot factory` takes it back to "
-          "Habity's firmware.")
+        placement = unit.placement()
+        if placement.erases and not (yes or confirmed(
+                f'Both slots hold Habity\'s firmware: {placement.erases} in {placement.slot} is erased for '
+                f'Cute Display, {unit.slots[unit.habity(besides=placement.slot)]} stays. Go on?')):
+            refuse(esp, 'install', ['not confirmed; nothing was written.'])
+        print(f'Writing {new} {placement_said(placement)}; this takes a minute...')
+        device.install(esp, placement, unit.habity(besides=placement.slot), contents)
+    print(f"Installed. The device now starts {new}; `boot habity` takes it back to Habity's firmware.")
 
 
-def boot(slot):
+def boot(target):
     print('Connecting to the device...')
     with device.connect() as esp:
         unit = device.read_device(esp)
         describe(unit)
-        refusals = unit.boot_refusals(slot)
+        refusals = unit.boot_refusals(target)
         if refusals:
-            refuse(esp, f'boot {slot}', refusals)
+            refuse(esp, f'boot {target}', refusals)
+        slot = unit.slot_for(target)
         device.boot_into(esp, slot)
     print(f'Done. The device now starts {unit.slots[slot]}, from {slot}.')
 
@@ -197,7 +209,7 @@ def explain(error):
 def parser():
     top = argparse.ArgumentParser(
         prog='cute-display',
-        description="Install cute-display on a Habity bedside clock, and go back to Habity's firmware.",
+        description="Install Cute Display on a Habity bedside clock, and go back to Habity's firmware.",
     )
     commands = top.add_subparsers(required=True, metavar='command')
 
@@ -206,15 +218,17 @@ def parser():
         sub.set_defaults(run=run)
         return sub
 
-    command(commands, 'check', check, 'what the device holds, and whether it can take cute-display')
+    command(commands, 'check', check, 'what the device holds, and whether it can take Cute Display')
     command(commands, 'backup', backup, 'the whole flash into a file (holds the Wi-Fi password)') \
         .add_argument('directory', nargs='?', default='.')
-    command(commands, 'install', install, 'cute-display into app1, and boot it') \
-        .add_argument('image', nargs='?', help="an image file; the latest release's without one")
-    command(commands, 'boot', boot, 'boot the firmware in one slot') \
-        .add_argument('slot', type=Slot.named, choices=list(Slot))
+    install_parser = command(commands, 'install', install, 'Cute Display into app0 or app1, and boot it')
+    install_parser.add_argument('image', nargs='?', help="an image file; the latest release's without one")
+    install_parser.add_argument('--yes', action='store_true',
+                                help="erase the older Habity firmware without asking, when both slots hold one")
+    command(commands, 'boot', boot, "start Habity's newest firmware, the factory one, Cute Display, or a slot") \
+        .add_argument('target', type=Target, choices=list(Target))
 
-    card = commands.add_parser('card', help="the device's SD card, cute-display running") \
+    card = commands.add_parser('card', help="the device's SD card, Cute Display running") \
         .add_subparsers(required=True, metavar='action')
     command(card, 'ls', card_ls, 'list a directory').add_argument('directory', nargs='?', default='')
     get_parser = command(card, 'get', card_get, 'copy a file off the card (to the terminal without a destination)')
@@ -228,7 +242,7 @@ def parser():
     pull_parser.add_argument('directory')
     pull_parser.add_argument('destination')
 
-    command(commands, 'setup', setup, 'the Wi-Fi, the place, the time zone and the radar\'s airports, onto the card, cute-display running')
+    command(commands, 'setup', setup, 'the Wi-Fi, the place, the time zone and the radar\'s airports, onto the card, Cute Display running')
     command(commands, 'radar-airports', radar_airports,
             "the airports around radar.conf's place onto the card") \
         .add_argument('--at', nargs=2, type=float, metavar=('LATITUDE', 'LONGITUDE'),

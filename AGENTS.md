@@ -52,7 +52,8 @@ the device keeps running.
 - Each app (`docs/apps/<app>/`), the maintenance console, the hardware test and the
   simulator has a `README.md` for people: what it does, its controls, its conf files, in
   short bullet points. A `DESIGN.md` beside it only for design decisions no module comment holds.
-- The root `README.md` only names and links; what a part does is in its own README.
+- The root `README.md` is for people who own the clock: it names and links, and what a
+  part does is in its own README. What developers need starts at `docs/development.md`.
 - The code is the reference for behaviour and details: docs do not repeat what a name,
   a type or a module comment already says.
 
@@ -75,7 +76,7 @@ the device boots it again.
 
 ## Commands
 
-In the [README](README.md#commands), with what they need.
+In [docs/development.md](docs/development.md#commands), with what they need.
 
 ## Before finishing a change
 

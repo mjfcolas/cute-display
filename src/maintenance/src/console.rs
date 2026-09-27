@@ -301,7 +301,7 @@ mod tests {
         let card = FakeCard::default();
         let mut console = MaintenanceConsole::new(card.clone());
         let mut lines = put_lines("1", "cute-display/a.conf", b"hello world", crc32fast::hash(b"hello world"));
-        lines.insert(2, "I (1787) app: cute-display, build 09-25".into());
+        lines.insert(2, "I (1787) app: Cute Display 2026.9.0, build 09-25".into());
         assert_eq!(talk(&mut console, &lines), ["@@ 1 ok"]);
     }
 

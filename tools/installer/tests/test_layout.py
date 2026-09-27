@@ -3,7 +3,7 @@ import unittest
 
 from cute_display_installer.flash.layout import (
     _OTA_IMG_INVALID, _OTA_STATE_OFFSET, APP_HEADER_SIZE, APP_SIZE, OTADATA_SECTOR, AppImage, Device, Partition,
-    Security, Slot, app_image, booting_slot, image_refusals, otadata_booting, partitions)
+    Placement, Security, Slot, Target, app_image, booting_slot, image_refusals, otadata_booting, partitions)
 
 # The first entry of the otadata this project's unit came with, running Habity 1.1.1 from app0.
 STOCK_OTADATA_ENTRY = bytes.fromhex('01000000' + 'ff' * 20 + '02000000' + '9a984347')
@@ -52,6 +52,11 @@ class AppImages(unittest.TestCase):
         self.assertTrue(app_image(header('habity', '1.1.1')).is_stock)
         self.assertFalse(app_image(header('libespidf', 'c62cace')).is_stock)
 
+    def test_each_image_is_named_as_people_know_it(self):
+        self.assertEqual(str(HABITY_1_1_1), 'Habity 1.1.1')
+        self.assertEqual(str(OURS), 'Cute Display 2026.9.0')
+        self.assertEqual(str(app_image(header('libespidf', 'c62cace'))), 'libespidf c62cace')
+
     def test_an_erased_slot_holds_nothing(self):
         self.assertIsNone(app_image(b'\xff' * APP_HEADER_SIZE))
 
@@ -65,7 +70,7 @@ class AppImages(unittest.TestCase):
         undescribed = (b'\xe9' + b'\0' * 31).ljust(APP_HEADER_SIZE, b'\0')
         self.assertIn('does not say what it is', ' '.join(image_refusals(undescribed)))
         too_large = header('cute-display', '2026.9.0').ljust(APP_SIZE + 1, b'\0')
-        self.assertIn('larger than app1', ' '.join(image_refusals(too_large)))
+        self.assertIn('larger than a slot', ' '.join(image_refusals(too_large)))
 
     def test_an_image_without_a_description_is_not_taken_for_habity(self):
         image = app_image((b'\xe9' + b'\0' * 31).ljust(APP_HEADER_SIZE, b'\0'))
@@ -101,26 +106,52 @@ class Otadata(unittest.TestCase):
         self.assertEqual(booting_slot(bytes(invalid)), Slot.FACTORY)
 
 
-class Installing(unittest.TestCase):
-    def test_the_unit_as_it_came_may_take_cute_display(self):
+HABITY_1_1_2 = AppImage('habity', '1.1.2')
+
+
+def slots(app0, app1, factory=HABITY_1_1_0):
+    return {Slot.FACTORY: factory, Slot.APP0: app0, Slot.APP1: app1}
+
+
+class Placing(unittest.TestCase):
+    def test_the_clock_as_it_came_takes_cute_display_in_its_empty_slot(self):
         device = habity()
         self.assertEqual(device.install_refusals(), [])
-        self.assertEqual(device.install_warnings(), [])
-        self.assertEqual(device.stock_slot(), Slot.APP0)
+        self.assertEqual(device.placement(), Placement(Slot.APP1))
+        self.assertEqual(device.habity(besides=Slot.APP1), Slot.APP0)
 
-    def test_cute_display_may_replace_itself(self):
-        self.assertEqual(habity(booting=Slot.APP1, slots={Slot.FACTORY: HABITY_1_1_0, Slot.APP0: HABITY_1_1_1, Slot.APP1: OURS})
-                         .install_refusals(), [])
+    def test_cute_display_stays_where_it_is(self):
+        for booting in (Slot.APP0, Slot.APP1):
+            device = habity(booting=booting, slots=slots(OURS, HABITY_1_1_1))
+            self.assertEqual(device.placement(), Placement(Slot.APP0))
 
-    def test_a_device_never_updated_goes_back_to_factory(self):
-        device = habity(booting=Slot.FACTORY, slots={Slot.FACTORY: HABITY_1_1_0, Slot.APP0: None, Slot.APP1: None})
+    def test_a_slot_without_habity_is_free(self):
+        device = habity(slots=slots(AppImage('libespidf', 'c62cace'), HABITY_1_1_1))
+        self.assertEqual(device.placement(), Placement(Slot.APP0))
+
+    def test_with_habity_in_both_the_older_one_is_erased(self):
+        for app0, app1, older in ((HABITY_1_1_1, HABITY_1_1_2, Slot.APP0), (HABITY_1_1_2, HABITY_1_1_1, Slot.APP1)):
+            device = habity(booting=Slot.APP1, slots=slots(app0, app1))
+            self.assertEqual(device.install_refusals(), [])
+            self.assertEqual(device.placement(), Placement(older, erases=device.slots[older]))
+
+    def test_versions_are_compared_as_numbers(self):
+        device = habity(slots=slots(AppImage('habity', '1.10.0'), AppImage('habity', '1.9.0')))
+        self.assertEqual(device.placement().slot, Slot.APP1)
+
+    def test_a_version_that_does_not_read_is_not_guessed(self):
+        device = habity(slots=slots(HABITY_1_1_1, AppImage('habity', '1.2-beta')))
+        self.assertIsNone(device.placement())
+        self.assertIn('cannot be told', ' '.join(device.install_refusals()))
+
+    def test_a_clock_never_updated_goes_back_to_factory(self):
+        device = habity(booting=Slot.FACTORY, slots=slots(None, None))
         self.assertEqual(device.install_refusals(), [])
-        self.assertEqual(device.stock_slot(), Slot.FACTORY)
+        self.assertEqual(device.habity(besides=device.placement().slot), Slot.FACTORY)
 
-    def test_habity_running_from_app1_is_not_erased(self):
-        device = habity(booting=Slot.APP1, slots={Slot.FACTORY: HABITY_1_1_0, Slot.APP0: HABITY_1_1_1,
-                                               Slot.APP1: AppImage('habity', '1.1.2')})
-        self.assertIn('runs from app1', ' '.join(device.install_refusals()))
+    def test_without_habity_there_is_no_way_back(self):
+        device = habity(booting=Slot.APP1, slots=slots(OURS, None, factory=None))
+        self.assertIn('no way back', ' '.join(device.install_refusals()))
 
     def test_secured_devices_are_refused(self):
         for security in (Security(True, False), Security(False, True)):
@@ -132,24 +163,27 @@ class Installing(unittest.TestCase):
         without = [r for r in HABITY_TABLE if r[0] != 'otadata']
         self.assertIn('expected otadata', ' '.join(habity(rows=without).install_refusals()))
 
-    def test_without_habity_there_is_no_way_back(self):
-        device = habity(booting=Slot.APP1, slots={Slot.FACTORY: None, Slot.APP0: OURS, Slot.APP1: OURS})
-        self.assertIsNone(device.stock_slot())
-        self.assertIn('no way back', ' '.join(device.install_refusals()))
 
-    def test_booting_another_slot_needs_the_known_layout_only(self):
-        running_from_app1 = habity(booting=Slot.APP1, slots={Slot.FACTORY: HABITY_1_1_0, Slot.APP0: HABITY_1_1_1,
-                                                          Slot.APP1: AppImage('habity', '1.1.2')})
-        self.assertEqual(running_from_app1.boot_refusals(Slot.FACTORY), [])
-        self.assertNotEqual(habity(security=Security(True, False)).boot_refusals(Slot.FACTORY), [])
+class Booting(unittest.TestCase):
+    def test_names_lead_to_their_slots(self):
+        device = habity(booting=Slot.APP0, slots=slots(OURS, HABITY_1_1_2))
+        self.assertEqual({target: device.slot_for(target) for target in Target}, {
+            Target.HABITY: Slot.APP1, Target.FACTORY: Slot.FACTORY, Target.CUTE_DISPLAY: Slot.APP0,
+            Target.APP0: Slot.APP0, Target.APP1: Slot.APP1})
 
-    def test_an_empty_slot_is_not_booted(self):
-        self.assertIn('app1 is empty', ' '.join(habity().boot_refusals(Slot.APP1)))
+    def test_habity_is_its_newest_firmware_else_the_factory_one(self):
+        self.assertEqual(habity(slots=slots(HABITY_1_1_2, HABITY_1_1_1)).slot_for(Target.HABITY), Slot.APP0)
+        self.assertEqual(habity(slots=slots(OURS, None)).slot_for(Target.HABITY), Slot.FACTORY)
 
-    def test_an_untried_habity_version_is_a_warning(self):
-        device = habity(slots={Slot.FACTORY: HABITY_1_1_0, Slot.APP0: AppImage('habity', '2.0.0'), Slot.APP1: None})
-        self.assertEqual(device.install_refusals(), [])
-        self.assertIn('Habity 2.0.0', ' '.join(device.install_warnings()))
+    def test_what_is_not_there_is_not_started(self):
+        without_us = habity()
+        self.assertIn('no cute-display to start', ' '.join(without_us.boot_refusals(Target.CUTE_DISPLAY)))
+        self.assertIn('app1 is empty', ' '.join(without_us.boot_refusals(Target.APP1)))
+
+    def test_booting_needs_the_known_layout_only(self):
+        self.assertEqual(habity(booting=Slot.APP1, slots=slots(HABITY_1_1_1, HABITY_1_1_2))
+                         .boot_refusals(Target.FACTORY), [])
+        self.assertNotEqual(habity(security=Security(True, False)).boot_refusals(Target.FACTORY), [])
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 # System app
 
 The app launcher and the device's settings. Its title line says which version of
-cute-display runs.
+Cute Display runs.
 
 - **Open**: click the wheel, from any app.
 - **Wheel**: move through the apps, then the settings.

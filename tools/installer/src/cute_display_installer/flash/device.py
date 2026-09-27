@@ -1,5 +1,7 @@
 """The device's flash through esptool: read what layout.py judges, write what it allows."""
-from esptool.cmds import attach_flash, detect_chip, read_flash, reset_chip, run_stub, write_flash
+import os
+
+from esptool.cmds import attach_flash, detect_chip, read_flash, reset_chip, run_stub, verify_flash, write_flash
 from esptool.logger import log
 
 from .. import usb
@@ -34,13 +36,31 @@ def read_device(esp):
 
 
 def save_flash(esp, path):
-    read_flash(esp, 0, FLASH_SIZE, path)
+    """The whole flash into `path`, which only appears once checked against the flash."""
+    part = path + '.part'
+    try:
+        read_flash(esp, 0, FLASH_SIZE, part)
+        verify_flash(esp, [(0, part)])
+    except BaseException:
+        if os.path.exists(part):
+            os.remove(part)
+        raise
+    os.replace(part, path)
 
 
-def write_app1(esp, contents):
-    write_flash(esp, [(Slot.APP1.offset, contents)])
+def install(esp, placement, way_back, contents):
+    """Writes `contents` into the placement's slot and makes the bootloader start it. Until
+    it is written whole, otadata points at `way_back`: cut short anywhere, the clock
+    starts that."""
+    _point_otadata_at(esp, way_back)
+    write_flash(esp, [(placement.slot.offset, contents)])
+    boot_into(esp, placement.slot)
+
+
+def _point_otadata_at(esp, slot):
+    write_flash(esp, [(OTADATA, otadata_booting(slot))], no_progress=True)
 
 
 def boot_into(esp, slot):
-    write_flash(esp, [(OTADATA, otadata_booting(slot))], no_progress=True)
+    _point_otadata_at(esp, slot)
     restart(esp)

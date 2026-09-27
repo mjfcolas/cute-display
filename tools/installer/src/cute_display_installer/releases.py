@@ -1,4 +1,4 @@
-"""cute-display's releases on GitHub: the latest one's image, checked against its SHA-256
+"""Cute Display's releases on GitHub: the latest one's image, checked against its SHA-256
 before anything is written. docs/releasing.md says what a release carries."""
 import hashlib
 import json

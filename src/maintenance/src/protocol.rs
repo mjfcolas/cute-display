@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn lines_that_are_not_the_protocols_are_none() {
-        assert_eq!(parse("I (1787) app: cute-display, build 09-25"), None);
+        assert_eq!(parse("I (1787) app: Cute Display 2026.9.0, build 09-25"), None);
         assert_eq!(parse(""), None);
         assert_eq!(parse("@@"), None);
     }

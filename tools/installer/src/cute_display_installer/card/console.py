@@ -51,7 +51,7 @@ class _Request:
                 if kind == 'error':
                     raise ConsoleError(rest)
                 yield kind, rest
-        raise ConsoleError('no answer from the device; is cute-display running, and no serial monitor open?')
+        raise ConsoleError('no answer from the device; is Cute Display running, and no serial monitor open?')
 
     def expect(self, wanted):
         kind, rest = next(self.replies())

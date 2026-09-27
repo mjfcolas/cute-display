@@ -47,7 +47,7 @@ fw bin="app": (fw-build bin) (fw-flash bin) (fw-monitor bin)
 fw-build bin="app":
     cd src/firmware && source ~/export-esp.sh && cargo build --release --bin {{bin}}
 
-# flash an image into the spare OTA slot (app1) and boot it, once the device is checked
+# flash an image into an OTA slot and boot it, once the device is checked
 fw-flash bin="app":
     espflash save-image --chip esp32s3 {{elf_dir}}/{{bin}} {{app_bin}}
     {{cute_display}} install {{app_bin}}
@@ -99,11 +99,11 @@ setup:
 radar-airports:
     {{cute_display}} radar-airports
 
-# boot the firmware in one slot: app0 (Habity updated), factory (Habity as shipped) or app1 (cute-display)
-fw-boot slot:
-    {{cute_display}} boot {{slot}}
+# boot habity (its newest firmware), factory (as shipped), cute-display, or a slot: app0, app1
+fw-boot target:
+    {{cute_display}} boot {{target}}
 
-# what each app slot holds, which one boots, and whether the device can take cute-display
+# what each app slot holds, which one boots, and where Cute Display would go
 fw-check:
     {{cute_display}} check
 

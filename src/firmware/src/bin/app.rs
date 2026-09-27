@@ -49,7 +49,7 @@ fn main() -> Result<(), Fault> {
     esp_idf_svc::log::EspLogger::initialize_default();
     // The monitor re-attaches after resetting the chip; anything logged before is lost.
     FreeRtos::delay_ms(1500);
-    log::info!("cute-display {}, {BUILD}", app::VERSION);
+    log::info!("Cute Display {}, {BUILD}", app::VERSION);
 
     let board = Board::bring_up()?;
     if let Ok(card) = &board.sd_card {

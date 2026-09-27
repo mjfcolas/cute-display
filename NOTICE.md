@@ -1,6 +1,6 @@
 # Notice
 
-- **Not affiliated with Habity.** cute-display is an independent firmware; Habity's name
+- **Not affiliated with Habity.** Cute Display is an independent firmware; Habity's name
   only says which device it runs on.
 - **No warranty.** Installing it is at your own risk and may void the device's warranty.
 - **Habity's firmware is not here.** The device keeps it and boots it again on request;

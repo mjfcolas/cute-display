@@ -13,7 +13,7 @@ class Registers(unittest.TestCase):
     def test_they_are_found_in_the_hardware_test_log(self):
         line = 'I (1520) hwtest: DS3231 registers: ' + ' '.join(f'{b:02x}' for b in REGISTERS) + '\n'
         self.assertEqual(registers_in(line), REGISTERS)
-        self.assertIsNone(registers_in('I (1500) hwtest: cute-display hardware test\n'))
+        self.assertIsNone(registers_in('I (1500) hwtest: Cute Display 2026.9.0 hardware test\n'))
 
     def test_a_silent_rtc_is_said(self):
         with self.assertRaisesRegex(NoRegisters, 'did not answer the hardware test: I2C timeout'):

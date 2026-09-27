@@ -11,7 +11,7 @@ STEPS = [WifiScreen, PlaceScreen, TimeZoneScreen, AirportsScreen, SummaryScreen]
 
 
 class SetupApp(App):
-    TITLE = 'cute-display setup'
+    TITLE = 'Cute Display setup'
     CSS_PATH = 'setup.tcss'
     BINDINGS = [('escape', 'back', 'Back'), ('ctrl+q', 'quit', 'Quit')]
 

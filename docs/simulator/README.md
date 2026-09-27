@@ -14,7 +14,7 @@ The strip under the glass shows the front light and the reading lamp.
 ## The SD card
 
 - A directory, `sim-sd/` by default: its `cute-display/` holds the conf files the
-  [apps](../../README.md#images) describe, set on Notre-Dame.
+  [apps](../../README.md#apps) describe, set on Notre-Dame.
 - `just backup-sd` then `just sim backup/sd` runs on a copy of the device's card, but
   writes `settings.conf` there.
 - A card without `cute-display/wifi.conf` gets one: the Internet is the computer's, and

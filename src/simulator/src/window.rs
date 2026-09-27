@@ -45,7 +45,7 @@ pub struct Case {
 /// Until the window is closed.
 pub fn show(case: &Case) -> Result<(), Fault> {
     let options = WindowOptions { scale: Scale::X2, ..WindowOptions::default() };
-    let mut window = Window::new("cute-display", COLUMNS, ROWS + STRIP_ROWS, options).map_err(Fault::new)?;
+    let mut window = Window::new("Cute Display", COLUMNS, ROWS + STRIP_ROWS, options).map_err(Fault::new)?;
     window.set_target_fps(60);
     let mut pixels = vec![PAPER; COLUMNS * (ROWS + STRIP_ROWS)];
 

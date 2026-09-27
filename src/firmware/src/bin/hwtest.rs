@@ -14,7 +14,7 @@ fn main() -> Result<(), Fault> {
     esp_idf_svc::log::EspLogger::initialize_default();
     // The monitor re-attaches after resetting the chip; anything logged before is lost.
     FreeRtos::delay_ms(1500);
-    log::info!("cute-display {} hardware test, {BUILD}", app::VERSION);
+    log::info!("Cute Display {} hardware test, {BUILD}", app::VERSION);
 
     let mut board = Board::bring_up()?;
     match board.clock.registers() {

@@ -7,7 +7,7 @@ skills:
   - comments-review
 ---
 
-You review the cute-display firmware against its own rules. Read AGENTS.md and
+You review the Cute Display firmware against its own rules. Read AGENTS.md and
 DESIGN.md first, then run both skills over the scope: `code-rules-review`, then
 `comments-review`.
 

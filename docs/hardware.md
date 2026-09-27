@@ -54,5 +54,5 @@ to 6.9 s cold); fast partial ≈ 350 ms.
 | phy_init  | 0x1b000  | 20 KB   |                                                     |
 | factory   | 0x20000  | 4 MB    | stock Habity v1.1.0                                 |
 | app0      | 0x420000 | 4 MB    | stock Habity v1.1.1 (OTA), what the device ran      |
-| app1      | 0x820000 | 4 MB    | **cute-display**                                    |
+| app1      | 0x820000 | 4 MB    | **Cute Display**                                    |
 | coredump  | 0xc20000 | 3.9 MB  |                                                     |

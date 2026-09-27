@@ -41,7 +41,7 @@ fn main() -> std::io::Result<()> {
         })
     };
     let legend = Legend {
-        title: "cute-display  hardware test",
+        title: "Cute Display  hardware test",
         help: "wheel: front light  press: chime  yellow: lamp  long: pattern",
         build: "build 09-25 17:40Z @preview",
     };

@@ -1,0 +1,41 @@
+# Development
+
+How the project is written is [AGENTS.md](../AGENTS.md); its architecture,
+[DESIGN.md](../DESIGN.md); the board, [hardware.md](hardware.md).
+
+## Images
+
+Both are flashed into an OTA slot, `app0` or `app1`, beside Habity's firmware.
+
+- **App**: the [apps](../README.md#apps) people use, and the
+  [maintenance console](maintenance/README.md) that serves the SD card on the USB cable.
+- **[Hardware test](hwtest/README.md)**: exercises every part of the board.
+
+The [simulator](simulator/README.md) runs the app image on a computer, and the
+[installer](../tools/installer/README.md) is how a computer reaches the device.
+
+## Commands
+
+```sh
+just test            # host tests
+just lint            # clippy, host and ESP32
+just preview         # render an app screen to a PNG (screens: just --list)
+just sim             # the app image in a window, the SD card in sim-sd/
+just fw              # build the app image, flash it, watch the log
+just fw hwtest       # the same with the hardware test image
+just fw-flash        # flash the image last built (`hwtest` for the test one), no build, no log
+just fw-boot habity  # back to Habity's firmware (factory: as shipped)
+just fw-check        # which app boots, and where Cute Display would go
+just backup          # dump the whole flash to backup/ (gitignored)
+just setup           # the Wi-Fi, the place, the time zone, the radar's airports (monitor closed)
+just sd-ls           # list the SD card; also sd-get, sd-put, sd-rm (monitor closed)
+just release         # the app image of a release, in release/ (releasing.md)
+just                 # every recipe
+```
+
+The README's screenshots are `just preview alarm`, `weather`, `radar` and `system`, each
+`/tmp/cute-display.png` copied into `images/<screen>.png`.
+
+Building and flashing need the `esp` toolchain (`espup`, sourcing `~/export-esp.sh`),
+`espflash`, `ldproxy`, `just` and `uv`. [Releasing](releasing.md) says how a release is
+made.

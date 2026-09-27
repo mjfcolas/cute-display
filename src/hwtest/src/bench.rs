@@ -34,7 +34,7 @@ const FRONT_LIGHT_AT_START: Brightness = Brightness::percent(20);
 const READING_LAMP_STEPS: [u8; 4] = [0, 10, 50, 100];
 const RTC_ADDRESS: u8 = 0x68;
 
-const TITLE: &str = "cute-display  hardware test";
+const TITLE: &str = "Cute Display  hardware test";
 const HELP: &str = "wheel: front light  press: chime  yellow: lamp  long: pattern";
 
 pub struct Controls {

@@ -1,51 +1,30 @@
-# cute-display
+# Cute Display
 
-Firmware for the [Habity bedside clock](https://habity.design/products/bedside-clock):
-ESP32-S3, 3.7" e-paper, a wheel and two buttons, a battery-backed RTC, a microSD card, a
-speaker, a reading lamp and a front light.
+Another firmware for the [Habity bedside clock](https://habity.design/products/bedside-clock):
+an alarm clock with the weather and the planes overhead, on its e-paper screen. It goes
+beside Habity's own firmware, which one command brings back.
 
-## Images
+| | |
+| --- | --- |
+| ![The alarm clock](docs/images/alarm.png) | ![The weather](docs/images/weather.png) |
+| ![The radar](docs/images/radar.png) | ![The system app](docs/images/system.png) |
 
-Both are flashed into `app1`.
+## Apps
 
-- **App**: small apps, one in front at a time.
-  - [System](docs/apps/system/README.md)
-  - [Alarm clock](docs/apps/alarm/README.md)
-  - [Weather](docs/apps/weather/README.md)
-  - [Radar](docs/apps/radar/README.md)
-  - [Maintenance console](docs/maintenance/README.md)
-- **[Hardware test](docs/hwtest/README.md)**
+- [Alarm clock](docs/apps/alarm/README.md): the time, a wake-up time per day, a sunrise
+  before it.
+- [Weather](docs/apps/weather/README.md): today, the coming hours, the week.
+- [Radar](docs/apps/radar/README.md): the aircraft around you.
+- [System](docs/apps/system/README.md): the other apps, and the settings.
 
-The [simulator](docs/simulator/README.md) runs the app image on a computer.
+## Install
 
-## Commands
-
-```sh
-just test          # host tests
-just lint          # clippy, host and ESP32
-just preview       # render an app screen to a PNG (screens: just --list)
-just sim           # the app image in a window, the SD card in sim-sd/
-just fw            # build the app image, flash it into app1, watch the log
-just fw hwtest     # the same with the hardware test image
-just fw-flash      # flash the image last built (`hwtest` for the test one), no build, no log
-just fw-boot app0  # back to Habity's firmware (factory: as shipped)
-just fw-check      # which app boots, and whether the device can take this one
-just backup        # dump the whole flash to backup/ (gitignored)
-just setup         # the Wi-Fi, the place, the time zone, the radar's airports (monitor closed)
-just sd-ls         # list the SD card; also sd-get, sd-put, sd-rm (monitor closed)
-just release       # the app image of a release, in release/ (docs/releasing.md)
-just               # every recipe
-```
-
-Building and flashing need the `esp` toolchain (`espup`, sourcing `~/export-esp.sh`),
-`espflash`, `ldproxy`, `just` and `uv`.
+- [Installing](docs/install.md): what you need, then four commands; going back to
+  Habity's firmware.
+- [Troubleshooting](docs/troubleshooting.md).
 
 ## Further
 
-- [Installer](tools/installer/README.md): the device's flash and SD card from a computer.
-- [`NOTICE.md`](NOTICE.md): license, data sources, not affiliated with Habity.
-- [`CHANGELOG.md`](CHANGELOG.md): what each release changes.
-- [`AGENTS.md`](AGENTS.md): how this project is written.
-- [`DESIGN.md`](DESIGN.md): the architecture.
-- [`docs/hardware.md`](docs/hardware.md): the board: pin map, panel controller, flash
-  layout.
+- [Changelog](CHANGELOG.md): what each release changes.
+- [Notice](NOTICE.md): license, data sources, not affiliated with Habity.
+- [Development](docs/development.md): building, flashing, and how the project is made.

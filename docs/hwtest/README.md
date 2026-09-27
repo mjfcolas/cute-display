@@ -3,7 +3,7 @@
 A second image that checks the board and shows what each part says.
 
 ```sh
-just fw hwtest                  # build, flash into app1, watch the log
+just fw hwtest                  # build, flash, watch the log
 just preview-hwtest [pattern]   # render the report page (or the checkerboard) to a PNG
 ```
 
