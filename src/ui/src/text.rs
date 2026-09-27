@@ -48,12 +48,24 @@ pub(crate) fn write<D: DrawTarget<Color = BinaryColor>>(
     width: u32,
     font: &MonoFont<'_>,
 ) {
+    write_in(target, text, top_left, width, font, BinaryColor::On);
+}
+
+/// [`write`] in `color`: `Off` writes paper over ink.
+pub(crate) fn write_in<D: DrawTarget<Color = BinaryColor>>(
+    target: &mut D,
+    text: &str,
+    top_left: Point,
+    width: u32,
+    font: &MonoFont<'_>,
+    color: BinaryColor,
+) {
     let shown: String = text
         .chars()
         .take(chars_across(width, font))
         .map(|c| if u32::from(c) <= 0xff { c } else { '?' })
         .collect();
-    let _ = Text::with_baseline(&shown, top_left, MonoTextStyle::new(font, BinaryColor::On), Baseline::Top).draw(target);
+    let _ = Text::with_baseline(&shown, top_left, MonoTextStyle::new(font, color), Baseline::Top).draw(target);
 }
 
 #[cfg(test)]

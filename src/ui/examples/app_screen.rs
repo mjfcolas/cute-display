@@ -1,6 +1,8 @@
 //! Writes one screen of the app as a raw frame:
 //!
-//!   cargo run -p ui --example app_screen -- out.fb [system|alarm|alarm-days|weather|weather-week|radar]
+//!   cargo run -p ui --example app_screen -- out.fb <screen>
+//!
+//! The screens are those `just --list` names for `preview`.
 
 use std::time::Instant;
 
@@ -248,6 +250,13 @@ fn main() -> std::io::Result<()> {
         "weather-week" => {
             foreground.bring_to_front(App::Weather);
             shell.on_sample(&ControlsSample { detents: 1, ..Default::default() }, core::time::Duration::ZERO);
+        }
+        "system-settings" => {
+            foreground.open_system();
+            // From Weather down to the reading lamp, then two steps to 30 %.
+            shell.on_sample(&ControlsSample { detents: 3, ..Default::default() }, core::time::Duration::ZERO);
+            let press = ButtonSample { presses: 2, held: false };
+            shell.on_sample(&ControlsSample { long: press, ..Default::default() }, core::time::Duration::ZERO);
         }
         _ => foreground.open_system(),
     }

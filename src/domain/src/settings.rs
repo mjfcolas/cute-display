@@ -17,6 +17,9 @@ pub enum BacklightDuration {
 }
 
 impl BacklightDuration {
+    /// Every choice, in the order [`BacklightDuration::next`] steps through them.
+    pub const ALL: [Self; 4] = [Self::FiveSeconds, Self::TenSeconds, Self::ThirtySeconds, Self::Always];
+
     /// `None` for [`BacklightDuration::Always`].
     pub fn duration(self) -> Option<Duration> {
         match self {
@@ -29,12 +32,7 @@ impl BacklightDuration {
 
     /// The next choice, back to the first after the last.
     pub fn next(self) -> Self {
-        match self {
-            Self::FiveSeconds => Self::TenSeconds,
-            Self::TenSeconds => Self::ThirtySeconds,
-            Self::ThirtySeconds => Self::Always,
-            Self::Always => Self::FiveSeconds,
-        }
+        following(&Self::ALL, self)
     }
 }
 
@@ -50,6 +48,9 @@ pub enum ReadingLamp {
 }
 
 impl ReadingLamp {
+    /// Every choice, in the order [`ReadingLamp::next`] steps through them.
+    pub const ALL: [Self; 5] = [Self::Off, Self::TenPercent, Self::ThirtyPercent, Self::FiftyPercent, Self::Full];
+
     pub fn level(self) -> Level {
         Level::percent(match self {
             Self::Off => 0,
@@ -62,14 +63,14 @@ impl ReadingLamp {
 
     /// The next choice, back to off after full.
     pub fn next(self) -> Self {
-        match self {
-            Self::Off => Self::TenPercent,
-            Self::TenPercent => Self::ThirtyPercent,
-            Self::ThirtyPercent => Self::FiftyPercent,
-            Self::FiftyPercent => Self::Full,
-            Self::Full => Self::Off,
-        }
+        following(&Self::ALL, self)
     }
+}
+
+/// The choice after `choice` in `all`, back to the first after the last.
+fn following<T: Copy + PartialEq>(all: &[T], choice: T) -> T {
+    let after = all.iter().skip_while(|&&c| c != choice).nth(1);
+    after.or(all.first()).copied().unwrap_or(choice)
 }
 
 /// Every setting, as it is kept.
