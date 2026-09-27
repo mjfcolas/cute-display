@@ -2,6 +2,7 @@
 name = "drivers"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
 description = "The HAL implemented on the Habity board's chips. Chip-level logic that needs no ESP32 builds and tests on the host."
 
 [lints]

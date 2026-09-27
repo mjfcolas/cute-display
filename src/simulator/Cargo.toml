@@ -2,6 +2,7 @@
 name = "simulator"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
 description = "The app image on a computer: the panel in a window, the controls on the keyboard, the SD card in a directory, the Internet through the computer's."
 
 [lints]

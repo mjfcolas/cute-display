@@ -2,6 +2,7 @@
 name = "hwtest"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
 description = "The hardware test bench: exercises every part of the board through the HAL and reports on the panel."
 
 [lints]

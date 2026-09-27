@@ -30,6 +30,7 @@ just             # every recipe
 
 ## Further
 
+- [`NOTICE.md`](NOTICE.md): license, data sources, not affiliated with Habity.
 - [`AGENTS.md`](AGENTS.md): how this project is written.
 - [`DESIGN.md`](DESIGN.md): the architecture.
 - [`docs/hardware.md`](docs/hardware.md): the board: pin map, panel controller, flash
