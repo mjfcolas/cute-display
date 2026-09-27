@@ -14,7 +14,10 @@ use domain::radar::{AirTrafficSource, Aircraft, Airport, AirportSource, Altitude
 use domain::settings::{Settings, SettingsRecord, SettingsStore};
 use domain::fetch::Unavailable;
 use domain::place::{GeoPoint, Place, PlaceSource};
-use domain::weather::{DayForecast, Degrees, Forecast, ForecastSource, HourForecast, Sky, Today, Weather};
+use domain::weather::{
+    CompassPoint, DayForecast, Degrees, Forecast, ForecastSource, Hectopascals, HourForecast, KilometresPerHour, Millimetres, Percent, Sky, Today,
+    Weather, Wind,
+};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH};
@@ -88,25 +91,65 @@ struct Sample;
 
 impl ForecastSource for Sample {
     fn fetch(&mut self, _: &Place) -> Result<Forecast, Unavailable> {
-        let days = [(Sky::PartlyCloudy, 11, 21), (Sky::Rain, 12, 17), (Sky::Cloudy, 10, 19), (Sky::Clear, 10, 23), (Sky::Fog, 8, 16), (Sky::Snow, -3, 3), (Sky::Storm, 12, 18)];
+        let days = [
+            (Sky::PartlyCloudy, 11, 21, 20),
+            (Sky::Rain, 12, 17, 85),
+            (Sky::Cloudy, 10, 19, 30),
+            (Sky::Clear, 10, 23, 0),
+            (Sky::Fog, 8, 16, 10),
+            (Sky::Snow, -3, 3, 60),
+            (Sky::Storm, 12, 18, 75),
+        ];
         let first = Date::new(2026, 9, 25).ok_or_else(|| Unavailable("no such date".into()))?;
         let week = days
             .iter()
             .zip(0..)
-            .map(|(&(sky, low, high), n)| DayForecast { date: first.plus_days(n), sky, low: Degrees(low), high: Degrees(high) })
+            .map(|(&(sky, low, high, rain), n)| DayForecast {
+                date: first.plus_days(n),
+                sky,
+                low: Degrees(low),
+                high: Degrees(high),
+                rain_chance: Percent::new(rain),
+                sunrise: TimeOfDay::new(7, 40),
+                sunset: TimeOfDay::new(19, 43),
+            })
             .collect();
-        let hours = [(Sky::PartlyCloudy, 17), (Sky::Clear, 15), (Sky::Clear, 14), (Sky::Cloudy, 13), (Sky::Cloudy, 13), (Sky::Rain, 12), (Sky::Rain, 12), (Sky::Rain, 12), (Sky::Cloudy, 12)];
+        let hours = [
+            (Sky::PartlyCloudy, 17, 0, 0),
+            (Sky::Clear, 15, 0, 0),
+            (Sky::Clear, 14, 5, 0),
+            (Sky::Cloudy, 13, 10, 0),
+            (Sky::Cloudy, 13, 20, 1),
+            (Sky::Rain, 12, 60, 8),
+            (Sky::Rain, 12, 75, 26),
+            (Sky::Rain, 12, 70, 14),
+            (Sky::Cloudy, 12, 35, 3),
+            (Sky::Cloudy, 11, 15, 0),
+            (Sky::PartlyCloudy, 12, 5, 0),
+            (Sky::Clear, 14, 0, 0),
+            (Sky::Clear, 16, 0, 0),
+        ];
         let friday_at_nine = LocalTime { date: first, time_of_day: TimeOfDay::MIDNIGHT, second: 0 }.seconds_since_epoch() + 21 * 3600;
         let hours = hours
             .iter()
             .zip(0..)
-            .map(|(&(sky, temperature), n)| HourForecast {
+            .map(|(&(sky, temperature, rain, fallen), n)| HourForecast {
                 start: LocalTime::from_seconds_since_epoch(friday_at_nine + n * 3600),
                 sky,
                 temperature: Degrees(temperature),
+                rain_chance: Percent::new(rain),
+                precipitation: Some(Millimetres::from_tenths(fallen)),
             })
             .collect();
-        Ok(Forecast { today: Today { sky: Sky::PartlyCloudy, now: Degrees(19), low: Degrees(11), high: Degrees(21) }, hours, week })
+        let today = Today {
+            sky: Sky::PartlyCloudy,
+            now: Degrees(19),
+            feels_like: Degrees(17),
+            humidity: Percent::saturating(64),
+            pressure: Hectopascals(1016),
+            wind: Wind { speed: KilometresPerHour(12), from: CompassPoint::SouthWest },
+        };
+        Ok(Forecast { today, hours, week })
     }
 }
 
@@ -181,8 +224,8 @@ fn main() -> std::io::Result<()> {
     }
     let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
         Box::new(SystemScreen::new(foreground.clone(), settings)),
-        Box::new(AlarmScreen::new(alarm, clock, weather.clone())),
-        Box::new(WeatherScreen::new(weather)),
+        Box::new(AlarmScreen::new(alarm, clock.clone(), weather.clone())),
+        Box::new(WeatherScreen::new(weather, clock)),
         Box::new(RadarScreen::new(radar.clone())),
     ];
     let Some(mut shell) = Shell::new(foreground.clone(), screens) else {

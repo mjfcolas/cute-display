@@ -13,10 +13,11 @@ pub mod shell;
 mod big_digits;
 mod calendar_names;
 mod day_weather;
-mod degrees;
 mod radar_view;
 mod text;
 mod weather_icons;
+mod weather_units;
+mod wind_arrow;
 
 pub use app_screen::AppScreen;
 pub use shell::Shell;

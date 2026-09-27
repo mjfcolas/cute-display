@@ -13,6 +13,11 @@ pub(crate) fn chars_across(width: u32, font: &MonoFont<'_>) -> usize {
     (width / (font.character_size.width + font.character_spacing)) as usize
 }
 
+/// How wide `write` draws `text` when nothing is cut.
+pub(crate) fn width(text: &str, font: &MonoFont<'_>) -> u32 {
+    text.chars().count() as u32 * (font.character_size.width + font.character_spacing)
+}
+
 /// Words into lines of at most `max_chars`; a word longer than a line is split over
 /// several, since what is lost off its end may be the part that matters (a file name).
 pub(crate) fn wrap(text: &str, max_chars: usize) -> Vec<String> {
@@ -54,6 +59,19 @@ pub(crate) fn write<D: DrawTarget<Color = BinaryColor>>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_line_ends_at_its_width() {
+        use hal::display::Frame;
+
+        let line = "rain 85%";
+        let right = width(line, &LIST) as i32;
+        let mut frame = Frame::blank();
+        write(&mut frame, line, Point::zero(), right as u32, &LIST);
+        let height = LIST.character_size.height as i32;
+        assert!((0..height).all(|y| (right..right + 8).all(|x| !frame.is_ink(x, y))), "no ink past it");
+        assert!((0..height).any(|y| (right - 3..right).any(|x| frame.is_ink(x, y))), "ink just before it");
+    }
 
     #[test]
     fn words_wrap_into_lines_that_fit() {

@@ -6,7 +6,7 @@ use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 
-use crate::degrees::temperature;
+use crate::weather_units::temperature;
 use crate::text::{self, BODY, LIST};
 use crate::weather_icons;
 
@@ -87,6 +87,8 @@ mod tests {
                 start: LocalTime::from_seconds_since_epoch(start.seconds_since_epoch() + n * 3600),
                 sky: Sky::Storm,
                 temperature: Degrees(-10),
+                rain_chance: None,
+                precipitation: None,
             })
             .collect();
         let area = Rectangle::new(AT, Size::new(HOURS_WIDTH, HOURS_HEIGHT));
@@ -99,7 +101,15 @@ mod tests {
 
     #[test]
     fn the_range_ends_at_its_right_edge() {
-        let day = DayForecast { date: Date::new(2026, 9, 26).unwrap(), sky: Sky::Rain, low: Degrees(-12), high: Degrees(-3) };
+        let day = DayForecast {
+            date: Date::new(2026, 9, 26).unwrap(),
+            sky: Sky::Rain,
+            low: Degrees(-12),
+            high: Degrees(-3),
+            rain_chance: None,
+            sunrise: None,
+            sunset: None,
+        };
         let right = AT.x + range_width(&day) as i32;
         let mut frame = Frame::blank();
         draw_range(&mut frame, &day, Point::new(right, AT.y));

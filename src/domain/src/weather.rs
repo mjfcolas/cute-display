@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use crate::calendar::Date;
 use crate::fetch::{FetchStatus, Unavailable};
 use crate::place::{Place, PlaceSource};
-use crate::time::LocalTime;
+use crate::time::{LocalTime, TimeOfDay};
 
 pub const REFRESH_EVERY: Duration = Duration::from_secs(60 * 60);
 pub const RETRY_AFTER: Duration = Duration::from_secs(10 * 60);
@@ -29,12 +29,95 @@ pub enum Sky {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Degrees(pub i16);
 
+/// From 0 to 100.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Percent(u8);
+
+impl Percent {
+    pub const fn new(percent: u8) -> Option<Self> {
+        if percent <= 100 { Some(Self(percent)) } else { None }
+    }
+
+    pub fn saturating(percent: u8) -> Self {
+        Self(percent.min(100))
+    }
+
+    pub fn value(self) -> u8 {
+        self.0
+    }
+}
+
+/// A depth of water, rain or melted snow, to a tenth of a millimetre.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Millimetres {
+    tenths: u16,
+}
+
+impl Millimetres {
+    pub const fn from_tenths(tenths: u16) -> Self {
+        Self { tenths }
+    }
+
+    pub fn tenths(self) -> u16 {
+        self.tenths
+    }
+}
+
+/// Air pressure, brought down to sea level so that places compare.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Hectopascals(pub u16);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct KilometresPerHour(pub u16);
+
+/// One of eight points of the compass.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CompassPoint {
+    North,
+    NorthEast,
+    East,
+    SouthEast,
+    South,
+    SouthWest,
+    West,
+    NorthWest,
+}
+
+impl CompassPoint {
+    const CLOCKWISE: [Self; 8] = [
+        Self::North,
+        Self::NorthEast,
+        Self::East,
+        Self::SouthEast,
+        Self::South,
+        Self::SouthWest,
+        Self::West,
+        Self::NorthWest,
+    ];
+
+    /// Clockwise from north.
+    pub fn from_degrees(degrees: u16) -> Self {
+        let point = (u32::from(degrees) * 2 + 45) / 90 % 8;
+        Self::CLOCKWISE.get(point as usize).copied().unwrap_or(Self::North)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Wind {
+    pub speed: KilometresPerHour,
+    /// Where it blows from.
+    pub from: CompassPoint,
+}
+
+/// The weather at the moment of the fetch; the day's range is in the week.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Today {
     pub sky: Sky,
     pub now: Degrees,
-    pub low: Degrees,
-    pub high: Degrees,
+    pub feels_like: Degrees,
+    pub humidity: Percent,
+    pub pressure: Hectopascals,
+    pub wind: Wind,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -43,6 +126,11 @@ pub struct DayForecast {
     pub sky: Sky,
     pub low: Degrees,
     pub high: Degrees,
+    /// The likeliest hour's.
+    pub rain_chance: Option<Percent>,
+    /// None where the sun does not rise or set that day.
+    pub sunrise: Option<TimeOfDay>,
+    pub sunset: Option<TimeOfDay>,
 }
 
 /// The place's time zone is taken to be the clock's.
@@ -51,6 +139,9 @@ pub struct HourForecast {
     pub start: LocalTime,
     pub sky: Sky,
     pub temperature: Degrees,
+    pub rain_chance: Option<Percent>,
+    /// What falls during the hour.
+    pub precipitation: Option<Millimetres>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -231,7 +322,14 @@ mod tests {
     }
 
     fn forecast(now: i16) -> Forecast {
-        let today = Today { sky: Sky::Clear, now: Degrees(now), low: Degrees(10), high: Degrees(20) };
+        let today = Today {
+            sky: Sky::Clear,
+            now: Degrees(now),
+            feels_like: Degrees(now),
+            humidity: Percent(60),
+            pressure: Hectopascals(1013),
+            wind: Wind { speed: KilometresPerHour(10), from: CompassPoint::West },
+        };
         Forecast { today, hours: vec![], week: vec![] }
     }
 
@@ -298,9 +396,31 @@ mod tests {
     }
 
     #[test]
+    fn a_percentage_stops_at_a_hundred() {
+        assert_eq!(Percent::new(100).map(Percent::value), Some(100));
+        assert_eq!(Percent::new(101), None);
+        assert_eq!(Percent::saturating(250), Percent::new(100).unwrap());
+    }
+
+    #[test]
+    fn a_wind_direction_goes_to_the_nearest_point() {
+        let points = [0, 22, 23, 90, 180, 214, 292, 337, 338, 359, 360].map(CompassPoint::from_degrees);
+        use CompassPoint::*;
+        assert_eq!(points, [North, North, NorthEast, East, South, SouthWest, West, NorthWest, North, North, North]);
+    }
+
+    #[test]
     fn a_day_is_found_by_its_date() {
         let saturday = Date::new(2026, 9, 26).unwrap();
-        let week = (0..7).map(|n| DayForecast { date: saturday.plus_days(n), sky: Sky::Clear, low: Degrees(n as i16), high: Degrees(20) }).collect();
+        let week = (0..7).map(|n| DayForecast {
+                date: saturday.plus_days(n),
+                sky: Sky::Clear,
+                low: Degrees(n as i16),
+                high: Degrees(20),
+                rain_chance: None,
+                sunrise: None,
+                sunset: None,
+            }).collect();
         let forecast = Forecast { week, ..forecast(15) };
         assert_eq!(forecast.day(saturday.plus_days(2)).map(|day| day.low), Some(Degrees(2)));
         assert_eq!(forecast.day(saturday.plus_days(-1)), None);
@@ -313,7 +433,7 @@ mod tests {
         let at = |date: Date, hour: u8, minute: u8| LocalTime { date, time_of_day: TimeOfDay::new(hour, minute).unwrap(), second: 0 };
         let hours = [(saturday, 22), (saturday, 23), (saturday.plus_days(1), 0), (saturday.plus_days(1), 1)]
             .iter()
-            .map(|&(date, hour)| HourForecast { start: at(date, hour, 0), sky: Sky::Clear, temperature: Degrees(hour.into()) })
+            .map(|&(date, hour)| HourForecast { start: at(date, hour, 0), sky: Sky::Clear, temperature: Degrees(hour.into()), rain_chance: None, precipitation: None })
             .collect();
         let forecast = Forecast { hours, ..forecast(15) };
         let from = |now: LocalTime| forecast.hours_from(now).map(|hour| hour.temperature.0).collect::<Vec<_>>();

@@ -182,10 +182,10 @@ impl AlarmScreen {
         }
         let date = now.map_or_else(|| "The time is not known yet".into(), |now| long_date(&now));
         text::write(target, &date, area.top_left, date_width, &BODY);
-        big_digits::draw_time(target, now.map(|now| now.time_of_day), Point::new(area.top_left.x, digits_top));
+        big_digits::CLOCK.draw_time(target, now.map(|now| now.time_of_day), Point::new(area.top_left.x, digits_top));
 
-        let line_top = digits_top + big_digits::HEIGHT as i32 + 2 * GAP;
-        text::write(target, &self.alarm_line(now), Point::new(area.top_left.x, line_top), big_digits::TIME_WIDTH, &BODY);
+        let line_top = digits_top + big_digits::CLOCK.height as i32 + 2 * GAP;
+        text::write(target, &self.alarm_line(now), Point::new(area.top_left.x, line_top), big_digits::CLOCK.time_width(), &BODY);
         let hint = match self.alarm.state() {
             AlarmState::Ringing => format!("long: snooze {} min   hold yellow and long: stop", SNOOZE.as_secs() / 60),
             AlarmState::Snoozed { .. } => "hold yellow and long: stop".into(),
@@ -250,7 +250,7 @@ impl AlarmScreen {
 /// Centred in the room right of the time, between the date and the hint.
 fn hours_column(area: Rectangle) -> Rectangle {
     let right = area.top_left.x + area.size.width as i32;
-    let room_beside_time = right - area.top_left.x - big_digits::TIME_WIDTH as i32;
+    let room_beside_time = right - area.top_left.x - big_digits::CLOCK.time_width() as i32;
     let left = right - (room_beside_time + day_weather::HOURS_WIDTH as i32) / 2;
     let below_date = area.top_left.y + BODY.character_size.height as i32;
     let top = below_date + (hint_top(area) - below_date - day_weather::HOURS_HEIGHT as i32) / 2;
@@ -313,7 +313,10 @@ mod tests {
     use domain::fetch::Unavailable;
     use domain::place::{GeoPoint, Place, PlaceSource};
     use domain::time::UtcTime;
-    use domain::weather::{DayForecast, Degrees, Forecast, ForecastSource, HourForecast, Sky, Today};
+    use domain::weather::{
+        CompassPoint, DayForecast, Degrees, Forecast, ForecastSource, Hectopascals, HourForecast, KilometresPerHour, Millimetres, Percent, Sky,
+        Today, Wind,
+    };
     use domain::time_zone::TimeZone;
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
 
@@ -373,10 +376,32 @@ mod tests {
             let saturday = Date::new(2026, 9, 26).unwrap();
             let six = LocalTime { date: saturday, time_of_day: TimeOfDay::new(6, 0).unwrap(), second: 0 }.seconds_since_epoch();
             let hours = (0..24)
-                .map(|n| HourForecast { start: LocalTime::from_seconds_since_epoch(six + n * 3600), sky: Sky::Rain, temperature: Degrees(12) })
+                .map(|n| HourForecast {
+                    start: LocalTime::from_seconds_since_epoch(six + n * 3600),
+                    sky: Sky::Rain,
+                    temperature: Degrees(12),
+                    rain_chance: Percent::new(80),
+                    precipitation: Some(Millimetres::from_tenths(12)),
+                })
                 .collect();
-            let week = vec![DayForecast { date: saturday, sky: Sky::Rain, low: Degrees(9), high: Degrees(14) }];
-            Ok(Forecast { today: Today { sky: Sky::Rain, now: Degrees(11), low: Degrees(9), high: Degrees(14) }, hours, week })
+            let week = vec![DayForecast {
+                date: saturday,
+                sky: Sky::Rain,
+                low: Degrees(9),
+                high: Degrees(14),
+                rain_chance: Percent::new(90),
+                sunrise: TimeOfDay::new(7, 41),
+                sunset: TimeOfDay::new(19, 41),
+            }];
+            let today = Today {
+                sky: Sky::Rain,
+                now: Degrees(11),
+                feels_like: Degrees(9),
+                humidity: Percent::saturating(92),
+                pressure: Hectopascals(1004),
+                wind: Wind { speed: KilometresPerHour(24), from: CompassPoint::West },
+            };
+            Ok(Forecast { today, hours, week })
         }
     }
 
