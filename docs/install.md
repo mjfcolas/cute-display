@@ -9,8 +9,10 @@ takes one command. Installing is at your own risk and may void the warranty
 - The clock.
 - A computer connected to the Internet: tried on Linux; Windows 10 or later and macOS
   are expected to work.
+- A terminal to type the commands in: on Windows, the **Command Prompt** (`cmd`), not
+  PowerShell, where the setup assistant does not show up.
 - [uv](https://docs.astral.sh/uv/getting-started/installation/), which runs the installer:
-  - Windows, in PowerShell: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+  - Windows, in the Command Prompt: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
   - macOS and Linux, in a terminal: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - On Linux, the right to open the clock's port: join the group that owns it, then log in
   again (`sudo usermod -aG dialout $USER`; `uucp` on Arch).

@@ -20,6 +20,7 @@ what `cute-display check` prints. Never attach a backup: it holds your Wi-Fi pas
 | Cannot install: the partition table is not the one this tool knows | This clock is not like the ones Cute Display was made on. Nothing was written. | Open an issue. |
 | Cannot install: secure boot or flash encryption is on | The clock only starts firmware signed by Habity. Nothing was written. | Nothing: Cute Display cannot run on it. |
 | Cannot boot cute-display: no cute-display to start here | Cute Display is not installed, or Habity's firmware updated itself over it. | `cute-display install`. |
+| The setup assistant does not show up (Windows) | It was run from PowerShell, where its screens do not start. | Run it from the Command Prompt (`cmd`). |
 
 ## The clock
 
