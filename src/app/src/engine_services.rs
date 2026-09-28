@@ -99,8 +99,8 @@ mod tests {
     struct Card(Arc<Mutex<BTreeMap<String, Vec<u8>>>>);
 
     impl FileStorage for Card {
-        fn entries(&self, _: &str) -> Result<Vec<Entry>, Fault> {
-            Ok(vec![])
+        fn entries(&self, _: &str) -> Result<Option<Vec<Entry>>, Fault> {
+            Ok(None)
         }
         fn capacity_bytes(&self) -> Result<u64, Fault> {
             Ok(0)

@@ -16,6 +16,7 @@ use drivers::uc8253::Uc8253;
 use drivers::udp_socket::StdUdpClient;
 use drivers::usb_console;
 use esp_idf_svc::hal::delay::FreeRtos;
+use esp_idf_svc::hal::task::thread::{MallocCap, ThreadSpawnConfiguration};
 use hal::Fault;
 use maintenance::MaintenanceConsole;
 
@@ -24,6 +25,10 @@ use firmware::board::Board;
 firmware::image_description!();
 
 const BUILD: &str = concat!("built ", env!("BUILD_TIME"));
+/// An MP3 decoded as it plays goes 7 KB deep on x86-64 in release, 21 KB in debug; not
+/// measured on the Xtensa, hence the margin. In PSRAM: internal RAM has no room left for it
+/// once the Wi-Fi is up. The thread neither writes the flash nor runs while its cache is off.
+const SPEAKER_STACK_BYTES: usize = 32 * 1024;
 
 enum Habity {}
 
@@ -41,6 +46,18 @@ impl Hardware for Habity {
     type System = EspSystem;
 
     const NETWORK_STACK_BYTES: usize = 24 * 1024;
+
+    fn spawn_speaker(play: impl FnOnce() + Send + 'static) -> Result<(), Fault> {
+        let in_psram = ThreadSpawnConfiguration {
+            stack_size: SPEAKER_STACK_BYTES,
+            stack_alloc_caps: MallocCap::Spiram | MallocCap::Cap8bit,
+            ..Default::default()
+        };
+        in_psram.set().map_err(|e| Fault::new(format!("speaker thread: {e}")))?;
+        let spawned = thread::Builder::new().name("speaker".into()).stack_size(SPEAKER_STACK_BYTES).spawn(play);
+        ThreadSpawnConfiguration::default().set().map_err(|e| Fault::new(format!("speaker thread: {e}")))?;
+        spawned.map(drop).map_err(Fault::new)
+    }
 }
 
 fn main() -> Result<(), Fault> {

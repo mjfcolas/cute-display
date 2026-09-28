@@ -3,7 +3,7 @@ use std::io::{self, ErrorKind, Read, Seek, SeekFrom};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
-use hal::storage::{Entry, FileStorage};
+use hal::storage::{CopyOutcome, Entry, FileStorage};
 use hal::Fault;
 
 #[derive(Clone)]
@@ -41,9 +41,11 @@ fn absent_is_none<T>(result: io::Result<T>) -> io::Result<Option<T>> {
 }
 
 impl FileStorage for DirectoryCard {
-    fn entries(&self, dir: &str) -> Result<Vec<Entry>, Fault> {
-        let mut entries = fs::read_dir(self.locate(dir)?)
-            .map_err(fault(dir))?
+    fn entries(&self, dir: &str) -> Result<Option<Vec<Entry>>, Fault> {
+        let Some(listing) = absent_is_none(fs::read_dir(self.locate(dir)?)).map_err(fault(dir))? else {
+            return Ok(None);
+        };
+        let mut entries = listing
             .map(|entry| {
                 let entry = entry.map_err(fault(dir))?;
                 let metadata = entry.metadata().map_err(fault(dir))?;
@@ -55,7 +57,7 @@ impl FileStorage for DirectoryCard {
             })
             .collect::<Result<Vec<_>, Fault>>()?;
         entries.sort_by(|a, b| a.name.cmp(&b.name));
-        Ok(entries)
+        Ok(Some(entries))
     }
 
     fn capacity_bytes(&self) -> Result<u64, Fault> {
@@ -85,6 +87,17 @@ impl FileStorage for DirectoryCard {
         fs::write(file, contents).map_err(fault(path))
     }
 
+    fn copy(&self, from: &str, to: &str) -> Result<CopyOutcome, Fault> {
+        let (source, destination) = (self.locate(from)?, self.locate(to)?);
+        if !source.is_file() {
+            return Ok(CopyOutcome::NoSource);
+        }
+        if let Some(dir) = destination.parent() {
+            fs::create_dir_all(dir).map_err(fault(to))?;
+        }
+        fs::copy(source, destination).map(|_| CopyOutcome::Copied).map_err(fault(to))
+    }
+
     fn remove(&self, path: &str) -> Result<(), Fault> {
         absent_is_none(fs::remove_file(self.locate(path)?)).map(|_| ()).map_err(fault(path))
     }
@@ -107,7 +120,8 @@ mod tests {
         assert_eq!(card.read("cute-display/weather.conf").unwrap().as_deref(), Some(&b"place = Paris\n"[..]));
         assert_eq!(card.read_range("cute-display/weather.conf", 8, 3).unwrap().as_deref(), Some(&b"Par"[..]));
         let entries = card.entries("cute-display").unwrap();
-        assert_eq!(entries, [Entry { name: "weather.conf".into(), size_bytes: 14, is_dir: false }]);
+        assert_eq!(entries, Some(vec![Entry { name: "weather.conf".into(), size_bytes: 14, is_dir: false }]));
+        assert_eq!(card.entries("sounds").unwrap(), None);
     }
 
     #[test]
@@ -116,6 +130,15 @@ mod tests {
         assert_eq!(card.read("cute-display/none.conf").unwrap(), None);
         assert_eq!(card.read_range("cute-display/none.conf", 0, 10).unwrap(), None);
         assert!(card.remove("cute-display/none.conf").is_ok());
+    }
+
+    #[test]
+    fn a_file_is_copied_under_new_directories() {
+        let card = blank_card("copy");
+        card.write("sounds/alarm/Zen.mp3", b"ID3").unwrap();
+        assert_eq!(card.copy("sounds/alarm/Zen.mp3", "cute-display/apps/alarm/ringtones/Zen.mp3").unwrap(), CopyOutcome::Copied);
+        assert_eq!(card.read("cute-display/apps/alarm/ringtones/Zen.mp3").unwrap().as_deref(), Some(&b"ID3"[..]));
+        assert_eq!(card.copy("sounds/alarm/None.mp3", "cute-display/None.mp3").unwrap(), CopyOutcome::NoSource);
     }
 
     #[test]

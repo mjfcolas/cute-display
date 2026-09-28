@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use hal::storage::FileStorage;
+use hal::storage::{CopyOutcome, FileStorage};
 
 use crate::path::SdPath;
 use crate::protocol::{self, Request};
@@ -55,11 +55,12 @@ impl<S: FileStorage> MaintenanceConsole<S> {
     fn serve(&mut self, id: &str, request: Request) -> Vec<String> {
         match request {
             Request::List(dir) => match self.storage.entries(dir.as_str()) {
-                Ok(entries) => entries
+                Ok(Some(entries)) => entries
                     .iter()
                     .map(|e| protocol::entry(id, e))
                     .chain([protocol::ok(id, "")])
                     .collect(),
+                Ok(None) => vec![protocol::error(id, "no such directory")],
                 Err(fault) => vec![protocol::error(id, fault.reason())],
             },
             Request::Get { path, offset } => match self.storage.read_range(path.as_str(), offset, GET_RANGE_BYTES) {
@@ -87,6 +88,16 @@ impl<S: FileStorage> MaintenanceConsole<S> {
                 }
                 match self.storage.remove(path.as_str()) {
                     Ok(()) => vec![protocol::ok(id, "")],
+                    Err(fault) => vec![protocol::error(id, fault.reason())],
+                }
+            }
+            Request::Copy { from, to } => {
+                if !to.is_writable() {
+                    return vec![protocol::error(id, "only cute-display/ may be written")];
+                }
+                match self.storage.copy(from.as_str(), to.as_str()) {
+                    Ok(CopyOutcome::Copied) => vec![protocol::ok(id, "")],
+                    Ok(CopyOutcome::NoSource) => vec![protocol::error(id, "no such file")],
                     Err(fault) => vec![protocol::error(id, fault.reason())],
                 }
             }
@@ -139,9 +150,9 @@ mod tests {
     struct FakeCard(Arc<Mutex<BTreeMap<String, Vec<u8>>>>);
 
     impl FileStorage for FakeCard {
-        fn entries(&self, dir: &str) -> Result<Vec<Entry>, Fault> {
+        fn entries(&self, dir: &str) -> Result<Option<Vec<Entry>>, Fault> {
             let prefix = if dir.is_empty() { String::new() } else { format!("{dir}/") };
-            Ok(self
+            let entries: Vec<Entry> = self
                 .0
                 .lock()
                 .unwrap()
@@ -150,7 +161,8 @@ mod tests {
                     let name = path.strip_prefix(&prefix)?;
                     Some(Entry { name: name.into(), size_bytes: contents.len() as u64, is_dir: false })
                 })
-                .collect())
+                .collect();
+            Ok((dir.is_empty() || !entries.is_empty()).then_some(entries))
         }
         fn capacity_bytes(&self) -> Result<u64, Fault> {
             Ok(0)
@@ -261,6 +273,31 @@ mod tests {
         assert_eq!(replies[0], "@@ 1 entry f 4 alarm.wav");
         assert_eq!(replies[1], "@@ 1 ok");
         assert_eq!(decode_get(&replies, "2"), b"RIFF");
+    }
+
+    #[test]
+    fn a_directory_that_is_not_there_is_an_error() {
+        let mut console = MaintenanceConsole::new(FakeCard::default());
+        assert_eq!(talk(&mut console, &["@@ 1 ls sounds".into()]), ["@@ 1 error no such directory"]);
+    }
+
+    #[test]
+    fn a_file_is_copied_on_the_card_into_the_devices_directory_only() {
+        let card = FakeCard::with("sounds/alarm/Zen.mp3", b"ID3");
+        let mut console = MaintenanceConsole::new(card.clone());
+        let replies = talk(
+            &mut console,
+            &[
+                "@@ 1 cp sounds/alarm/Zen.mp3\tcute-display/apps/alarm/ringtones/Zen.mp3".into(),
+                "@@ 2 cp sounds/alarm/Zen.mp3\tsounds/Zen.mp3".into(),
+                "@@ 3 cp sounds/alarm/None.mp3\tcute-display/None.mp3".into(),
+            ],
+        );
+        assert_eq!(replies[0], "@@ 1 ok");
+        assert_eq!(card.file("cute-display/apps/alarm/ringtones/Zen.mp3").as_deref(), Some(b"ID3".as_slice()));
+        assert!(replies[1].starts_with("@@ 2 error"));
+        assert_eq!(card.file("sounds/Zen.mp3"), None);
+        assert_eq!(replies[2], "@@ 3 error no such file");
     }
 
     #[test]

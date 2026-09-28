@@ -6,7 +6,7 @@
 
 use std::time::Instant;
 
-use alarm::{AlarmClock, AlarmSchedule, AlarmScheduleStore, AlarmScreen, Ringer, Volume};
+use alarm::{AlarmClock, AlarmScreen, AlarmSettings, AlarmSettingsStore, Ringer, Ringtone, Volume};
 use domain::apps::{AppId, Foreground};
 use domain::calendar::{Date, Weekday};
 use domain::clock::{Clock, TimeKeeper, TimeSource, TimeZoneSource};
@@ -59,15 +59,18 @@ impl TimeZoneSource for FridayEvening {
     }
 }
 
-impl AlarmScheduleStore for Nowhere {
-    fn load(&mut self) -> Option<AlarmSchedule> {
+impl AlarmSettingsStore for Nowhere {
+    fn load(&mut self) -> Option<AlarmSettings> {
         None
     }
-    fn save(&mut self, _: &AlarmSchedule) {}
+    fn save(&mut self, _: &AlarmSettings) {}
 }
 
 impl Ringer for Nowhere {
-    fn ring(&mut self, _: Volume) {}
+    fn recordings(&self) -> Vec<String> {
+        Vec::new()
+    }
+    fn ring(&mut self, _: &Ringtone, _: Volume) {}
     fn silence(&mut self) {}
 }
 
@@ -77,6 +80,7 @@ fn alarm_clock(foreground: &Foreground) -> AlarmClock {
         alarm.set_time_on(day, TimeOfDay::new(7, 0));
     }
     alarm.set_time_on(Weekday::Saturday, TimeOfDay::new(9, 30));
+    alarm.set_ringtone(Ringtone::Recorded("Singing Bowl.mp3".into()));
     alarm.switch_on();
     alarm
 }
@@ -238,7 +242,7 @@ fn main() -> std::io::Result<()> {
 
     match screen {
         "alarm" => foreground.bring_to_front(alarm::ID),
-        "alarm-days" => {
+        "alarm-settings" => {
             foreground.bring_to_front(alarm::ID);
             let press = ButtonSample { presses: 1, held: false };
             shell.on_sample(&ControlsSample { long: press, ..Default::default() }, core::time::Duration::ZERO);

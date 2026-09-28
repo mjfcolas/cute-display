@@ -46,6 +46,10 @@ impl Hardware for Computer {
 
     /// Rust's own default: rustls, unoptimised, needs far more than the ESP32's TLS.
     const NETWORK_STACK_BYTES: usize = 2 * 1024 * 1024;
+
+    fn spawn_speaker(play: impl FnOnce() + Send + 'static) -> Result<(), Fault> {
+        thread::Builder::new().name("speaker".into()).spawn(play).map(drop).map_err(Fault::new)
+    }
 }
 
 /// The window has the main thread: some systems deliver its events on no other.

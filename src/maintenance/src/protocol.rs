@@ -15,9 +15,11 @@ pub enum Request {
     Data(Vec<u8>),
     End,
     Remove(SdPath),
+    Copy { from: SdPath, to: SdPath },
 }
 
 /// A path comes last and runs to the end of the line, since names on the card have spaces.
+/// The two paths of a copy are apart by a tab, which no name on a FAT card holds.
 pub fn parse(line: &str) -> Option<(String, Result<Request, String>)> {
     let rest = line.trim_end_matches(['\r', '\n']).strip_prefix(PREFIX)?.strip_prefix(' ')?;
     let (id, rest) = first_word(rest);
@@ -46,6 +48,10 @@ pub fn parse(line: &str) -> Option<(String, Result<Request, String>)> {
         }
         "data" => STANDARD.decode(rest).map(Request::Data).map_err(|e| format!("data: {e}")),
         "end" => Ok(Request::End),
+        "cp" => match rest.split_once('\t') {
+            Some((from, to)) => path(from).and_then(|from| Ok(Request::Copy { from, to: path(to)? })),
+            None => Err("cp: the two paths are apart by a tab".to_owned()),
+        },
         other => Err(format!("unknown request '{other}'")),
     };
     Some((id.to_owned(), request))
@@ -117,8 +123,20 @@ mod tests {
     }
 
     #[test]
+    fn a_copy_names_both_paths_apart_by_a_tab() {
+        let from = SdPath::parse("sounds/alarm/Lost Ark.mp3").unwrap();
+        let to = SdPath::parse("cute-display/apps/alarm/ringtones/Lost Ark.mp3").unwrap();
+        assert_eq!(
+            parse("@@ 6 cp sounds/alarm/Lost Ark.mp3\tcute-display/apps/alarm/ringtones/Lost Ark.mp3"),
+            Some(("6".into(), Ok(Request::Copy { from, to })))
+        );
+    }
+
+    #[test]
     fn a_bad_request_is_an_error_for_its_id() {
-        for bad in ["@@ 4 frobnicate", "@@ 4 get 0 ../x", "@@ 4 get x", "@@ 4 put nope 1 cute-display/a", "@@ 4 data !!!"] {
+        let bad_requests =
+            ["@@ 4 frobnicate", "@@ 4 get 0 ../x", "@@ 4 get x", "@@ 4 put nope 1 cute-display/a", "@@ 4 data !!!", "@@ 4 cp a b", "@@ 4 cp a\t../b"];
+        for bad in bad_requests {
             assert!(matches!(parse(bad), Some((id, Err(_))) if id == "4"), "{bad}");
         }
     }

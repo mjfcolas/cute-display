@@ -6,13 +6,18 @@ when the device starts.
 
 - **Yellow**: alarm on or off, the wake-up times kept.
 - **Wheel**: the weather's later hours, and back.
-- **Long button**: the wake-up times, starting on today.
+- **Long button**: the settings, a wake-up time per day and the ringtone, starting on
+  today.
   - **Wheel**: choose a day; **long button**: set its hour, then its minutes.
   - Turning the hour past 23 or below 0 takes the alarm off that day.
-  - **Yellow**: while setting a day, puts its time back; otherwise, back to the clock.
+  - **Wheel** past Sunday: the ringtone; **long button**, then the **wheel** goes round
+    the ringtones, each playing softly; **long button**: done.
+  - **Yellow**: while setting a day or the ringtone, puts it back; otherwise, back to the
+    clock.
 - Half an hour before, the reading lamp and the front light rise like the sun.
 - Then it rings, softly at first and louder over a minute, and comes to the front
   whatever app was there.
+  - A ringtone it cannot play rings as the chime.
   - **Long button**: snooze for 9 minutes.
   - **Yellow and long button held together for a second**: stop until the next alarm,
     ringing or snoozing.
@@ -34,7 +39,13 @@ when the device starts.
   [weather app](../weather/README.md)); the battery-backed clock keeps it meanwhile.
 - In the device's time zone (see the [system app](../system/README.md#where-the-device-is)).
 
+## Ringtones
+
+- The chime, always there, and the MP3 files in `cute-display/apps/alarm/ringtones/`,
+  named by their file names without `.mp3`.
+- The [setup](../../install.md#run-the-setup) offers to copy Habity's own there.
+
 ## Configuration
 
-- `cute-display/apps/alarm/alarm.conf`: the wake-up times, written by the device. Without a card,
-  they last until the power goes.
+- `cute-display/apps/alarm/alarm.conf`: the wake-up times and the ringtone, written by the
+  device. Without a card, they last until the power goes.

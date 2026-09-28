@@ -3,7 +3,7 @@ name = "alarm"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "The alarm clock app: the time, the weather beside it, a wake-up time for each day, a sunrise and a ring."
+description = "The alarm clock app: the time, the weather beside it, a wake-up time for each day, a sunrise and a ringtone."
 
 [lints]
 workspace = true
@@ -15,6 +15,7 @@ ui = { path = "../../engine/ui" }
 forecast = { path = "../../libs/forecast" }
 embedded-graphics = "0.8"
 log = "0.4"
+mbop3 = { version = "0.1", features = ["alloc"] }
 
 [dev-dependencies]
 hal = { path = "../../engine/hal" }

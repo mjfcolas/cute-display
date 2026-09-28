@@ -80,10 +80,14 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
         self.screens.iter_mut().find(|hosted| hosted.app == app)
     }
 
-    /// Tells a screen it came to the front before it is given anything else.
+    /// Tells a screen it came to the front before it is given anything else, and the one
+    /// that was there that it left.
     fn enter_front(&mut self) -> AppId {
         let front = self.foreground.app();
         if self.entered != Some(front) {
+            if let Some(hosted) = self.entered.and_then(|left| self.hosted_mut(left)) {
+                hosted.screen.left();
+            }
             if let Some(hosted) = self.hosted_mut(front) {
                 hosted.screen.entered();
             }
@@ -113,17 +117,24 @@ mod tests {
     struct Probe {
         app: AppId,
         inputs: Rc<RefCell<Vec<Input>>>,
+        visits: Rc<RefCell<Vec<&'static str>>>,
         text: Rc<RefCell<String>>,
         version: Rc<RefCell<u64>>,
     }
 
     impl Probe {
         fn new(app: AppId) -> Self {
-            Self { app, inputs: Rc::default(), text: Rc::new(RefCell::new("probe".into())), version: Rc::default() }
+            Self { app, inputs: Rc::default(), visits: Rc::default(), text: Rc::new(RefCell::new("probe".into())), version: Rc::default() }
         }
     }
 
     impl AppScreen<Frame> for Probe {
+        fn entered(&mut self) {
+            self.visits.borrow_mut().push("entered");
+        }
+        fn left(&mut self) {
+            self.visits.borrow_mut().push("left");
+        }
         fn version(&self) -> u64 {
             *self.version.borrow()
         }
@@ -215,6 +226,17 @@ mod tests {
         click_wheel(&mut shell, Duration::ZERO);
         shell.on_sample(&press(Button::Long), Duration::from_secs(10));
         assert_eq!(foreground.app(), RADAR, "the dot started on Radar, where it was opened from");
+    }
+
+    #[test]
+    fn a_screen_is_told_it_left_the_front_when_another_comes() {
+        let foreground = Foreground::new(WEATHER);
+        let (mut shell, weather, radar) = shell(&foreground);
+        render(&mut shell);
+        foreground.bring_to_front(RADAR);
+        render(&mut shell);
+        assert_eq!(*weather.visits.borrow(), ["entered", "left"]);
+        assert_eq!(*radar.visits.borrow(), ["entered"]);
     }
 
     #[test]

@@ -1,2 +1,6 @@
 pub mod alarm_file;
-pub mod ringtone;
+pub mod chime;
+#[cfg(test)]
+pub mod memory_files;
+pub mod recording;
+pub mod sound_ringer;

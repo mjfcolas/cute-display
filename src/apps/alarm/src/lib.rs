@@ -13,11 +13,13 @@ use embedded_graphics::prelude::*;
 use forecast::Weather;
 use ::ui::{Installable, InstalledApp};
 
-pub use crate::domain::alarm_clock::{AlarmClock, AlarmSchedule, AlarmScheduleStore, AlarmState, Ringer, Volume, RING_FOR, SNOOZE, SUNRISE};
+pub use crate::domain::alarm_clock::{
+    AlarmClock, AlarmSchedule, AlarmSettings, AlarmSettingsStore, AlarmState, Ringer, Ringtone, Volume, RING_FOR, SNOOZE, SUNRISE,
+};
 pub use crate::ui::screen::AlarmScreen;
 
 use crate::infrastructure::alarm_file::AlarmFile;
-use crate::infrastructure::ringtone::SoundRinger;
+use crate::infrastructure::sound_ringer::SoundRinger;
 
 pub const ID: AppId = AppId::new("alarm");
 
@@ -27,7 +29,8 @@ pub const fn app<D: DrawTarget<Color = BinaryColor>>() -> Installable<D> {
 
 fn install<D: DrawTarget<Color = BinaryColor>>(services: &dyn Services) -> InstalledApp<D> {
     let store = AlarmFile::new(services.files());
-    let alarm = AlarmClock::new(Box::new(store), Box::new(SoundRinger::new(services.sound())), services.foreground());
+    let ringer = SoundRinger::new(services.sound(), services.files());
+    let alarm = AlarmClock::new(Box::new(store), Box::new(ringer), services.foreground());
     let weather = Weather::from_open_meteo(services);
     let screen = AlarmScreen::new(alarm.clone(), services.clock(), weather.clone());
     InstalledApp { service: Arc::new(AlarmWithForecast { alarm, weather }), screen: Box::new(screen) }

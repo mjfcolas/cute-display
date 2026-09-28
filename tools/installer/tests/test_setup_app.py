@@ -16,6 +16,7 @@ from cute_display_installer.setup.screens.done import DoneScreen
 from cute_display_installer.setup.screens.install import InstallScreen
 from cute_display_installer.setup.screens.message import Message, Tone
 from cute_display_installer.setup.screens.place import PlaceScreen
+from cute_display_installer.setup.screens.ringtones import RingtonesScreen
 from cute_display_installer.setup.screens.state import StateScreen
 from cute_display_installer.setup.screens.summary import SummaryScreen
 from cute_display_installer.setup.screens.time_zone import TimeZoneScreen
@@ -34,7 +35,7 @@ class FakeClock:
 
     def __init__(self, unit=RUNNING, answers=None, unplugged=False):
         self.unit, self.answers, self.unplugged = unit, answers or Answers(), unplugged
-        self.done, self.written = [], []
+        self.done, self.written, self.copied = [], [], []
 
     def read(self):
         self.done.append('read')
@@ -62,10 +63,11 @@ class FakeClock:
     def restart(self):
         self.done.append('restart')
 
-    def write_card(self, files):
+    def write_card(self, files, copies):
         if self.unplugged:
             raise Failed('No Habity found on USB.')
         self.written.append(files)
+        self.copied.append(copies)
 
 
 def setup_app(clock):
@@ -239,6 +241,41 @@ class Questions(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(app.answers.apps, ['alarm', 'weather'])
         self.assertEqual(sorted(clock.written[0]), ['cute-display/general.conf', 'cute-display/wifi.conf'])
+
+    async def test_habitys_ringtones_are_offered_after_the_apps_and_copied(self):
+        known = Answers(Wifi('Home', 's3cret'), LYON.place, 'Europe/Paris', ['LFLY'], ['alarm'], ['Zen.mp3', 'Default.mp3'])
+        clock = FakeClock(answers=known)
+        app = setup_app(clock)
+        async with app.run_test() as pilot:
+            await to_the_questions(pilot)
+            await type_into(pilot, '#password', 's3cret')
+            await pilot.click(Button)
+            await pilot.click(Button)
+            await pilot.click(Button)
+            self.assertIsInstance(app.screen, RingtonesScreen)
+            self.assertIn('Zen, Default', str(app.screen.query_one('#body').render()))
+            await press(pilot, 'copy')
+            self.assertIsInstance(app.screen, SummaryScreen)
+            await pilot.click(Button)
+            await settle(pilot)
+            self.assertIsInstance(app.screen, DoneScreen)
+        self.assertEqual(clock.copied, [{'sounds/alarm/Zen.mp3': 'cute-display/apps/alarm/ringtones/Zen.mp3',
+                                         'sounds/alarm/Default.mp3': 'cute-display/apps/alarm/ringtones/Default.mp3'}])
+
+    async def test_habitys_ringtones_declined_are_not_copied(self):
+        known = Answers(Wifi('Home', 's3cret'), LYON.place, 'Europe/Paris', ['LFLY'], ['alarm'], ['Zen.mp3'])
+        clock = FakeClock(answers=known)
+        app = setup_app(clock)
+        async with app.run_test() as pilot:
+            await to_the_questions(pilot)
+            await type_into(pilot, '#password', 's3cret')
+            await pilot.click(Button)
+            await pilot.click(Button)
+            await pilot.click(Button)
+            await press(pilot, 'no')
+            await pilot.click(Button)
+            await settle(pilot)
+        self.assertEqual(clock.copied, [{}])
 
     async def test_a_wifi_the_device_cannot_keep_is_refused_on_the_spot(self):
         app = setup_app(FakeClock())

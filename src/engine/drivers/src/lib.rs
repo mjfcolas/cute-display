@@ -1,4 +1,5 @@
 pub mod button;
+pub mod chunked_copy;
 pub mod detents;
 pub mod ds3231;
 pub mod udp_socket;

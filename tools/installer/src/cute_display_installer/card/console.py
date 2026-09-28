@@ -13,6 +13,8 @@ from dataclasses import dataclass
 # buffer: 240 bytes are 320 characters of base64.
 CHUNK_BYTES = 240
 REPLY_TIMEOUT_S = 10
+# A copy is made on the device, which answers once it is whole: seconds a megabyte.
+COPY_TIMEOUT_S = 120
 # The console drops output nobody reads in time: a range that arrives damaged is asked again.
 RANGE_ATTEMPTS = 5
 
@@ -31,9 +33,10 @@ class Entry:
 class _Request:
     """One request and its replies, told apart from the others' by a random id."""
 
-    def __init__(self, link, words):
+    def __init__(self, link, words, timeout_s=REPLY_TIMEOUT_S):
         self.link = link
         self.id = str(random.randrange(1, 1_000_000))
+        self.timeout_s = timeout_s
         self.send(words)
 
     def send(self, words):
@@ -42,11 +45,11 @@ class _Request:
 
     def replies(self):
         prefix = f'@@ {self.id} '
-        deadline = time.monotonic() + REPLY_TIMEOUT_S
+        deadline = time.monotonic() + self.timeout_s
         while time.monotonic() < deadline:
             line = self.link.readline().decode(errors='replace').strip()
             if line.startswith(prefix):
-                deadline = time.monotonic() + REPLY_TIMEOUT_S
+                deadline = time.monotonic() + self.timeout_s
                 kind, _, rest = line[len(prefix):].partition(' ')
                 if kind == 'error':
                     raise ConsoleError(rest)
@@ -98,6 +101,11 @@ def write_file(link, path, contents):
         request.expect('ack')
     request.send('end')
     request.expect('ok')
+
+
+def copy(link, source, destination):
+    """On the device, from anywhere on the card into cute-display/."""
+    _Request(link, f'cp {source}\t{destination}', COPY_TIMEOUT_S).expect('ok')
 
 
 def remove(link, path):

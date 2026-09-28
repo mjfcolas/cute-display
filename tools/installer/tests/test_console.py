@@ -1,6 +1,6 @@
 import unittest
 
-from cute_display_installer.card.console import ConsoleError, Entry, entries, read_file, remove, write_file
+from cute_display_installer.card.console import ConsoleError, Entry, copy, entries, read_file, remove, write_file
 from fake_card import Card
 
 
@@ -27,6 +27,13 @@ class Console(unittest.TestCase):
     def test_what_the_device_refuses_is_said(self):
         with self.assertRaisesRegex(ConsoleError, 'only cute-display'):
             write_file(Card({}), 'sounds/alarm.wav', b'')
+
+    def test_a_file_is_copied_on_the_device(self):
+        card = Card({'sounds/alarm/Lost Ark.mp3': b'ID3'})
+        copy(card, 'sounds/alarm/Lost Ark.mp3', 'cute-display/apps/alarm/ringtones/Lost Ark.mp3')
+        self.assertEqual(card.files['cute-display/apps/alarm/ringtones/Lost Ark.mp3'], b'ID3')
+        with self.assertRaisesRegex(ConsoleError, 'only cute-display'):
+            copy(card, 'sounds/alarm/Lost Ark.mp3', 'sounds/Lost Ark.mp3')
 
     def test_a_file_is_removed(self):
         card = Card({'cute-display/old.conf': b''})

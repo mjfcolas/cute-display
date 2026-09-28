@@ -1,7 +1,7 @@
 """What the setup asks, from what the card already holds to the files it writes back."""
 from dataclasses import dataclass, field
 
-from ..config import airports, apps, general, place, radar, wifi
+from ..config import airports, apps, general, place, radar, ringtones, wifi
 from ..config.place import Place
 from ..config.wifi import Wifi
 
@@ -17,10 +17,13 @@ class Answers:
     time_zone: str | None = None
     labels: list[str] = field(default_factory=list)
     apps: list[str] = field(default_factory=lambda: list(apps.TITLES))
+    habity_ringtones: list[str] = field(default_factory=list)
+    copy_ringtones: bool = False
 
     @classmethod
-    def from_card(cls, texts):
-        """From the files CARD_FILES, each one's text or None when the card lacks it."""
+    def from_card(cls, texts, habity_ringtones=()):
+        """From the files CARD_FILES, each one's text or None when the card lacks it, and
+        Habity's alarm ringtones the alarm has no copy of."""
         def text(path):
             return texts.get(path) or ''
 
@@ -31,7 +34,16 @@ class Answers:
             time_zone=general.time_zone_of(text(general.FILE)),
             labels=radar.labels(text(radar.FILE)),
             apps=list(apps.TITLES) if chosen is None else [name for name in chosen if name in apps.TITLES],
+            habity_ringtones=list(habity_ringtones),
         )
+
+    def offers_ringtones(self):
+        """Whether the alarm runs and Habity has ringtones it has no copy of."""
+        return 'alarm' in self.apps and bool(self.habity_ringtones)
+
+    def copies(self):
+        """Every file the setup copies on the card, as {source: destination}."""
+        return ringtones.copies(self.habity_ringtones) if self.copy_ringtones and self.offers_ringtones() else {}
 
     def files(self, airports_found):
         """Every file the setup writes: the radar's too when it is chosen, `airports_found`

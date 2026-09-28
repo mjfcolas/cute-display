@@ -108,13 +108,13 @@ class UsbClock:
     def read_card(self):
         def read_card():
             with usb.open_link() as link:
-                return Answers.from_card(card.read_texts(link, CARD_FILES))
+                return Answers.from_card(card.read_texts(link, CARD_FILES), card.habity_ringtones_missing(link))
         return _step(read_card)
 
-    def write_card(self, files):
+    def write_card(self, files, copies):
         def write_card():
             with usb.open_link() as link:
-                card.write(link, files)
+                card.write(link, files, copies)
         return _step(write_card)
 
     def restart(self):

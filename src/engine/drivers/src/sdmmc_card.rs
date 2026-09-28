@@ -6,14 +6,17 @@ use esp_idf_svc::sys::{esp_vfs_fat_info, ESP_OK};
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use std::path::PathBuf;
 
-use hal::storage::{Entry, FileStorage};
+use hal::storage::{CopyOutcome, Entry, FileStorage};
 use hal::Fault;
 
+use crate::chunked_copy::copy_in_chunks;
 use crate::or_fault::OrFault;
 
 const MOUNT_POINT: &str = "/sdcard";
 const MOUNT_POINT_C: &core::ffi::CStr = c"/sdcard";
 const MAX_OPEN_FILES: usize = 4;
+/// A copy moves this much at a time, from PSRAM rather than from a thread's stack.
+const COPY_BUFFER_BYTES: usize = 32 * 1024;
 
 /// Usable from any thread: FatFs locks the volume itself.
 #[derive(Clone)]
@@ -35,19 +38,21 @@ fn on_card(path: &str) -> PathBuf {
 }
 
 impl FileStorage for SdmmcCard {
-    fn entries(&self, dir: &str) -> Result<Vec<Entry>, Fault> {
-        let entries = std::fs::read_dir(on_card(dir)).or_fault("listing the SD card")?;
-        Ok(entries
-            .flatten()
-            .map(|e| {
-                let metadata = e.metadata().ok();
-                Entry {
-                    name: e.file_name().to_string_lossy().into_owned(),
-                    size_bytes: metadata.as_ref().map_or(0, |m| m.len()),
-                    is_dir: metadata.is_some_and(|m| m.is_dir()),
-                }
-            })
-            .collect())
+    fn entries(&self, dir: &str) -> Result<Option<Vec<Entry>>, Fault> {
+        let entries = match std::fs::read_dir(on_card(dir)) {
+            Ok(entries) => entries,
+            Err(e) if e.kind() == ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(Fault::new(format!("listing {dir} on the SD card: {e}"))),
+        };
+        let entries = entries.flatten().map(|e| {
+            let metadata = e.metadata().ok();
+            Entry {
+                name: e.file_name().to_string_lossy().into_owned(),
+                size_bytes: metadata.as_ref().map_or(0, |m| m.len()),
+                is_dir: metadata.is_some_and(|m| m.is_dir()),
+            }
+        });
+        Ok(Some(entries.collect()))
     }
 
     fn read(&self, path: &str) -> Result<Option<Vec<u8>>, Fault> {
@@ -77,6 +82,22 @@ impl FileStorage for SdmmcCard {
             std::fs::create_dir_all(dir).or_fault("creating a directory on the SD card")?;
         }
         std::fs::write(file, contents).or_fault("writing on the SD card")
+    }
+
+    fn copy(&self, from: &str, to: &str) -> Result<CopyOutcome, Fault> {
+        let mut source = match std::fs::File::open(on_card(from)) {
+            Ok(file) => file,
+            Err(e) if e.kind() == ErrorKind::NotFound => return Ok(CopyOutcome::NoSource),
+            Err(e) => return Err(Fault::new(format!("reading {from} on the SD card: {e}"))),
+        };
+        let destination = on_card(to);
+        if let Some(dir) = destination.parent() {
+            std::fs::create_dir_all(dir).or_fault("creating a directory on the SD card")?;
+        }
+        let mut copy = std::fs::File::create(destination).or_fault("writing on the SD card")?;
+        copy_in_chunks(&mut source, &mut copy, &mut vec![0; COPY_BUFFER_BYTES])
+            .map_err(|e| Fault::new(format!("copying {from} to {to} on the SD card: {e}")))?;
+        Ok(CopyOutcome::Copied)
     }
 
     fn remove(&self, path: &str) -> Result<(), Fault> {

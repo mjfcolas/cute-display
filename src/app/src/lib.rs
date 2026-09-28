@@ -30,7 +30,7 @@ use infrastructure::internet::{NoInternet, OnDemandInternet, SharedInternet};
 use infrastructure::ntp::NtpServer;
 use infrastructure::rtc_keeper::RtcKeeper;
 use infrastructure::settings_file::{SettingsFile, Unkept};
-use infrastructure::speaker_sound::{self, SoundPlayer};
+use infrastructure::speaker_sound;
 use ui::system::OfferedApp;
 use ui::Installable;
 
@@ -55,6 +55,10 @@ pub trait Hardware {
 
     /// The network thread's stack, most of it for what `Http`'s TLS needs.
     const NETWORK_STACK_BYTES: usize;
+
+    /// Starts the speaker's thread, where the samples played may be made as they play, and
+    /// read from the card.
+    fn spawn_speaker(play: impl FnOnce() + Send + 'static) -> Result<(), Fault>;
 }
 
 pub struct Devices<H: Hardware> {
@@ -93,7 +97,7 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>]) -> Res
     lighting.touched(Instant::now());
 
     let (sound, player) = speaker_sound::sound(devices.speaker);
-    start_speaker(player)?;
+    H::spawn_speaker(move || player.run())?;
 
     let keeper = Box::new(RtcKeeper::new(devices.rtc));
     let card = devices.sd_card;
@@ -165,10 +169,6 @@ fn light_wanted(services: &[Service]) -> Level {
     services.iter().map(|(_, service)| service.light()).max().unwrap_or(Level::OFF)
 }
 
-fn start_speaker<S: Speaker + Send + 'static>(player: SoundPlayer<S>) -> Result<(), Fault> {
-    thread::Builder::new().name("speaker".into()).stack_size(8 * 1024).spawn(move || player.run()).map_err(Fault::new)?;
-    Ok(())
-}
 
 #[cfg(test)]
 mod tests {

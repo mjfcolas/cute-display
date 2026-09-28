@@ -9,6 +9,7 @@ use crate::controls::Input;
 
 pub trait AppScreen<D: DrawTarget<Color = BinaryColor>> {
     fn entered(&mut self) {}
+    fn left(&mut self) {}
     /// Changes whenever what the screen shows changed without an input: the screen is
     /// redrawn then. Screens that only change on input keep the default.
     fn version(&self) -> u64 {

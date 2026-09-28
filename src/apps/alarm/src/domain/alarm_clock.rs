@@ -19,6 +19,7 @@ pub const SNOOZE: Duration = Duration::from_secs(9 * 60);
 pub const RING_FOR: Duration = Duration::from_secs(15 * 60);
 pub const VOLUME_RISES_OVER: Duration = Duration::from_secs(60);
 const FIRST_VOLUME: Volume = Volume::percent(10);
+const PREVIEW_VOLUME: Volume = Volume::percent(30);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Volume(u8);
@@ -63,13 +64,31 @@ impl AlarmSchedule {
     }
 }
 
-pub trait AlarmScheduleStore: Send {
-    fn load(&mut self) -> Option<AlarmSchedule>;
-    fn save(&mut self, schedule: &AlarmSchedule);
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum Ringtone {
+    /// Played without a file, so there is always one.
+    #[default]
+    Chime,
+    /// One of the alarm's files, by its name.
+    Recorded(String),
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AlarmSettings {
+    pub schedule: AlarmSchedule,
+    pub ringtone: Ringtone,
+}
+
+pub trait AlarmSettingsStore: Send {
+    fn load(&mut self) -> Option<AlarmSettings>;
+    fn save(&mut self, settings: &AlarmSettings);
 }
 
 pub trait Ringer: Send {
-    fn ring(&mut self, volume: Volume);
+    /// The names of the files it can ring.
+    fn recordings(&self) -> Vec<String>;
+    /// Starts `ringtone`, or goes on with it at `volume` when it is the one ringing.
+    fn ring(&mut self, ringtone: &Ringtone, volume: Volume);
     fn silence(&mut self);
 }
 
@@ -83,17 +102,19 @@ pub enum AlarmState {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Phase {
     Waiting,
+    /// Waiting, the ringtone playing softly meanwhile.
+    Previewing,
     Ringing { since: LocalTime },
     Snoozed { until: LocalTime },
 }
 
 struct Inner {
-    schedule: AlarmSchedule,
+    settings: AlarmSettings,
     phase: Phase,
     last_reading: Option<LocalTime>,
     sounding: bool,
     revision: u64,
-    store: Box<dyn AlarmScheduleStore>,
+    store: Box<dyn AlarmSettingsStore>,
     ringer: Box<dyn Ringer>,
     foreground: Foreground,
 }
@@ -102,20 +123,54 @@ struct Inner {
 pub struct AlarmClock(Arc<Mutex<Inner>>);
 
 impl AlarmClock {
-    pub fn new(mut store: Box<dyn AlarmScheduleStore>, ringer: Box<dyn Ringer>, foreground: Foreground) -> Self {
-        let schedule = store.load().unwrap_or_default();
-        let inner = Inner { schedule, phase: Phase::Waiting, last_reading: None, sounding: false, revision: 0, store, ringer, foreground };
+    pub fn new(mut store: Box<dyn AlarmSettingsStore>, ringer: Box<dyn Ringer>, foreground: Foreground) -> Self {
+        let settings = store.load().unwrap_or_default();
+        let (phase, last_reading) = (Phase::Waiting, None);
+        let inner = Inner { settings, phase, last_reading, sounding: false, revision: 0, store, ringer, foreground };
         Self(Arc::new(Mutex::new(inner)))
     }
 
     pub fn schedule(&self) -> AlarmSchedule {
-        self.lock().schedule
+        self.lock().settings.schedule
+    }
+
+    pub fn ringtone(&self) -> Ringtone {
+        self.lock().settings.ringtone.clone()
+    }
+
+    /// The chime first, always there.
+    pub fn ringtones(&self) -> Vec<Ringtone> {
+        let recordings = self.lock().ringer.recordings();
+        std::iter::once(Ringtone::Chime).chain(recordings.into_iter().map(Ringtone::Recorded)).collect()
+    }
+
+    /// Previewing, the new one plays at once.
+    pub fn set_ringtone(&self, ringtone: Ringtone) {
+        self.change_settings(|settings| settings.ringtone = ringtone);
+        self.lock().sound();
+    }
+
+    /// Plays the ringtone softly until the preview ends, or the alarm rings.
+    pub fn preview(&self) {
+        let mut inner = self.lock();
+        if inner.phase == Phase::Waiting {
+            inner.phase = Phase::Previewing;
+            inner.sound();
+        }
+    }
+
+    pub fn end_preview(&self) {
+        let mut inner = self.lock();
+        if inner.phase == Phase::Previewing {
+            inner.phase = Phase::Waiting;
+            inner.sound();
+        }
     }
 
     pub fn state(&self) -> AlarmState {
         let inner = self.lock();
         match inner.phase {
-            Phase::Waiting => AlarmState::Waiting { next: inner.next_alarm() },
+            Phase::Waiting | Phase::Previewing => AlarmState::Waiting { next: inner.next_alarm() },
             Phase::Ringing { .. } => AlarmState::Ringing,
             Phase::Snoozed { until } => AlarmState::Snoozed { until },
         }
@@ -126,11 +181,11 @@ impl AlarmClock {
     }
 
     pub fn switch_on(&self) {
-        self.change_schedule(|schedule| schedule.enabled = true);
+        self.change_settings(|settings| settings.schedule.enabled = true);
     }
 
     pub fn switch_off(&self) {
-        self.change_schedule(|schedule| schedule.enabled = false);
+        self.change_settings(|settings| settings.schedule.enabled = false);
         self.stop();
     }
 
@@ -139,7 +194,7 @@ impl AlarmClock {
     }
 
     pub fn set_time_on(&self, day: Weekday, time: Option<TimeOfDay>) {
-        self.change_schedule(|schedule| schedule.set_time_on(day, time));
+        self.change_settings(|settings| settings.schedule.set_time_on(day, time));
     }
 
     pub fn stop(&self) {
@@ -161,11 +216,11 @@ impl AlarmClock {
         let inner = self.lock();
         match (inner.phase, inner.last_reading) {
             (Phase::Ringing { .. } | Phase::Snoozed { .. }, _) => Level::percent(100),
-            (Phase::Waiting, Some(now)) => inner.next_alarm().map_or(Level::OFF, |alarm| {
+            (Phase::Waiting | Phase::Previewing, Some(now)) => inner.next_alarm().map_or(Level::OFF, |alarm| {
                 let ahead = alarm.seconds_since_epoch() - now.seconds_since_epoch();
                 percent_of(seconds(SUNRISE) - ahead, seconds(SUNRISE))
             }),
-            (Phase::Waiting, None) => Level::OFF,
+            (Phase::Waiting | Phase::Previewing, None) => Level::OFF,
         }
     }
 
@@ -174,10 +229,10 @@ impl AlarmClock {
         let previous = inner.last_reading.replace(now);
         let now_seconds = now.seconds_since_epoch();
         match inner.phase {
-            Phase::Waiting => {
-                let enabled = inner.schedule.enabled;
+            Phase::Waiting | Phase::Previewing => {
+                let enabled = inner.settings.schedule.enabled;
                 let passed = previous
-                    .and_then(|previous| inner.schedule.next_from(one_second_after(previous)))
+                    .and_then(|previous| inner.settings.schedule.next_from(one_second_after(previous)))
                     .is_some_and(|alarm| (0..seconds(RING_FOR)).contains(&(now_seconds - alarm.seconds_since_epoch())));
                 if enabled && passed {
                     inner.enter(Phase::Ringing { since: now });
@@ -194,14 +249,14 @@ impl AlarmClock {
             }
             Phase::Snoozed { .. } => {}
         }
-        inner.sound(now_seconds);
+        inner.sound();
     }
 
-    fn change_schedule(&self, change: impl FnOnce(&mut AlarmSchedule)) {
+    fn change_settings(&self, change: impl FnOnce(&mut AlarmSettings)) {
         let mut inner = self.lock();
-        change(&mut inner.schedule);
-        let schedule = inner.schedule;
-        inner.store.save(&schedule);
+        change(&mut inner.settings);
+        let Inner { store, settings, .. } = &mut *inner;
+        store.save(settings);
         inner.revision = inner.revision.wrapping_add(1);
     }
 
@@ -213,10 +268,10 @@ impl AlarmClock {
 impl Inner {
     fn next_alarm(&self) -> Option<LocalTime> {
         let now = self.last_reading?;
-        if !self.schedule.enabled {
+        if !self.settings.schedule.enabled {
             return None;
         }
-        self.schedule.next_from(one_second_after(now))
+        self.settings.schedule.next_from(one_second_after(now))
     }
 
     fn enter(&mut self, phase: Phase) {
@@ -224,20 +279,27 @@ impl Inner {
         self.revision = self.revision.wrapping_add(1);
     }
 
-    fn sound(&mut self, now_seconds: i64) {
-        match self.phase {
-            Phase::Ringing { since } => {
-                let rising = percent_of(now_seconds - since.seconds_since_epoch(), seconds(VOLUME_RISES_OVER));
+    fn sound(&mut self) {
+        let volume = match (self.phase, self.last_reading) {
+            (Phase::Ringing { since }, Some(now)) => {
+                let rising = percent_of(now.seconds_since_epoch() - since.seconds_since_epoch(), seconds(VOLUME_RISES_OVER));
                 let first = FIRST_VOLUME.as_percent();
                 let risen = u16::from(100 - first) * u16::from(rising.as_percent()) / 100;
-                self.ringer.ring(Volume::percent(first.saturating_add(u8::try_from(risen).unwrap_or(100))));
+                Some(Volume::percent(first.saturating_add(u8::try_from(risen).unwrap_or(100))))
+            }
+            (Phase::Previewing, _) => Some(PREVIEW_VOLUME),
+            _ => None,
+        };
+        match volume {
+            Some(volume) => {
+                self.ringer.ring(&self.settings.ringtone, volume);
                 self.sounding = true;
             }
-            _ if self.sounding => {
+            None if self.sounding => {
                 self.ringer.silence();
                 self.sounding = false;
             }
-            _ => {}
+            None => {}
         }
     }
 }
@@ -266,23 +328,26 @@ mod tests {
     const RADAR: AppId = AppId::new("radar");
 
     #[derive(Clone, Default)]
-    struct FakeStore(Arc<Mutex<Option<AlarmSchedule>>>);
+    struct FakeStore(Arc<Mutex<Option<AlarmSettings>>>);
 
-    impl AlarmScheduleStore for FakeStore {
-        fn load(&mut self) -> Option<AlarmSchedule> {
-            *self.0.lock().unwrap()
+    impl AlarmSettingsStore for FakeStore {
+        fn load(&mut self) -> Option<AlarmSettings> {
+            self.0.lock().unwrap().clone()
         }
-        fn save(&mut self, schedule: &AlarmSchedule) {
-            *self.0.lock().unwrap() = Some(*schedule);
+        fn save(&mut self, settings: &AlarmSettings) {
+            *self.0.lock().unwrap() = Some(settings.clone());
         }
     }
 
     #[derive(Clone, Default)]
-    struct FakeRinger(Arc<Mutex<Option<u8>>>);
+    struct FakeRinger(Arc<Mutex<Option<(Ringtone, u8)>>>);
 
     impl Ringer for FakeRinger {
-        fn ring(&mut self, volume: Volume) {
-            *self.0.lock().unwrap() = Some(volume.as_percent());
+        fn recordings(&self) -> Vec<String> {
+            vec!["Zen.mp3".into()]
+        }
+        fn ring(&mut self, ringtone: &Ringtone, volume: Volume) {
+            *self.0.lock().unwrap() = Some((ringtone.clone(), volume.as_percent()));
         }
         fn silence(&mut self) {
             *self.0.lock().unwrap() = None;
@@ -291,8 +356,16 @@ mod tests {
 
     impl FakeRinger {
         fn volume(&self) -> Option<u8> {
-            *self.0.lock().unwrap()
+            self.0.lock().unwrap().as_ref().map(|(_, volume)| *volume)
         }
+
+        fn ringtone(&self) -> Option<Ringtone> {
+            self.0.lock().unwrap().as_ref().map(|(ringtone, _)| ringtone.clone())
+        }
+    }
+
+    fn zen() -> Ringtone {
+        Ringtone::Recorded("Zen.mp3".into())
     }
 
     /// Saturday 26 September 2026 at `hour:minute:second`, and `days` later.
@@ -474,14 +547,66 @@ mod tests {
     }
 
     #[test]
-    fn the_schedule_is_kept_on_every_change_and_comes_back() {
+    fn it_rings_the_ringtone_chosen() {
+        let (alarm, ringer, _) = alarm_clock();
+        assert_eq!(alarm.ringtone(), Ringtone::Chime);
+        assert_eq!(alarm.ringtones(), [Ringtone::Chime, zen()]);
+        alarm.set_ringtone(zen());
+        alarm.tick(at(0, 7, 30, 0));
+        assert_eq!(ringer.ringtone(), Some(zen()));
+    }
+
+    #[test]
+    fn a_preview_plays_softly_each_ringtone_chosen_until_it_ends() {
+        let (alarm, ringer, _) = alarm_clock();
+        let revision = alarm.revision();
+        alarm.preview();
+        assert_eq!(ringer.ringtone(), Some(Ringtone::Chime));
+        assert_eq!(ringer.volume(), Some(PREVIEW_VOLUME.as_percent()));
+        alarm.set_ringtone(zen());
+        assert_eq!(ringer.ringtone(), Some(zen()));
+        assert_ne!(alarm.revision(), revision);
+        alarm.tick(at(0, 6, 0, 1));
+        assert_eq!(ringer.volume(), Some(PREVIEW_VOLUME.as_percent()));
+        alarm.end_preview();
+        assert_eq!(ringer.volume(), None);
+    }
+
+    #[test]
+    fn the_alarm_takes_over_a_preview_and_it_does_not_come_back() {
+        let (alarm, ringer, _) = alarm_clock();
+        alarm.tick(at(0, 7, 29, 59));
+        alarm.preview();
+        alarm.tick(at(0, 7, 30, 0));
+        assert_eq!(ringer.volume(), Some(FIRST_VOLUME.as_percent()));
+        alarm.stop();
+        alarm.tick(at(0, 7, 30, 1));
+        assert_eq!(ringer.volume(), None);
+        alarm.preview();
+        alarm.tick(at(0, 7, 30, 2));
+        assert_eq!(ringer.volume(), Some(PREVIEW_VOLUME.as_percent()), "waiting again, a preview may start");
+    }
+
+    #[test]
+    fn ringing_there_is_no_preview() {
+        let (alarm, ringer, _) = alarm_clock();
+        alarm.tick(at(0, 7, 30, 0));
+        alarm.preview();
+        alarm.tick(at(0, 7, 30, 30));
+        assert_eq!(ringer.volume(), Some(55));
+    }
+
+    #[test]
+    fn the_settings_are_kept_on_every_change_and_come_back() {
         let store = FakeStore::default();
         let foreground = Foreground::new(WEATHER);
         let alarm = AlarmClock::new(Box::new(store.clone()), Box::new(FakeRinger::default()), foreground.clone());
         alarm.set_time_on(Weekday::Tuesday, TimeOfDay::new(6, 0));
         alarm.switch_on();
+        alarm.set_ringtone(zen());
         let again = AlarmClock::new(Box::new(store), Box::new(FakeRinger::default()), foreground);
         assert_eq!(again.schedule(), alarm.schedule());
         assert!(again.schedule().enabled);
+        assert_eq!(again.ringtone(), zen());
     }
 }

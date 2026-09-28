@@ -30,6 +30,12 @@ class FromTheCard(unittest.TestCase):
     def test_an_empty_card_answers_nothing(self):
         self.assertEqual(Answers.from_card(dict.fromkeys(CARD_FILES)), Answers())
 
+    def test_habitys_ringtones_are_offered_those_the_alarm_lacks(self):
+        device = Card({'sounds/alarm/Zen.mp3': b'', 'sounds/alarm/Default.mp3': b'', 'sounds/alarm/notes.txt': b'',
+                       'cute-display/apps/alarm/ringtones/Zen.mp3': b''})
+        self.assertEqual(card.habity_ringtones_missing(device), ['Default.mp3'])
+        self.assertEqual(card.habity_ringtones_missing(Card({'cute-display/wifi.conf': b''})), [])
+
 
 class ToTheCard(unittest.TestCase):
     def test_every_file_is_written_and_reads_back_the_same(self):
@@ -46,8 +52,17 @@ class ToTheCard(unittest.TestCase):
         self.assertEqual(texts['cute-display/wifi.conf'], 'ssid = Home\n')
         self.assertEqual(texts['cute-display/apps/radar/radar.conf'], 'airport_labels = LFPO\n')
         self.assertIsNone(texts['cute-display/general.conf'])
-        card.write(device, {'cute-display/general.conf': 'time_zone = JST-9\n'})
+        card.write(device, {'cute-display/general.conf': 'time_zone = JST-9\n'}, {})
         self.assertEqual(device.files['cute-display/general.conf'], b'time_zone = JST-9\n')
+
+    def test_habitys_ringtones_are_copied_when_asked_and_the_alarm_runs(self):
+        answers = Answers(habity_ringtones=['Zen.mp3'], copy_ringtones=True)
+        self.assertEqual(answers.copies(), {'sounds/alarm/Zen.mp3': 'cute-display/apps/alarm/ringtones/Zen.mp3'})
+        device = Card({'sounds/alarm/Zen.mp3': b'ID3'})
+        card.write(device, {}, answers.copies())
+        self.assertEqual(device.files['cute-display/apps/alarm/ringtones/Zen.mp3'], b'ID3')
+        self.assertEqual(Answers(habity_ringtones=['Zen.mp3']).copies(), {})
+        self.assertEqual(Answers(apps=['radar'], habity_ringtones=['Zen.mp3'], copy_ringtones=True).copies(), {})
 
     def test_a_file_in_a_directory_the_card_lacks_is_not_there(self):
         texts = card.read_texts(Card({'cute-display/wifi.conf': b''}), CARD_FILES)

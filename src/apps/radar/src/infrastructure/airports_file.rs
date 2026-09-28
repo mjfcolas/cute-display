@@ -78,6 +78,12 @@ mod tests {
             self.0.lock().unwrap().insert(name.into(), text.into());
             Ok(())
         }
+        fn read_bytes(&self, name: &str, _: u64, _: usize) -> Result<Option<Vec<u8>>, Unavailable> {
+            Ok(self.read(name)?.map(String::into_bytes))
+        }
+        fn names_in(&self, _: &str) -> Result<Vec<String>, Unavailable> {
+            Ok(vec![])
+        }
     }
 
     fn with(name: &str, text: &str) -> MemoryFiles {

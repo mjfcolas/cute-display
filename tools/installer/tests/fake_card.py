@@ -66,6 +66,13 @@ class Card:
             assert len(contents) == size and zlib.crc32(contents) == crc
             self.files[path] = bytes(contents)
             self._reply(request_id, 'ok')
+        elif verb == 'cp':
+            source, destination = rest.split('\t')
+            if not destination.startswith('cute-display/'):
+                self._reply(request_id, 'error only cute-display/ may be written')
+                return
+            self.files[destination] = self.files[source]
+            self._reply(request_id, 'ok')
         elif verb == 'rm':
             del self.files[rest]
             self._reply(request_id, 'ok')
