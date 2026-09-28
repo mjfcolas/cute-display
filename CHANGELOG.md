@@ -3,6 +3,9 @@
 What changes from one release of the app image to the next.
 [Releasing](docs/releasing.md) says how one is made.
 
+## 2026.9.1
+- Rework versioning and installer
+
 ## 2026.9.0
 
 - Apps: [system](docs/apps/system/README.md), [alarm clock](docs/apps/alarm/README.md),
