@@ -4,7 +4,7 @@ Installs Cute Display on a Habity bedside clock, sets it up, and boots Habity's 
 again; reads and writes its SD card, puts the radar's airports on it, and reads the RTC's
 registers.
 
-- People get it from a release: [installing](../../docs/install.md#get-the-installer).
+- People get it from a release: [installing](../../docs/install.md#in-short).
 - From the repository, with [uv](https://docs.astral.sh/uv/): `uv run --project
   tools/installer cute-display …`, which is what the `justfile` does.
 - The device is found by its USB IDs (the ESP32-S3's own USB port); `CUTE_DISPLAY_PORT`

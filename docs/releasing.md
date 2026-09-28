@@ -9,14 +9,12 @@ Versions are dates: `<year>.<month>.<n>`, `n` counting the month's releases from
    `tools/installer/pyproject.toml`: the build and `just test` refuse them different.
 2. Say what changed under that version in [`CHANGELOG.md`](../CHANGELOG.md).
 3. Commit, then `just release`: in `release/`, the image `cute-display-<version>.bin`,
-   its `.sha256`, and the installer `cute_display_installer-<version>-py3-none-any.whl`.
-4. Tag the commit `v<version>`, push the tag, and attach the three files to the GitHub
-   release of that tag. Its notes are the version's changelog, then, under
-   **Installer**, the line [installing](install.md#get-the-installer) tells people to copy:
-
-   ```sh
-   uv tool install https://github.com/mjfcolas/cute-display/releases/download/v<version>/cute_display_installer-<version>-py3-none-any.whl
-   ```
+   its `.sha256`, the installer `cute_display_installer-<version>-py3-none-any.whl`, and
+   `install.sh` and `install.cmd`, which install that wheel and run the setup.
+4. Tag the commit `v<version>`, push the tag, and attach the five files to the GitHub
+   release of that tag, its notes being the version's changelog. The lines in
+   [installing](install.md#in-short) fetch `install.sh` and `install.cmd` from the latest
+   release, so they need no change from one release to the next.
 
 A release carries exactly one `cute-display-*.bin` and its `.sha256`: the installer's
 `install` takes the latest release's.

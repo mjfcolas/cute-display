@@ -6,56 +6,37 @@ takes one command. Installing is at your own risk and may void the warranty
 
 ## In short
 
-One after the other, in a terminal (on Windows, the Command Prompt):
+With [what you need](#what-you-need) at hand (on Linux, the right to open the clock's port),
+plug the clock into the computer, then paste one line into a terminal:
 
-```sh
-# 1. uv, once, then open a new terminal
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"   # Windows
-curl -LsSf https://astral.sh/uv/install.sh | sh                                       # macOS, Linux
+- Linux and macOS:
 
-# 2. the installer: the line under "Installer" on the latest release, such as
-uv tool install https://github.com/mjfcolas/cute-display/releases/download/v2026.9.0/cute_display_installer-2026.9.0-py3-none-any.whl
+  ```sh
+  curl -LsSf https://github.com/mjfcolas/cute-display/releases/latest/download/install.sh | sh
+  ```
 
-# 3. the clock plugged in: back it up, install Cute Display, set it up, step by step
-cute-display setup
-```
+- Windows, in the **Command Prompt** (`cmd`), not PowerShell:
 
-The sections below say what each step does, and what to check first.
+  ```bat
+  curl -LsSfo "%TEMP%\cute-display.cmd" https://github.com/mjfcolas/cute-display/releases/latest/download/install.cmd && "%TEMP%\cute-display.cmd"
+  ```
+
+It installs [uv](https://docs.astral.sh/uv/) when the computer lacks it, then the latest
+installer, then runs [the setup](#run-the-setup). The same line, run again later, updates
+everything; `cute-display` is also a command of its own from then on, in a new terminal.
 
 ## What you need
 
 - The clock.
 - A computer connected to the Internet: tried on Linux and Windows 10 or later; macOS is
   expected to work.
-- A terminal to type the commands in: on Windows, the **Command Prompt** (`cmd`), not
-  PowerShell, where the setup does not show up.
-- [uv](https://docs.astral.sh/uv/getting-started/installation/), which runs the installer,
-  installed with the first command [above](#in-short); a terminal opened before it does
-  not know it yet.
 - On Linux, the right to open the clock's port: join the group that owns it, then log in
   again (`sudo usermod -aG dialout $USER`; `uucp` on Arch).
 
-## Get the installer
-
-On the [latest release](https://github.com/mjfcolas/cute-display/releases/latest), copy
-the line under **Installer** and run it in a terminal. It looks like:
-
-```sh
-uv tool install https://github.com/mjfcolas/cute-display/releases/download/v2026.9.0/cute_display_installer-2026.9.0-py3-none-any.whl
-```
-
-`cute-display` is then a command of its own. If the terminal does not know it, run
-`uv tool update-shell` and open a new one.
-
 ## Run the setup
 
-Plug the clock into the computer, then:
-
-```sh
-cute-display setup
-```
-
-It goes step by step, asking before it writes anything:
+The line [above](#in-short) runs it; `cute-display setup` runs it again. It goes step by
+step, asking before it writes anything:
 
 1. **Back up the clock**: its whole memory, 16 MB, into a file in the current folder, in
    a few minutes; nothing on the clock changes. Should anything ever go wrong, that file
@@ -81,10 +62,8 @@ The clock is then an [alarm clock](apps/alarm/README.md) with the
 
 ## Update, or change the settings
 
-1. Each release comes with its installer: run the release's line from
-   [get the installer](#get-the-installer) again.
-2. `cute-display setup`: it offers the update when a newer release is out, then the
-   settings, which you may leave as they are.
+The line [above](#in-short) again: it takes the latest installer, then the setup offers
+the update when a newer release is out, and the settings, which you may leave as they are.
 
 `uv tool uninstall cute-display-installer` removes the installer.
 
