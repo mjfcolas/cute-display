@@ -1,6 +1,5 @@
-//! The alarm clock app: a wake-up time for each day, kept in `cute-display/alarm.conf`.
-//! The lights rise before it like the sun; it rings, coming to the front whatever app is
-//! there.
+//! The alarm clock app: a wake-up time for each day, kept in its `alarm.conf`. The lights
+//! rise before it like the sun; it rings, coming to the front whatever app is there.
 
 mod domain;
 mod infrastructure;
@@ -20,13 +19,13 @@ use ::ui::InstalledApp;
 pub use crate::domain::alarm_clock::{AlarmClock, AlarmSchedule, AlarmScheduleStore, AlarmState, Ringer, Volume, RING_FOR, SNOOZE, SUNRISE};
 pub use crate::ui::screen::AlarmScreen;
 
-use crate::infrastructure::alarm_file::{AlarmFile, ALARM_FILE};
+use crate::infrastructure::alarm_file::AlarmFile;
 use crate::infrastructure::ringtone::SoundRinger;
 
 pub const ID: AppId = AppId::new("alarm");
 
 pub fn install<D: DrawTarget<Color = BinaryColor>>(services: &dyn Services) -> InstalledApp<D> {
-    let store = AlarmFile::new(services.files(&[ALARM_FILE]));
+    let store = AlarmFile::new(services.files(ID));
     let alarm = AlarmClock::new(Box::new(store), Box::new(SoundRinger::new(services.sound())), services.foreground());
     let weather = Weather::from_open_meteo(services);
     let screen = AlarmScreen::new(alarm.clone(), services.clock(), weather.clone());

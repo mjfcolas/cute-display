@@ -13,18 +13,18 @@
 //! written again whenever the place changes:
 //!
 //! ```text
-//! # cute-display/radar.conf
+//! # cute-display/apps/radar/radar.conf
 //! airport_labels = LFPG, LFPO, LFPB
 //! ```
 
 use conf_text::ConfText;
 use domain::files::Files;
-use place::GeoPoint;
+use domain::place::GeoPoint;
 
 use crate::domain::radar::{Airport, AirportSource};
-use crate::PLACE_FILE;
 
-pub const FILE_NAME: &str = "airports.conf";
+const AIRPORTS_FILE: &str = "airports.conf";
+const RADAR_FILE: &str = "radar.conf";
 const LABELS: &str = "airport_labels";
 
 pub struct AirportsFile {
@@ -39,7 +39,7 @@ impl AirportsFile {
 
 impl AirportSource for AirportsFile {
     fn airports(&mut self) -> Vec<Airport> {
-        let mut airports: Vec<Airport> = match self.files.read(FILE_NAME) {
+        let mut airports: Vec<Airport> = match self.files.read(AIRPORTS_FILE) {
             Ok(Some(text)) => text.lines().filter_map(airport).collect(),
             Ok(None) => Vec::new(),
             Err(unavailable) => {
@@ -58,7 +58,7 @@ impl AirportSource for AirportsFile {
 impl AirportsFile {
     /// The codes listed in `airport_labels`, separated by commas or spaces.
     fn labelled(&self) -> Vec<String> {
-        let Ok(Some(text)) = self.files.read(PLACE_FILE) else {
+        let Ok(Some(text)) = self.files.read(RADAR_FILE) else {
             return Vec::new();
         };
         let conf = ConfText::parse(&text);
@@ -107,7 +107,7 @@ mod tests {
     #[test]
     fn airports_are_read_one_a_line_and_bad_lines_skipped() {
         let text = "# around Notre-Dame\nLFPG 49.0097 2.5479 Paris Charles de Gaulle Airport\nLFPO 48.7233 2.3794\nnonsense\nLFXX north 2\n";
-        let airports = AirportsFile::new(Box::new(with(FILE_NAME, text))).airports();
+        let airports = AirportsFile::new(Box::new(with(AIRPORTS_FILE, text))).airports();
         let codes: Vec<&str> = airports.iter().map(|a| a.code.as_str()).collect();
         assert_eq!(codes, ["LFPG", "LFPO"]);
         assert_eq!(airports[0].point, GeoPoint { latitude: 49.0097, longitude: 2.5479 });
@@ -115,8 +115,8 @@ mod tests {
 
     #[test]
     fn the_radar_names_the_airports_it_lists() {
-        let files = with(FILE_NAME, "LFPG 49.0097 2.5479\nLFPO 48.7233 2.3794\nLFPB 48.9694 2.4414\n");
-        files.write(PLACE_FILE, "place = Notre-Dame\nairport_labels = LFPG,lfpo\n").unwrap();
+        let files = with(AIRPORTS_FILE, "LFPG 49.0097 2.5479\nLFPO 48.7233 2.3794\nLFPB 48.9694 2.4414\n");
+        files.write(RADAR_FILE, "airport_labels = LFPG,lfpo\n").unwrap();
         let labelled: Vec<(String, bool)> = AirportsFile::new(Box::new(files)).airports().into_iter().map(|a| (a.code, a.labelled)).collect();
         assert_eq!(labelled, [("LFPG".into(), true), ("LFPO".into(), true), ("LFPB".into(), false)]);
     }

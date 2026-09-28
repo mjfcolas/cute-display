@@ -8,6 +8,7 @@ pub mod fetch;
 pub mod files;
 pub mod internet;
 pub mod lighting;
+pub mod place;
 pub mod settings;
 pub mod sound;
 pub mod time;

@@ -16,4 +16,3 @@ embedded-graphics = "0.8"
 
 [dev-dependencies]
 hal = { path = "../../engine/hal" }
-place = { path = "../../libs/place" }

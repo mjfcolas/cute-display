@@ -10,7 +10,7 @@ use std::io::{BufReader, Read};
 
 use domain::fetch::Unavailable;
 use domain::internet::Internet;
-use place::GeoPoint;
+use domain::place::GeoPoint;
 use serde::de::{DeserializeSeed, IgnoredAny, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 

@@ -1,9 +1,5 @@
 //! Where on Earth: a point, and a place a person names.
 
-mod place_file;
-
-pub use place_file::PlaceFile;
-
 /// Kilometres, as the device reckons short distances.
 const EARTH_RADIUS_KM: f64 = 6371.0;
 

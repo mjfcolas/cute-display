@@ -11,7 +11,7 @@ from serial import SerialException
 from . import releases, rtc, usb, web
 from .card import console
 from .card.copy import pull
-from .config import airports, places, radar
+from .config import airports, general, places, radar
 from .flash import device
 from .flash.layout import APP_HEADER_SIZE, FLASH_SIZE, Slot, Target, app_image, image_refusals
 from .setup.clock import UsbClock
@@ -217,7 +217,7 @@ def parser():
 
     command(commands, 'setup', setup, 'step by step: back up the clock, install or update Cute Display, set it up')
     command(commands, 'radar-airports', radar_airports,
-            "the airports around radar.conf's place onto the card") \
+            "the airports around general.conf's place onto the card") \
         .add_argument('--at', nargs=2, type=float, metavar=('LATITUDE', 'LONGITUDE'),
                       help='only print those around this place')
     command(commands, 'rtc-registers', rtc_registers,
@@ -232,7 +232,7 @@ def main():
         run(**arguments)
     except usb.NoDevice as error:
         sys.exit(str(error))
-    except (console.ConsoleError, radar.NoPlace) as error:
+    except (console.ConsoleError, general.NoPlace) as error:
         sys.exit(f'SD card: {error}')
     except rtc.NoRegisters as error:
         sys.exit(str(error))

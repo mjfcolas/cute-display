@@ -12,7 +12,6 @@ workspace = true
 conf_text = { path = "../../engine/conf_text" }
 domain = { path = "../../engine/domain" }
 ui = { path = "../../engine/ui" }
-place = { path = "../../libs/place" }
 embedded-graphics = "0.8"
 log = "0.4"
 serde = { version = "1", features = ["derive"] }

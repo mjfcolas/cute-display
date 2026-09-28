@@ -23,23 +23,17 @@ the app in front when the device starts.
 
 - Beside the date, the day's sky and its low and high; beside the time, seven hours from
   the one under way. Coming back to the clock goes back to the hour under way.
-- From Open-Meteo every hour, at the place in `cute-display/weather.conf`, the
-  [weather app](../weather/README.md)'s; nothing shows until a forecast came.
+- From Open-Meteo every hour, at the device's place (see the
+  [system app](../system/README.md#where-the-device-is)); nothing shows until a forecast
+  came.
 
 ## The time
 
 - Set from the Internet once a day, over the Wi-Fi in `cute-display/wifi.conf` (see the
   [weather app](../weather/README.md)); the battery-backed clock keeps it meanwhile.
+- In the device's time zone (see the [system app](../system/README.md#where-the-device-is)).
 
 ## Configuration
 
-- `cute-display/clock.conf`: the time zone, in POSIX `TZ` form; Central European time
-  without it. Changes show within a minute. A `time_zone_name` beside it is ignored.
-
-```text
-# cute-display/clock.conf
-time_zone = EST5EDT,M3.2.0,M11.1.0
-```
-
-- `cute-display/alarm.conf`: the wake-up times, written by the device. Without a card,
+- `cute-display/apps/alarm/alarm.conf`: the wake-up times, written by the device. Without a card,
   they last until the power goes.

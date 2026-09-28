@@ -2,7 +2,7 @@ import json
 import pathlib
 import unittest
 
-from cute_display_installer.config import clock, place, places, time_zone, wifi
+from cute_display_installer.config import general, place, places, time_zone, wifi
 from cute_display_installer.config.place import Place
 
 # What src/engine/domain/tests/tzdata_rules.rs parses as the device does.
@@ -64,11 +64,17 @@ class TimeZones(unittest.TestCase):
         self.assertEqual(DEVICE_RULES.read_text(), listed,
                          f'tzdata changed: write the new list into {DEVICE_RULES} for the device\'s test')
 
-    def test_clock_conf_keeps_the_rule_for_the_device_and_the_name_for_the_installer(self):
-        text = clock.render('Europe/Paris')
-        self.assertEqual(text, 'time_zone = CET-1CEST,M3.5.0,M10.5.0/3\ntime_zone_name = Europe/Paris\n')
-        self.assertEqual(clock.read(text), 'Europe/Paris')
-        self.assertIsNone(clock.read('time_zone = EST5EDT,M3.2.0,M11.1.0\n'))
+    def test_general_conf_keeps_the_rule_for_the_device_and_the_name_for_the_installer(self):
+        text = general.render(Place('Notre-Dame', 48.853, 2.3499), 'Europe/Paris')
+        self.assertEqual(text, 'place = Notre-Dame\nlatitude = 48.8530\nlongitude = 2.3499\n'
+                               'time_zone = CET-1CEST,M3.5.0,M10.5.0/3\ntime_zone_name = Europe/Paris\n')
+        self.assertEqual((general.place_of(text), general.time_zone_of(text)), (Place('Notre-Dame', 48.853, 2.3499), 'Europe/Paris'))
+        self.assertIsNone(general.time_zone_of('time_zone = EST5EDT,M3.2.0,M11.1.0\n'))
+
+    def test_a_missing_or_unreadable_place_is_said(self):
+        for text in ('place = Notre-Dame\n', 'latitude = north\nlongitude = 2.3\n'):
+            with self.assertRaisesRegex(general.NoPlace, 'No place'):
+                general.place_of(text)
 
 
 if __name__ == '__main__':

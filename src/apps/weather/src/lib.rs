@@ -1,5 +1,4 @@
-//! The weather app: today and the coming hours, or the week, at the place in
-//! `cute-display/weather.conf`.
+//! The weather app: today and the coming hours, or the week, where the device is.
 
 mod ui;
 

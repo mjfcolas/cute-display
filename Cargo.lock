@@ -27,7 +27,6 @@ dependencies = [
  "forecast",
  "hal",
  "log",
- "place",
  "ui",
 ]
 
@@ -863,7 +862,6 @@ dependencies = [
  "embedded-graphics",
  "hal",
  "log",
- "place",
  "serde",
  "serde_json",
  "ui",
@@ -1533,15 +1531,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
-name = "place"
-version = "0.1.0"
-dependencies = [
- "conf_text",
- "domain",
- "log",
-]
-
-[[package]]
 name = "plain"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1614,7 +1603,6 @@ dependencies = [
  "embedded-graphics",
  "hal",
  "log",
- "place",
  "serde",
  "serde_json",
  "ui",
@@ -1889,7 +1877,6 @@ dependencies = [
  "infrastructure",
  "log",
  "minifb",
- "place",
  "radar",
  "ui",
  "ureq",
@@ -2338,7 +2325,6 @@ dependencies = [
  "embedded-graphics",
  "forecast",
  "hal",
- "place",
  "ui",
 ]
 

@@ -314,6 +314,7 @@ mod tests {
     use domain::calendar::Date;
     use domain::clock::{TimeKeeper, TimeSource, TimeZoneSource};
     use domain::fetch::Unavailable;
+    use domain::place::{GeoPoint, Place, PlaceSource};
     use domain::time::UtcTime;
     use domain::time_zone::TimeZone;
     use forecast::{
@@ -321,7 +322,6 @@ mod tests {
         Today, Wind,
     };
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
-    use place::{GeoPoint, Place, PlaceSource};
 
     use super::*;
     use crate::domain::alarm_clock::{AlarmSchedule, AlarmScheduleStore, Ringer, Volume};

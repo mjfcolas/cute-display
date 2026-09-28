@@ -35,7 +35,7 @@ cute-display card get <path> [destination]        # to the terminal without a de
 cute-display card put <file> <path>               # under cute-display/ only
 cute-display card rm <path>                       # under cute-display/ only
 cute-display card pull <directory> <destination>  # "" for the whole card; resumes where it stopped
-cute-display radar-airports [--at LAT LON]        # around radar.conf's place, onto the card; printed with --at
+cute-display radar-airports [--at LAT LON]        # around general.conf's place, onto the card; printed with --at
 ```
 
 The hardware test image running:

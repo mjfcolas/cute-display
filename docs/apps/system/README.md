@@ -15,3 +15,19 @@ Cute Display runs.
 
 They are kept on the SD card in `cute-display/settings.conf`, written by the device.
 Without a card, they last until the power goes.
+
+## Where the device is
+
+What every app shares, in `cute-display/general.conf`, written by the setup: the place
+the weather and the radar are about, and the time zone, in POSIX `TZ` form (Central
+European time without it). `time_zone_name` is the setup's own; the device ignores it.
+A new time zone shows within a minute; a new place at the apps' next update.
+
+```text
+# cute-display/general.conf
+place = Notre-Dame
+latitude = 48.8530
+longitude = 2.3499
+time_zone = CET-1CEST,M3.5.0,M10.5.0/3
+time_zone_name = Europe/Paris
+```

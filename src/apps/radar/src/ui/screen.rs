@@ -2,10 +2,10 @@
 
 use domain::apps::AppId;
 use domain::fetch::FetchStatus;
+use domain::place::GeoPoint;
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Circle, Line, PrimitiveStyle, Rectangle, Triangle};
-use place::GeoPoint;
 use ui::controls::{Button, Input};
 use ui::text::{self, HINT, LIST, TITLE};
 use ui::AppScreen;
@@ -204,7 +204,7 @@ fn whereabouts(aircraft: &Aircraft, distance_km: f64) -> String {
 fn footer(report: &RadarReport, chars: usize) -> Vec<String> {
     let trouble = match &report.status {
         FetchStatus::NeverFetched | FetchStatus::Updating if report.fetched_at.is_none() => "looking...".to_owned(),
-        FetchStatus::NoPlace => "no place: put cute-display/radar.conf".to_owned(),
+        FetchStatus::NoPlace => "no place: put cute-display/general.conf".to_owned(),
         FetchStatus::Failed(why) => format!("offline: {why}"),
         _ => String::new(),
     };
@@ -220,8 +220,8 @@ mod tests {
 
     use domain::apps::Foreground;
     use domain::fetch::Unavailable;
+    use domain::place::{Place, PlaceSource};
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
-    use place::{Place, PlaceSource};
 
     use super::*;
     use crate::domain::radar::{AirTrafficSource, Airport, AirportSource, Range};
@@ -402,7 +402,7 @@ mod tests {
         );
         no_place.refresh_if_due(Instant::now());
         let lines = footer(&no_place.report(), 22);
-        assert_eq!(lines, ["no place: put", "cute-display/radar.con", "f", "wheel: range", "long: update", ATTRIBUTION]);
+        assert_eq!(lines, ["no place: put", "cute-display/general.c", "onf", "wheel: range", "long: update", ATTRIBUTION]);
         assert!(lines.iter().all(|l| l.chars().count() <= 22));
     }
 

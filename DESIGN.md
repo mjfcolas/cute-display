@@ -26,10 +26,10 @@ The engine, what the apps run on:
 The apps, on it, picked by the composition roots:
 
 ```
-   apps/alarm, apps/weather ──▶ libs/forecast ──▶ libs/place ◀── apps/radar
-            │                        │                │              │
-            └────────────────────────┴───────┬────────┴──────────────┘
-                                             ▼
+   apps/alarm, apps/weather ──▶ libs/forecast        apps/radar
+            │                        │                   │
+            └────────────────────────┼───────────────────┘
+                                     ▼
      engine: domain (what it lends an app), ui (the shell, the toolkit), conf_text
 ```
 
@@ -37,7 +37,7 @@ The apps, on it, picked by the composition roots:
 
 | Layer            | Holds                                                                                          | Depends on       |
 | ---------------- | ---------------------------------------------------------------------------------------------- | ---------------- |
-| `domain`         | The concepts every app relies on (the app in front, settings, lighting, the time, sound…), the contracts the engine lends apps, and the contracts it needs from the outside world. Speaks in intents (`request_refresh`, `choose_next_backlight`), never in controls ("yellow pressed") | nothing          |
+| `domain`         | The concepts every app relies on (the app in front, settings, lighting, the time, where the device is, sound…), the contracts the engine lends apps, and the contracts it needs from the outside world. Speaks in intents (`request_refresh`, `choose_next_backlight`), never in controls ("yellow pressed") | nothing          |
 | `infrastructure` | Implementations of the domain's contracts on the HAL | `domain`, `hal`, `conf_text` |
 | `conf_text`      | The device's conf files as `key = value` lines: the engine's own, and any app's that takes up the format | nothing |
 | `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, thermometer, storage, radio, HTTP, UDP, I2C bus, power, system | nothing          |
@@ -105,7 +105,8 @@ a "latest value" out:
 src/            the sources, one crate per directory
   engine/         what the apps run on
     domain/         what every app relies on: the app in front and what the engine lends
-                    an app, settings, lighting, the time and time zones, sound
+                    an app, settings, lighting, the time and time zones, where the
+                    device is, sound
     infrastructure/ the domain's contracts on the HAL: conf files, lights, the RTC, the
                     speaker, Internet on demand, NTP
     ui/             the shell, gestures, the system app, and the toolkit apps draw
@@ -114,7 +115,7 @@ src/            the sources, one crate per directory
     hal/            contracts with the hardware, and the Frame the display shows
     drivers/        ESP32-S3 implementations of hal; chip logic that needs no ESP32 is
                     host-tested
-  libs/           what apps share: places, forecasts
+  libs/           what apps share: forecasts
   apps/           one crate per app: the alarm clock, the weather, the radar
   maintenance/    the console that serves the SD card on the USB cable
   hwtest/         the hardware test bench
@@ -142,7 +143,8 @@ pick them with Cargo features.
   `domain::apps::Services`, and gives a `ui::InstalledApp`: a `domain::apps::AppService`
   that runs whatever is on screen, and a `ui::AppScreen`.
 - **What the engine lends** is all an app gets from outside: the app in front, the
-  clock, the Internet, its own conf files, the sound.
+  clock, where the device is, the Internet, the files in its own directory
+  (`cute-display/apps/<id>/`), the sound.
 - **Apps are independent**: none depends on another. What several share is a `libs`
   crate, and each has its own instance of it.
 - **Which app is in front is the domain's**: `Foreground` says which. Anything may

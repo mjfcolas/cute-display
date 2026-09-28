@@ -1,4 +1,4 @@
-//! Files: text, by name. The engine lends an app those it named, and no other.
+//! Files: text, by name, in a directory of their own.
 
 use crate::fetch::Unavailable;
 

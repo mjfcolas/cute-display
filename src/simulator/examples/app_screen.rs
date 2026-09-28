@@ -11,6 +11,7 @@ use domain::apps::Foreground;
 use domain::calendar::{Date, Weekday};
 use domain::clock::{Clock, TimeKeeper, TimeSource, TimeZoneSource};
 use domain::fetch::Unavailable;
+use domain::place::{GeoPoint, Place, PlaceSource};
 use domain::settings::{Settings, SettingsRecord, SettingsStore};
 use domain::time::{LocalTime, TimeOfDay, UtcTime};
 use domain::time_zone::TimeZone;
@@ -21,7 +22,6 @@ use forecast::{
     Weather, Wind,
 };
 use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH};
-use place::{GeoPoint, Place, PlaceSource};
 use radar::{AirTrafficSource, Aircraft, Airport, AirportSource, Altitude, Radar, RadarScreen};
 use ui::controls::{ButtonSample, ControlsSample};
 use ui::system::{OfferedApp, SystemScreen};

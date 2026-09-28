@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use domain::apps::{AppService, Foreground};
 use domain::fetch::{FetchStatus, Unavailable};
-use place::{GeoPoint, Place, PlaceSource};
+use domain::place::{GeoPoint, Place, PlaceSource};
 
 use crate::ID;
 

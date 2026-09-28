@@ -118,7 +118,7 @@ sd-rm path:
 setup:
     {{cute_display}} setup
 
-# put the airports within 100 km of radar.conf's place on the device (from OurAirports)
+# put the airports within 100 km of general.conf's place on the device (from OurAirports)
 radar-airports:
     {{cute_display}} radar-airports
 

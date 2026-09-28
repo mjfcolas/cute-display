@@ -8,6 +8,7 @@ use crate::clock::Clock;
 use crate::files::Files;
 use crate::internet::Internet;
 use crate::lighting::Level;
+use crate::place::PlaceSource;
 use crate::shared::Shared;
 use crate::sound::Sound;
 use crate::time::LocalTime;
@@ -57,8 +58,10 @@ pub trait Services {
     fn foreground(&self) -> Foreground;
     fn clock(&self) -> Clock;
     fn internet(&self) -> Box<dyn Internet>;
-    /// The app's own files, those named in `names` and no other.
-    fn files(&self, names: &'static [&'static str]) -> Box<dyn Files>;
+    /// Where the device is, as whoever set it up said.
+    fn place(&self) -> Box<dyn PlaceSource>;
+    /// The files in `app`'s own directory: a tidy place, not a wall.
+    fn files(&self, app: AppId) -> Box<dyn Files>;
     fn sound(&self) -> Box<dyn Sound>;
 }
 

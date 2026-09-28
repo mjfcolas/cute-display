@@ -1,9 +1,10 @@
 //! What the engine lends every app, on the hardware of the app image.
 
-use domain::apps::{Foreground, Services};
+use domain::apps::{AppId, Foreground, Services};
 use domain::clock::Clock;
 use domain::files::Files;
 use domain::internet::Internet;
+use domain::place::PlaceSource;
 use domain::sound::Sound;
 use hal::http::HttpClient;
 use hal::radio::WifiStation;
@@ -11,6 +12,7 @@ use hal::storage::FileStorage;
 use hal::udp::UdpClient;
 use hal::Fault;
 use infrastructure::card_files::{CardFiles, UnreachableCard};
+use infrastructure::general_file::{GeneralFile, NoGeneralFile};
 use infrastructure::internet::{NoInternet, SharedInternet};
 use infrastructure::speaker_sound::SpeakerSound;
 
@@ -43,8 +45,15 @@ where
         internet_through(self.internet.as_ref())
     }
 
-    fn files(&self, names: &'static [&'static str]) -> Box<dyn Files> {
-        files_on(&self.card, names)
+    fn place(&self) -> Box<dyn PlaceSource> {
+        match &self.card {
+            Ok(card) => Box::new(GeneralFile::new(card.clone())),
+            Err(_) => Box::new(NoGeneralFile),
+        }
+    }
+
+    fn files(&self, app: AppId) -> Box<dyn Files> {
+        files_on(&self.card, app)
     }
 
     fn sound(&self) -> Box<dyn Sound> {
@@ -59,9 +68,9 @@ fn internet_through<I: Internet + Clone + 'static>(internet: Option<&I>) -> Box<
     }
 }
 
-fn files_on<S: FileStorage + Clone + Send + 'static>(card: &Result<S, Fault>, names: &'static [&'static str]) -> Box<dyn Files> {
+fn files_on<S: FileStorage + Clone + Send + 'static>(card: &Result<S, Fault>, app: AppId) -> Box<dyn Files> {
     match card {
-        Ok(card) => Box::new(CardFiles::new(card.clone(), names)),
+        Ok(card) => Box::new(CardFiles::new(card.clone(), app)),
         Err(fault) => Box::new(UnreachableCard(fault.clone())),
     }
 }
@@ -110,17 +119,16 @@ mod tests {
     }
 
     #[test]
-    fn on_a_card_an_app_keeps_its_own_files_in_the_engines_directory() {
+    fn on_a_card_an_app_keeps_its_files_in_its_own_directory() {
         let card = Card::default();
-        let files = files_on(&Ok(card.clone()), &["alarm.conf"]);
+        let files = files_on(&Ok(card.clone()), AppId::new("alarm"));
         files.write("alarm.conf", "enabled = yes").unwrap();
-        assert!(card.0.lock().unwrap().contains_key("cute-display/alarm.conf"));
-        assert!(files.read("wifi.conf").is_err());
+        assert!(card.0.lock().unwrap().contains_key("cute-display/apps/alarm/alarm.conf"));
     }
 
     #[test]
     fn without_the_card_files_say_so_and_there_is_no_internet() {
-        let files = files_on(&Err::<Card, _>(Fault::new("not mounted")), &["alarm.conf"]);
+        let files = files_on(&Err::<Card, _>(Fault::new("not mounted")), AppId::new("alarm"));
         assert!(files.read("alarm.conf").is_err());
         assert!(internet_through(None::<&Online>).get("https://example.com").is_err());
         assert!(internet_through(Some(&Online)).get("https://example.com").is_ok());

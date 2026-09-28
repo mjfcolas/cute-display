@@ -18,4 +18,3 @@ log = "0.4"
 
 [dev-dependencies]
 hal = { path = "../../engine/hal" }
-place = { path = "../../libs/place" }

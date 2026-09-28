@@ -1,11 +1,11 @@
 """What the setup asks, from what the card already holds to the files it writes back."""
 from dataclasses import dataclass, field
 
-from ..config import airports, clock, place, radar, wifi
+from ..config import airports, general, place, radar, wifi
 from ..config.place import Place
 from ..config.wifi import Wifi
 
-CARD_FILES = [wifi.FILE, place.WEATHER_FILE, radar.FILE, clock.FILE]
+CARD_FILES = [wifi.FILE, general.FILE, radar.FILE]
 # The ESP-IDF Wi-Fi driver's limits (src/engine/drivers/src/esp_wifi.rs).
 SSID_BYTES, PASSWORD_BYTES = 32, 64
 
@@ -25,8 +25,8 @@ class Answers:
 
         return cls(
             wifi=wifi.read(text(wifi.FILE)),
-            place=place.read(text(place.WEATHER_FILE)) or place.read(text(radar.FILE)),
-            time_zone=clock.read(text(clock.FILE)),
+            place=place.read(text(general.FILE)),
+            time_zone=general.time_zone_of(text(general.FILE)),
             labels=radar.labels(text(radar.FILE)),
         )
 
@@ -34,10 +34,9 @@ class Answers:
         """Every file the setup writes, `airports_found` around the place among them."""
         return {
             wifi.FILE: wifi.render(self.wifi),
-            place.WEATHER_FILE: place.render(self.place),
-            radar.FILE: radar.render(self.place, self.labels),
+            general.FILE: general.render(self.place, self.time_zone),
+            radar.FILE: radar.render(self.labels),
             airports.FILE: airports.render(airports_found),
-            clock.FILE: clock.render(self.time_zone),
         }
 
 

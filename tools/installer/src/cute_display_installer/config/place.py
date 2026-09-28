@@ -1,10 +1,7 @@
-"""A place the weather or the radar is about, as src/libs/place/src/place_file.rs
-reads it."""
+"""Where the device is, as src/engine/infrastructure/src/general_file.rs reads it."""
 from dataclasses import dataclass
 
 from . import conf_text
-
-WEATHER_FILE = 'cute-display/weather.conf'
 
 
 @dataclass(frozen=True)
@@ -24,7 +21,3 @@ def read(text):
 
 def pairs(place):
     return [('place', place.name), ('latitude', f'{place.latitude:.4f}'), ('longitude', f'{place.longitude:.4f}')]
-
-
-def render(place):
-    return conf_text.render(pairs(place))

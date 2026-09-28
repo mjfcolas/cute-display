@@ -275,7 +275,7 @@ fn status_line(report: &WeatherReport) -> String {
             Some(0) | None => "updated just now   long: update   wheel: today/week".into(),
             Some(minutes) => format!("updated {minutes} min ago   long: update   wheel: today/week"),
         },
-        FetchStatus::NoPlace => "no place: put cute-display/weather.conf".into(),
+        FetchStatus::NoPlace => "no place: put cute-display/general.conf".into(),
         FetchStatus::Failed(why) => format!("offline: {why}"),
     }
 }
@@ -299,11 +299,11 @@ mod tests {
     use domain::calendar::Date;
     use domain::clock::{TimeKeeper, TimeSource, TimeZoneSource};
     use domain::fetch::Unavailable;
+    use domain::place::{GeoPoint, Place, PlaceSource};
     use domain::time::{LocalTime, UtcTime};
     use domain::time_zone::TimeZone;
     use forecast::{CompassPoint, Degrees, ForecastSource, Hectopascals, KilometresPerHour, Percent, Today, Wind};
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
-    use place::{GeoPoint, Place, PlaceSource};
 
     use super::*;
 

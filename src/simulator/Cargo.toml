@@ -29,7 +29,6 @@ ureq = "3"
 [dev-dependencies]
 domain = { path = "../engine/domain" }
 forecast = { path = "../libs/forecast" }
-place = { path = "../libs/place" }
 
 [[example]]
 name = "app_screen"

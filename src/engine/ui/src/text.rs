@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn words_wrap_into_lines_that_fit() {
-        assert_eq!(wrap("no place: put cute-display/radar.conf", 14), ["no place: put", "cute-display/r", "adar.conf"]);
+        assert_eq!(wrap("no place: put cute-display/general.conf", 14), ["no place: put", "cute-display/g", "eneral.conf"]);
         assert_eq!(wrap("offline: no Wi-Fi", 20), ["offline: no Wi-Fi"]);
         assert!(wrap("", 10).is_empty());
     }

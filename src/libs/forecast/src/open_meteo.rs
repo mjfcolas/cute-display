@@ -4,8 +4,8 @@
 use domain::calendar::Date;
 use domain::fetch::Unavailable;
 use domain::internet::Internet;
+use domain::place::Place;
 use domain::time::{LocalTime, TimeOfDay};
-use place::Place;
 use serde::Deserialize;
 
 use crate::{
@@ -200,7 +200,7 @@ mod tests {
 
     use domain::calendar::Weekday;
     use domain::internet::BodyReader;
-    use place::GeoPoint;
+    use domain::place::GeoPoint;
 
     use super::*;
 

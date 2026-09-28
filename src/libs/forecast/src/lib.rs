@@ -8,8 +8,8 @@ use std::time::{Duration, Instant};
 use domain::apps::{AppService, Services};
 use domain::calendar::Date;
 use domain::fetch::{FetchStatus, Unavailable};
+use domain::place::{Place, PlaceSource};
 use domain::time::{LocalTime, TimeOfDay};
-use place::{Place, PlaceFile, PlaceSource};
 
 use crate::open_meteo::OpenMeteo;
 
@@ -17,9 +17,6 @@ pub mod day_weather;
 pub mod icons;
 pub mod open_meteo;
 pub mod units;
-
-/// Where the forecasts are for, in the app's files.
-pub const PLACE_FILE: &str = "weather.conf";
 
 pub const REFRESH_EVERY: Duration = Duration::from_secs(60 * 60);
 pub const RETRY_AFTER: Duration = Duration::from_secs(10 * 60);
@@ -219,10 +216,9 @@ impl Weather {
         }
     }
 
-    /// Open-Meteo's forecasts, at the place in the app's [`PLACE_FILE`].
+    /// Open-Meteo's forecasts, where the device is.
     pub fn from_open_meteo(services: &dyn Services) -> Self {
-        let place = PlaceFile::new(services.files(&[PLACE_FILE]), PLACE_FILE);
-        Self::new(Box::new(place), Box::new(OpenMeteo::new(services.internet())))
+        Self::new(services.place(), Box::new(OpenMeteo::new(services.internet())))
     }
 
     pub fn report(&self) -> WeatherReport {
@@ -307,8 +303,8 @@ impl AppService for Weather {
 
 #[cfg(test)]
 mod tests {
+    use domain::place::GeoPoint;
     use domain::time::TimeOfDay;
-    use place::GeoPoint;
 
     use super::*;
 

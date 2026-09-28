@@ -27,13 +27,13 @@ use hal::storage::FileStorage;
 use hal::system::SystemMonitor;
 use hal::udp::UdpClient;
 use hal::Fault;
+use infrastructure::general_file::{GeneralFile, NoGeneralFile};
 use infrastructure::hal_light::HalLight;
 use infrastructure::internet::{NoInternet, OnDemandInternet, SharedInternet};
 use infrastructure::ntp::NtpServer;
 use infrastructure::rtc_keeper::RtcKeeper;
 use infrastructure::settings_file::{SettingsFile, Unkept};
 use infrastructure::speaker_sound::{self, SoundPlayer};
-use infrastructure::time_zone_file::{NoTimeZone, TimeZoneFile};
 use ui::{AppScreen, Install};
 
 use crate::controls::Controls;
@@ -108,9 +108,9 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Install<Frame>]) -> Result<
     let internet = card.clone().ok().map(|card| SharedInternet::new(OnDemandInternet::new(devices.wifi, devices.https, devices.udp, card)));
     let clock = match (&card, &internet) {
         (Ok(card), Some(internet)) => {
-            Clock::new(keeper, Box::new(NtpServer::new(internet.clone())), Box::new(TimeZoneFile::new(card.clone())))
+            Clock::new(keeper, Box::new(NtpServer::new(internet.clone())), Box::new(GeneralFile::new(card.clone())))
         }
-        _ => Clock::new(keeper, Box::new(NtpServer::new(NoInternet("no SD card"))), Box::new(NoTimeZone)),
+        _ => Clock::new(keeper, Box::new(NtpServer::new(NoInternet("no SD card"))), Box::new(NoGeneralFile)),
     };
     clock.tick(Instant::now());
 

@@ -1,4 +1,4 @@
-//! Every time zone the installer offers, as the POSIX rule it writes into clock.conf,
+//! Every time zone the installer offers, as the POSIX rule it writes into general.conf,
 //! reads on the device. `tzdata_rules.txt` is the installer's list: its
 //! `tests/test_config_files.py` says when it no longer matches the tzdata it ships.
 

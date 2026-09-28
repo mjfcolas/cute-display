@@ -12,7 +12,7 @@ CACHE = os.path.join(os.path.expanduser('~'), '.cache', 'cute-display', 'airport
 KINDS = {'large_airport', 'medium_airport', 'small_airport'}
 RADIUS_KM = 100
 EARTH_RADIUS_KM = 6371
-FILE = 'cute-display/airports.conf'
+FILE = 'cute-display/apps/radar/airports.conf'
 
 
 @dataclass(frozen=True)

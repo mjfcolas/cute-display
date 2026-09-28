@@ -16,17 +16,12 @@ The [alarm clock](../alarm/README.md) shows today's and the coming hours.
 
 ## Configuration
 
-Two files on the SD card:
+- **Where**: the device's place, in `cute-display/general.conf`, see the
+  [system app](../system/README.md#where-the-device-is).
+- **Wi-Fi**: `cute-display/wifi.conf`, shared with every app that goes online.
 
 ```text
-# cute-display/weather.conf
-place = Paris
-latitude = 48.85
-longitude = 2.35
-```
-
-```text
-# cute-display/wifi.conf, shared with every app that goes online
+# cute-display/wifi.conf
 ssid = MyNetwork
 password = secret
 ```
