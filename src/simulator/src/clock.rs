@@ -1,6 +1,3 @@
-//! The real-time clock on the computer's own: it runs as the computer's does, from
-//! wherever it was last set.
-
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use hal::clock::{ClockReading, DateTime, RealTimeClock};
@@ -8,7 +5,6 @@ use hal::Fault;
 
 #[derive(Default)]
 pub struct HostClock {
-    /// How far the time set is ahead of the computer's.
     ahead_seconds: i64,
 }
 

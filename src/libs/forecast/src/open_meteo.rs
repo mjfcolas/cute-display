@@ -1,5 +1,4 @@
-//! Forecasts from Open-Meteo (open-meteo.com): free, no key, current weather, the hours
-//! and seven days in one call, with times already in the place's own time zone.
+//! Open-Meteo gives times already in the place's own time zone.
 
 use domain::calendar::Date;
 use domain::fetch::Unavailable;
@@ -143,7 +142,6 @@ fn sun_times(rise: Option<&Option<String>>, set: Option<&Option<String>>) -> (Op
     }
 }
 
-/// Row `n` of a column the forecast cannot do without.
 fn row<T>(column: &[T], n: usize) -> Result<&T, Unavailable> {
     column.get(n).ok_or_else(|| Unavailable("the forecast's columns differ in length".into()))
 }

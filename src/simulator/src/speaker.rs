@@ -1,6 +1,3 @@
-//! The speaker as a line in the log: it takes the samples as fast as a real one would,
-//! and says when it starts and stops.
-
 use std::thread;
 use std::time::Duration;
 

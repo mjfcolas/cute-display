@@ -1,7 +1,3 @@
-//! The weather at one place: today, the hours ahead and the days ahead. Fetched from
-//! outside every hour, and on request; a failed fetch keeps the last forecast rather than
-//! showing nothing.
-
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
@@ -21,7 +17,6 @@ pub mod units;
 pub const REFRESH_EVERY: Duration = Duration::from_secs(60 * 60);
 pub const RETRY_AFTER: Duration = Duration::from_secs(10 * 60);
 
-/// What the sky is doing, in as many states as the device draws.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Sky {
     Clear,
@@ -37,7 +32,6 @@ pub enum Sky {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Degrees(pub i16);
 
-/// From 0 to 100.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Percent(u8);
 
@@ -78,7 +72,6 @@ pub struct Hectopascals(pub u16);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct KilometresPerHour(pub u16);
 
-/// One of eight points of the compass.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CompassPoint {
     North,
@@ -136,7 +129,6 @@ pub struct DayForecast {
     pub high: Degrees,
     /// The likeliest hour's.
     pub rain_chance: Option<Percent>,
-    /// None where the sun does not rise or set that day.
     pub sunrise: Option<TimeOfDay>,
     pub sunset: Option<TimeOfDay>,
 }
@@ -148,14 +140,12 @@ pub struct HourForecast {
     pub sky: Sky,
     pub temperature: Degrees,
     pub rain_chance: Option<Percent>,
-    /// What falls during the hour.
     pub precipitation: Option<Millimetres>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Forecast {
     pub today: Today,
-    /// In order, from the hour of the fetch.
     pub hours: Vec<HourForecast>,
     /// Today first.
     pub week: Vec<DayForecast>,
@@ -166,7 +156,6 @@ impl Forecast {
         self.week.iter().find(|day| day.date == date)
     }
 
-    /// The hour `now` is in, and the ones after it.
     pub fn hours_from(&self, now: LocalTime) -> impl Iterator<Item = &HourForecast> {
         let this_hour = (now.date, now.time_of_day.hour());
         self.hours.iter().filter(move |hour| (hour.start.date, hour.start.time_of_day.hour()) >= this_hour)
@@ -177,15 +166,12 @@ pub trait ForecastSource: Send {
     fn fetch(&mut self, place: &Place) -> Result<Forecast, Unavailable>;
 }
 
-/// Everything the weather is at one moment.
 #[derive(Clone, Debug)]
 pub struct WeatherReport {
     pub place: Option<String>,
     pub forecast: Option<Forecast>,
-    /// When `forecast` was fetched.
     pub fetched_at: Option<Instant>,
     pub status: FetchStatus,
-    /// Moves on at every change, so a screen knows when to redraw.
     pub revision: u64,
 }
 
@@ -200,7 +186,6 @@ struct State {
     requested: bool,
 }
 
-/// Every clone is the same weather.
 #[derive(Clone)]
 pub struct Weather {
     state: Arc<Mutex<State>>,
@@ -216,7 +201,6 @@ impl Weather {
         }
     }
 
-    /// Open-Meteo's forecasts, where the device is.
     pub fn from_open_meteo(services: &dyn Services) -> Self {
         Self::new(services.place(), Box::new(OpenMeteo::new(services.internet())))
     }
@@ -225,7 +209,6 @@ impl Weather {
         self.lock_state().report.clone()
     }
 
-    /// Fetch at the next chance, whenever the last fetch was.
     pub fn request_refresh(&self) {
         self.lock_state().requested = true;
     }
@@ -242,8 +225,6 @@ impl Weather {
         state.requested || now.saturating_duration_since(last) >= wait
     }
 
-    /// Fetches if it is time to. Blocks for as long as the fetch takes, but never holds
-    /// up whoever reads the report meanwhile.
     pub fn refresh_if_due(&self, now: Instant) {
         if !self.is_due(now) {
             return;
@@ -290,7 +271,6 @@ impl Weather {
     }
 }
 
-/// Fetched on the engine's network thread, whatever is on screen.
 impl AppService for Weather {
     fn fetch_due(&self, now: Instant) -> bool {
         self.is_due(now)
@@ -321,7 +301,6 @@ mod tests {
         fetches: u32,
     }
 
-    /// Answers with each result in turn, and counts the fetches.
     #[derive(Clone)]
     struct Scripted(Arc<Mutex<Script>>);
 

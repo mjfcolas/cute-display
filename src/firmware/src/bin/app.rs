@@ -73,7 +73,6 @@ fn main() -> Result<(), Fault> {
     match app::run(devices, catalog::APPS)? {}
 }
 
-/// Serves the SD card to a computer on the USB cable; see the installer's `card` command.
 fn start_maintenance(card: SdmmcCard) -> Result<(), Fault> {
     usb_console::listen()?;
     thread::Builder::new()

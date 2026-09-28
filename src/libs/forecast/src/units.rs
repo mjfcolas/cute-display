@@ -1,5 +1,3 @@
-//! The weather's quantities as every screen writes them.
-
 use crate::{Degrees, Hectopascals, KilometresPerHour, Percent};
 
 pub fn temperature(degrees: Degrees) -> String {

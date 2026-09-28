@@ -1,10 +1,7 @@
-//! The Internet through the computer's own connection.
-
 use hal::http::HttpClient;
 use hal::radio::WifiStation;
 use hal::Fault;
 
-/// Joining is a no-op: the computer is already on a network.
 pub struct HostWifi;
 
 impl WifiStation for HostWifi {

@@ -1,14 +1,3 @@
-//! What every app shares, as the installer writes it: where the device is, its time zone
-//! in POSIX `TZ` form, and which apps run.
-//!
-//! ```text
-//! place = Notre-Dame
-//! latitude = 48.8530
-//! longitude = 2.3499
-//! time_zone = CET-1CEST,M3.5.0,M10.5.0/3
-//! apps = alarm, weather, radar
-//! ```
-
 use conf_text::ConfText;
 use domain::clock::TimeZoneSource;
 use domain::fetch::Unavailable;
@@ -33,7 +22,6 @@ impl<S: FileStorage> GeneralFile<S> {
         Self { storage, unreadable: None }
     }
 
-    /// The apps asked for, by name, separated by commas or spaces; `None` when nothing says.
     pub fn apps(&self) -> Option<Vec<String>> {
         let conf = self.conf().inspect_err(|unavailable| log::warn!("apps: {unavailable}")).ok()??;
         let listed = conf.get(APPS)?;
@@ -79,7 +67,6 @@ impl<S: FileStorage + Send> PlaceSource for GeneralFile<S> {
     }
 }
 
-/// For a device whose card could not be reached: the default time zone, and no place.
 pub struct NoGeneralFile;
 
 impl TimeZoneSource for NoGeneralFile {

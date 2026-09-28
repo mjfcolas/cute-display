@@ -1,7 +1,3 @@
-//! The light over the screen comes up when the controls are touched and goes out once
-//! the backlight duration has passed; the reading lamp shines at its setting. The light
-//! the apps want lights both, above their settings.
-
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 
@@ -10,7 +6,6 @@ use crate::settings::{BacklightDuration, Settings};
 /// Enough to read the screen in the dark, not enough to light the room.
 const BACKLIGHT_LEVEL: Level = Level::percent(20);
 
-/// Percent of what a light can give, 0 to 100.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Level(u8);
 
@@ -34,14 +29,11 @@ struct Lights {
     backlight: Box<dyn Light>,
     reading_lamp: Box<dyn Light>,
     last_touched: Option<Instant>,
-    /// The most any app wants.
     wanted: Level,
-    /// What each light was last set to; `None` before the first time.
     backlight_level: Option<Level>,
     reading_lamp_level: Option<Level>,
 }
 
-/// Every clone drives the same lights.
 #[derive(Clone)]
 pub struct Lighting {
     lights: Arc<Mutex<Lights>>,
@@ -55,19 +47,15 @@ impl Lighting {
         Self { lights: Arc::new(Mutex::new(lights)), settings }
     }
 
-    /// Somebody used the controls.
     pub fn touched(&self, at: Instant) {
         self.lock().last_touched = Some(at);
         self.refresh(at);
     }
 
-    /// Shows at the next refresh.
     pub fn shine_at_least(&self, level: Level) {
         self.lock().wanted = level;
     }
 
-    /// Puts both lights where the settings, the last touch and the apps say they should
-    /// be.
     pub fn refresh(&self, at: Instant) {
         let backlight_on = match self.settings.backlight() {
             BacklightDuration::Always => true,
@@ -102,7 +90,6 @@ mod tests {
     use super::*;
     use crate::settings::{SettingsRecord, SettingsStore};
 
-    /// Remembers every level it was set to, in percent.
     #[derive(Clone, Default)]
     struct FakeLight(Arc<Mutex<Vec<u8>>>);
 

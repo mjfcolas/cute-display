@@ -1,5 +1,3 @@
-//! The app image on a computer: `just sim [card directory]`.
-
 mod card;
 mod clock;
 mod controls;

@@ -1,6 +1,3 @@
-//! The alarm clock: the time, large, today's weather beside it and the next alarm; the
-//! wake-up time of each day, set with the wheel.
-
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use domain::calendar::Weekday;
@@ -19,7 +16,6 @@ use ui::AppScreen;
 
 use crate::domain::alarm_clock::{AlarmClock, AlarmState, SNOOZE};
 
-/// What a day with no alarm starts at when it is given one.
 const FIRST_TIME: Option<TimeOfDay> = TimeOfDay::new(7, 0);
 const ROW_PITCH: i32 = 24;
 const DOT_DIAMETER: u32 = 8;
@@ -41,7 +37,6 @@ pub struct AlarmScreen {
     clock: Clock,
     weather: Weather,
     mode: Mode,
-    /// How many hours after the one under way the weather column starts.
     hours_ahead: usize,
 }
 
@@ -75,7 +70,6 @@ impl AlarmScreen {
         }
     }
 
-    /// Stops with the last hours of the forecast in the column.
     fn scroll_hours(&mut self, detents: i32) {
         let known = match (self.weather.report().forecast, self.clock.now()) {
             (Some(forecast), Some(now)) => forecast.hours_from(now).count(),
@@ -86,7 +80,6 @@ impl AlarmScreen {
         self.hours_ahead = usize::try_from(ahead.clamp(0, last)).unwrap_or(0);
     }
 
-    /// Turning the hour past 23 or below 0 takes the alarm off that day.
     fn turn_hour(&self, day: Weekday, detents: i32) {
         let time = self.time_on(day);
         let position = time.map_or(0, |t| i32::from(t.hour()) + 1);
@@ -110,7 +103,6 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for AlarmScreen {
         self.hours_ahead = 0;
     }
 
-    /// The alarm's and the weather's revisions, and the minute on the clock.
     fn version(&self) -> u64 {
         let minute = self.clock.now().map_or(0, |now| now.seconds_since_epoch().div_euclid(60));
         let mut hasher = DefaultHasher::new();
@@ -242,7 +234,6 @@ impl AlarmScreen {
     }
 }
 
-/// Centred in the room right of the time, between the date and the hint.
 fn hours_column(area: Rectangle) -> Rectangle {
     let right = area.top_left.x + area.size.width as i32;
     let room_beside_time = right - area.top_left.x - big_digits::CLOCK.time_width() as i32;
@@ -260,14 +251,12 @@ fn write_hint<D: DrawTarget<Color = BinaryColor>>(target: &mut D, hint: &str, ar
     text::write(target, hint, Point::new(area.top_left.x, hint_top(area)), area.size.width, &HINT);
 }
 
-/// The part of a wake-up time the wheel sets.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Field {
     Hour,
     Minute,
 }
 
-/// The field being set is in brackets.
 fn wake_up_time(time: Option<TimeOfDay>, field: Option<Field>) -> String {
     match (time, field) {
         (None, Some(Field::Hour)) => "[off]".into(),
@@ -288,7 +277,6 @@ fn long_date(now: &LocalTime) -> String {
     format!("{} {} {month}", calendar_names::weekday(date.weekday()), date.day())
 }
 
-/// "today", "tomorrow", or the day's name within the week.
 fn day_from(now: LocalTime, then: LocalTime) -> String {
     match then.date.days_since_epoch() - now.date.days_since_epoch() {
         0 => "today".into(),
@@ -331,7 +319,6 @@ mod tests {
         fn silence(&mut self) {}
     }
 
-    /// Stands still at the time it is given.
     #[derive(Clone, Default)]
     struct StoppedKeeper(Arc<Mutex<Option<UtcTime>>>);
     impl TimeKeeper for StoppedKeeper {
@@ -364,7 +351,6 @@ mod tests {
         }
     }
 
-    /// Saturday's, from 06:00, rain all day.
     struct Rainy;
     impl ForecastSource for Rainy {
         fn fetch(&mut self, _: &Place) -> Result<Forecast, Unavailable> {

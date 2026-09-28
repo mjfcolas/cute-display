@@ -5,7 +5,6 @@ use embedded_graphics_core::prelude::*;
 
 use crate::Fault;
 
-/// The panel as it is read: landscape.
 pub const WIDTH: u16 = 416;
 pub const HEIGHT: u16 = 240;
 /// The case covers every column from here to the right edge.
@@ -13,7 +12,7 @@ pub const VISIBLE_WIDTH: u16 = 398;
 
 const BYTES_PER_ROW: usize = WIDTH as usize / 8;
 
-/// A 1-bit image of the whole panel. [`BinaryColor::On`] is ink.
+/// [`BinaryColor::On`] is ink.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Frame {
     ink: Box<[u8; BYTES_PER_ROW * HEIGHT as usize]>,
@@ -24,12 +23,10 @@ impl Frame {
         Self { ink: Box::new([0; BYTES_PER_ROW * HEIGHT as usize]) }
     }
 
-    /// Off-panel coordinates read as paper.
     pub fn is_ink(&self, x: i32, y: i32) -> bool {
         Self::locate(x, y).is_some_and(|(byte, mask)| self.ink.get(byte).is_some_and(|b| b & mask != 0))
     }
 
-    /// Off-panel coordinates are ignored.
     pub fn set_ink(&mut self, x: i32, y: i32, ink: bool) {
         let Some((byte, mask)) = Self::locate(x, y) else {
             return;

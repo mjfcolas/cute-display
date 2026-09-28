@@ -1,6 +1,3 @@
-//! What every app relies on, and what the engine lends apps, in the product's own words.
-//! Knows nothing of screens, controls or chips.
-
 pub mod apps;
 pub mod calendar;
 pub mod clock;

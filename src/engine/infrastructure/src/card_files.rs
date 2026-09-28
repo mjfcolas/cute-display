@@ -1,5 +1,3 @@
-//! An app's files on the card, in its own directory, `cute-display/apps/<id>/`.
-
 use domain::apps::AppId;
 use domain::fetch::Unavailable;
 use domain::files::Files;
@@ -34,7 +32,6 @@ impl<S: FileStorage + Send> Files for CardFiles<S> {
     }
 }
 
-/// An app's files when the card could not be reached: each read and write says why.
 pub struct UnreachableCard(pub Fault);
 
 impl Files for UnreachableCard {

@@ -1,8 +1,3 @@
-//! The alarm clock: a time to wake up on each day of the week, or none. Half an hour
-//! before, the lights rise like the sun; then it rings, softly at first, until it is
-//! stopped, snoozed, or has rung for a quarter of an hour. Wherever the device is, it
-//! comes to the front to be stopped.
-//!
 //! An alarm rings when the clock goes past its time between two readings: a clock set
 //! forward over it by less than [`RING_FOR`] still rings it, and a time set, or the alarm
 //! switched on, after it passed does not. Nothing is caught up at start, and a clock set
@@ -25,7 +20,6 @@ pub const RING_FOR: Duration = Duration::from_secs(15 * 60);
 pub const VOLUME_RISES_OVER: Duration = Duration::from_secs(60);
 const FIRST_VOLUME: Volume = Volume::percent(10);
 
-/// Percent of as loud as the ringer rings, 0 to 100.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Volume(u8);
 
@@ -39,7 +33,6 @@ impl Volume {
     }
 }
 
-/// When to wake up, day by day, and whether to at all.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AlarmSchedule {
     pub enabled: bool,
@@ -58,7 +51,7 @@ impl AlarmSchedule {
         }
     }
 
-    /// The first alarm at `from` or after, whether enabled or not.
+    /// Whether enabled or not.
     pub fn next_from(&self, from: LocalTime) -> Option<LocalTime> {
         let from_seconds = from.seconds_since_epoch();
         (0..=7).find_map(|days| {
@@ -70,23 +63,18 @@ impl AlarmSchedule {
     }
 }
 
-/// Where the schedule is kept. A store that cannot be read or written leaves the device
-/// running on the schedule it has in memory.
 pub trait AlarmScheduleStore: Send {
-    /// `None` when nothing has been kept yet.
     fn load(&mut self) -> Option<AlarmSchedule>;
     fn save(&mut self, schedule: &AlarmSchedule);
 }
 
 pub trait Ringer: Send {
-    /// Rings, or goes on ringing, at `volume`.
     fn ring(&mut self, volume: Volume);
     fn silence(&mut self);
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AlarmState {
-    /// Nothing to do but wait for the next alarm, if any is enabled.
     Waiting { next: Option<LocalTime> },
     Ringing,
     Snoozed { until: LocalTime },
@@ -104,19 +92,16 @@ struct Inner {
     phase: Phase,
     last_reading: Option<LocalTime>,
     sounding: bool,
-    /// Moves on at every change a screen shows.
     revision: u64,
     store: Box<dyn AlarmScheduleStore>,
     ringer: Box<dyn Ringer>,
     foreground: Foreground,
 }
 
-/// Every clone is the same alarm clock.
 #[derive(Clone)]
 pub struct AlarmClock(Arc<Mutex<Inner>>);
 
 impl AlarmClock {
-    /// On the schedule the store kept, or on one with no alarm.
     pub fn new(mut store: Box<dyn AlarmScheduleStore>, ringer: Box<dyn Ringer>, foreground: Foreground) -> Self {
         let schedule = store.load().unwrap_or_default();
         let inner = Inner { schedule, phase: Phase::Waiting, last_reading: None, sounding: false, revision: 0, store, ringer, foreground };
@@ -144,7 +129,6 @@ impl AlarmClock {
         self.change_schedule(|schedule| schedule.enabled = true);
     }
 
-    /// Also stops it ringing.
     pub fn switch_off(&self) {
         self.change_schedule(|schedule| schedule.enabled = false);
         self.stop();
@@ -158,7 +142,6 @@ impl AlarmClock {
         self.change_schedule(|schedule| schedule.set_time_on(day, time));
     }
 
-    /// Until the next alarm.
     pub fn stop(&self) {
         let mut inner = self.lock();
         if let Phase::Ringing { .. } | Phase::Snoozed { .. } = inner.phase {
@@ -166,7 +149,6 @@ impl AlarmClock {
         }
     }
 
-    /// Rings again [`SNOOZE`] from now.
     pub fn snooze(&self) {
         let mut inner = self.lock();
         if let (Phase::Ringing { .. }, Some(now)) = (inner.phase, inner.last_reading) {
@@ -175,8 +157,6 @@ impl AlarmClock {
         }
     }
 
-    /// How bright the sunrise is: nothing until [`SUNRISE`] before the alarm, all the
-    /// light there is once it rings.
     pub fn sunrise(&self) -> Level {
         let inner = self.lock();
         match (inner.phase, inner.last_reading) {
@@ -189,8 +169,6 @@ impl AlarmClock {
         }
     }
 
-    /// Moves on to `now`: rings when the clock went past an alarm since the last
-    /// reading, stops after [`RING_FOR`].
     pub fn tick(&self, now: LocalTime) {
         let mut inner = self.lock();
         let previous = inner.last_reading.replace(now);
@@ -233,7 +211,6 @@ impl AlarmClock {
 }
 
 impl Inner {
-    /// The next alarm to ring, if the schedule is enabled.
     fn next_alarm(&self) -> Option<LocalTime> {
         let now = self.last_reading?;
         if !self.schedule.enabled {
@@ -247,7 +224,6 @@ impl Inner {
         self.revision = self.revision.wrapping_add(1);
     }
 
-    /// Rings louder and louder while ringing, and silences the ringer once otherwise.
     fn sound(&mut self, now_seconds: i64) {
         match self.phase {
             Phase::Ringing { since } => {
@@ -274,7 +250,6 @@ fn seconds(duration: Duration) -> i64 {
     i64::try_from(duration.as_secs()).unwrap_or(i64::MAX)
 }
 
-/// `part` of `whole`, held to 0 to 100 %.
 fn percent_of(part: i64, whole: i64) -> Level {
     let percent = part.clamp(0, whole).saturating_mul(100) / whole.max(1);
     Level::percent(u8::try_from(percent).unwrap_or(100))
@@ -302,7 +277,6 @@ mod tests {
         }
     }
 
-    /// The volume it rings at, `None` when silent.
     #[derive(Clone, Default)]
     struct FakeRinger(Arc<Mutex<Option<u8>>>);
 
@@ -331,7 +305,6 @@ mod tests {
         TimeOfDay::new(7, 30)
     }
 
-    /// Enabled, at 7:30 on Saturdays and Sundays, and running since Saturday 6:00.
     fn alarm_clock() -> (AlarmClock, FakeRinger, Foreground) {
         let (ringer, foreground) = (FakeRinger::default(), Foreground::new(WEATHER));
         let alarm = AlarmClock::new(Box::new(FakeStore::default()), Box::new(ringer.clone()), foreground.clone());

@@ -1,6 +1,3 @@
-//! The panel, shown in the window. It refreshes when the device's controller would, the
-//! whole glass or only the changes, takes as long, and flashes as it does.
-
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -24,14 +21,12 @@ pub struct SimulatedPanel {
     controller: Arc<Mutex<Controller>>,
 }
 
-/// What the controller knows: its policy, and the image it put on the glass last.
 struct Controller {
     policy: RefreshPolicy,
     memory: Box<Image>,
 }
 
 impl Default for Controller {
-    /// Its memory white, the glass unknown.
     fn default() -> Self {
         Self { policy: RefreshPolicy::default(), memory: Box::new([0xff; memory::BYTES]) }
     }
@@ -56,7 +51,6 @@ impl Controller {
 }
 
 impl SimulatedPanel {
-    /// What the glass shows now.
     pub fn glass(&self) -> Frame {
         self.glass.lock().map(|glass| glass.clone()).unwrap_or_default()
     }

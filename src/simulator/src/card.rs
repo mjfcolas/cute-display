@@ -1,5 +1,3 @@
-//! The SD card as a directory of the computer.
-
 use std::fs::{self, File};
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom};
 use std::path::{Component, Path, PathBuf};
@@ -8,14 +6,12 @@ use std::sync::Arc;
 use hal::storage::{Entry, FileStorage};
 use hal::Fault;
 
-/// Every clone sees the same directory.
 #[derive(Clone)]
 pub struct DirectoryCard {
     root: Arc<PathBuf>,
 }
 
 impl DirectoryCard {
-    /// Creates the directory when it is not there yet: a blank card.
     pub fn open(root: &Path) -> Result<Self, Fault> {
         fs::create_dir_all(root).map_err(|e| Fault::new(format!("{}: {e}", root.display())))?;
         Ok(Self { root: Arc::new(root.to_path_buf()) })

@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 
-/// State every clone sees and changes alike, whichever thread holds it.
 #[derive(Debug, Default)]
 pub(crate) struct Shared<T>(Arc<Mutex<T>>);
 

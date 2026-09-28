@@ -4,7 +4,6 @@ use std::sync::{Arc, Mutex};
 use hal::storage::{Entry, FileStorage};
 use hal::Fault;
 
-/// Files in memory; every clone sees the same ones.
 #[derive(Clone, Default)]
 pub(crate) struct MemoryStorage(Arc<Mutex<BTreeMap<String, Vec<u8>>>>);
 

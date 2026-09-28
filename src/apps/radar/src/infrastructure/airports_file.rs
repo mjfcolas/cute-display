@@ -1,21 +1,5 @@
-//! The airports around the radar's place, one a line: code, latitude, longitude, then a
-//! name for whoever reads the file.
-//!
-//! ```text
-//! LFPG 49.0097 2.5479 Paris Charles de Gaulle Airport
-//! LFPO 48.7233 2.3794 Paris-Orly Airport
-//! ```
-//!
-//! The installer (`just radar-airports`) writes it from OurAirports. A line that does
-//! not read is skipped, and so is a `#` comment.
-//!
-//! Which airports are named on the scope is the radar's own setting, since this file is
-//! written again whenever the place changes:
-//!
-//! ```text
-//! # cute-display/apps/radar/radar.conf
-//! airport_labels = LFPG, LFPO, LFPB
-//! ```
+//! Which airports are named on the scope is in `radar.conf`, since `airports.conf` is
+//! written again whenever the place changes.
 
 use conf_text::ConfText;
 use domain::files::Files;
@@ -56,7 +40,6 @@ impl AirportSource for AirportsFile {
 }
 
 impl AirportsFile {
-    /// The codes listed in `airport_labels`, separated by commas or spaces.
     fn labelled(&self) -> Vec<String> {
         let Ok(Some(text)) = self.files.read(RADAR_FILE) else {
             return Vec::new();
@@ -84,7 +67,6 @@ mod tests {
 
     use super::*;
 
-    /// Files in memory; every clone sees the same ones.
     #[derive(Clone, Default)]
     struct MemoryFiles(Arc<Mutex<BTreeMap<String, String>>>);
 

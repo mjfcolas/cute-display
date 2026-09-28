@@ -1,13 +1,3 @@
-//! The alarm schedule as a few lines of text, in the app's `alarm.conf`:
-//!
-//! ```text
-//! enabled = yes
-//! monday = 07:00
-//! tuesday = off
-//! ```
-//!
-//! A day that is missing or unreadable has no alarm.
-
 use conf_text::ConfText;
 use domain::calendar::Weekday;
 use domain::files::Files;
@@ -96,7 +86,6 @@ mod tests {
 
     use super::*;
 
-    /// Files in memory; every clone sees the same ones.
     #[derive(Clone, Default)]
     struct MemoryFiles(Arc<Mutex<BTreeMap<String, String>>>);
 

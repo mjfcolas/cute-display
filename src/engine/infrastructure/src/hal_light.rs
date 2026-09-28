@@ -1,7 +1,6 @@
 use domain::lighting::{Level, Light};
 use hal::light::{Brightness, DimmableLight};
 
-/// A light of the domain on a dimmable light of the board.
 pub struct HalLight<L> {
     light: L,
 }

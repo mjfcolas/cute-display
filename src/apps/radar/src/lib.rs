@@ -1,6 +1,3 @@
-//! The radar app: the aircraft around the device, from adsb.fi, and the airports in its
-//! `airports.conf`.
-
 mod domain;
 mod infrastructure;
 mod ui;
@@ -20,7 +17,6 @@ use crate::infrastructure::airports_file::AirportsFile;
 
 pub const ID: AppId = AppId::new("radar");
 
-/// This app, for an image to hold.
 pub const fn app<D: DrawTarget<Color = BinaryColor>>() -> Installable<D> {
     Installable { id: ID, title: "Radar", install: install::<D> }
 }

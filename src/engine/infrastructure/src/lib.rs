@@ -1,5 +1,3 @@
-//! The domain's contracts, implemented on the HAL.
-
 pub mod card_files;
 mod conf_file;
 pub mod general_file;

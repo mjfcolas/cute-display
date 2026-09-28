@@ -15,8 +15,6 @@ const AMPLIFIER_WAKE_MS: u32 = 60;
 /// Flushes the DMA ring before the amplifier goes off, so its last buffer is not looped.
 const TRAILING_SILENCE_WRITES: usize = 6;
 
-/// An I2S stereo stream into an amplifier with an enable pin. Mono samples go to both
-/// channels.
 pub struct I2sSpeaker {
     i2s: I2sDriver<'static, I2sTx>,
     amplifier: PinDriver<'static, Output>,

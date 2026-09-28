@@ -6,8 +6,6 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Line, PrimitiveStyle, Triangle};
 use forecast::CompassPoint;
 
-/// Draws the arrow of a wind from `from` inside the square at `top_left`, `side` pixels
-/// wide.
 pub(crate) fn draw<D: DrawTarget<Color = BinaryColor>>(target: &mut D, from: CompassPoint, top_left: Point, side: u32) {
     let (dx, dy) = downwind(from);
     let half = side as i32 / 2;
@@ -62,8 +60,6 @@ mod tests {
         frame
     }
 
-    /// The sums of the inked pixels' x and y in the square's own coordinates, and their
-    /// count; none may fall outside the square.
     fn ink_sums(frame: &Frame) -> (i32, i32, i32) {
         let mut sum = (0, 0, 0);
         for y in 0..i32::from(HEIGHT) {

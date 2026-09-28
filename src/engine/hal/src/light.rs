@@ -1,6 +1,5 @@
 use crate::Fault;
 
-/// Percent of full output, 0 to 100.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Brightness(u8);
 

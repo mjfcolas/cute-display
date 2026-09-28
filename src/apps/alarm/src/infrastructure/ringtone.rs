@@ -1,6 +1,3 @@
-//! The alarm's ring: a rising arpeggio and a pause, over and over, as loud as the alarm
-//! says, until it is silenced.
-
 use core::f32::consts::TAU;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
@@ -13,10 +10,8 @@ use crate::domain::alarm_clock::{Ringer, Volume};
 const PHRASE: [(Option<f32>, u32); 5] = [(Some(523.25), 150), (Some(659.25), 150), (Some(783.99), 150), (Some(1046.5), 300), (None, 700)];
 const FADE_MS: u32 = 10;
 
-/// Rings on the device's sound. Every call returns at once.
 pub struct SoundRinger {
     sound: Box<dyn Sound>,
-    /// Percent; the ringtone playing follows it.
     volume: Arc<AtomicU8>,
     ringing: bool,
 }
@@ -44,7 +39,6 @@ impl Ringer for SoundRinger {
     }
 }
 
-/// The phrase over and over.
 struct Ringtone {
     sample_rate_hz: u32,
     volume: Arc<AtomicU8>,
@@ -118,7 +112,6 @@ mod tests {
         assert!((peak(50) - peak(100) / 2).abs() <= 1);
     }
 
-    /// Says what it was asked to do, and keeps the samples it was last given.
     #[derive(Clone, Default)]
     struct FakeSound {
         asked: Arc<Mutex<Vec<&'static str>>>,

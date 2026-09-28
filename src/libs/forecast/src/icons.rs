@@ -1,13 +1,9 @@
-//! A picture for each sky, drawn from shapes at whatever size it is given, so the same
-//! drawing serves today's large icon and the week's small ones.
-
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Circle, Line, PrimitiveStyle, Rectangle, Triangle};
 
 use crate::Sky;
 
-/// Draws `sky` inside the square at `top_left`, `side` pixels wide.
 pub fn draw<D: DrawTarget<Color = BinaryColor>>(target: &mut D, sky: Sky, top_left: Point, side: u32) {
     let s = side as i32;
     let at = |x: i32, y: i32| top_left + Point::new(x * s / 100, y * s / 100);

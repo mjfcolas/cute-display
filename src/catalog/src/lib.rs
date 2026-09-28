@@ -1,11 +1,6 @@
-//! The apps an image of Cute Display can hold, picked by this crate's features: the same
-//! list for the board and the computer.
-
 use hal::display::Frame;
 use ui::Installable;
 
-/// In the order the system app offers them unless `general.conf` chooses; the first is in
-/// front at start.
 pub const APPS: &[Installable<Frame>] = &[
     #[cfg(feature = "alarm")]
     alarm::app(),

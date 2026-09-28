@@ -13,13 +13,12 @@ pub fn chars_across(width: u32, font: &MonoFont<'_>) -> usize {
     (width / (font.character_size.width + font.character_spacing)) as usize
 }
 
-/// How wide `write` draws `text` when nothing is cut.
 pub fn width(text: &str, font: &MonoFont<'_>) -> u32 {
     text.chars().count() as u32 * (font.character_size.width + font.character_spacing)
 }
 
-/// Words into lines of at most `max_chars`; a word longer than a line is split over
-/// several, since what is lost off its end may be the part that matters (a file name).
+/// A word longer than a line is split over several, since what is lost off its end may be
+/// the part that matters (a file name).
 pub fn wrap(text: &str, max_chars: usize) -> Vec<String> {
     let max_chars = max_chars.max(1);
     let pieces = text.split_whitespace().flat_map(|word| {
@@ -39,8 +38,7 @@ pub fn wrap(text: &str, max_chars: usize) -> Vec<String> {
     lines
 }
 
-/// Cut to what fits in `width`. The fonts are Latin-1: '°' and most accents draw, anything
-/// further becomes '?'.
+/// The fonts are Latin-1: '°' and most accents draw, anything further becomes '?'.
 pub fn write<D: DrawTarget<Color = BinaryColor>>(
     target: &mut D,
     text: &str,
@@ -51,7 +49,6 @@ pub fn write<D: DrawTarget<Color = BinaryColor>>(
     write_in(target, text, top_left, width, font, BinaryColor::On);
 }
 
-/// [`write`] in `color`: `Off` writes paper over ink.
 pub fn write_in<D: DrawTarget<Color = BinaryColor>>(
     target: &mut D,
     text: &str,

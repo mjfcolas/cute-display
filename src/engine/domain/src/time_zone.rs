@@ -1,8 +1,3 @@
-//! A time zone as POSIX writes it in `TZ`: a standard offset, and summer time between two
-//! days of the year given as "the nth weekday of a month". `CET-1CEST,M3.5.0,M10.5.0/3`
-//! is Central European time: one hour east of Greenwich, two from the last Sunday of March
-//! at 02:00 to the last Sunday of October at 03:00. The offsets count westwards.
-
 use core::iter::Peekable;
 use core::str::Chars;
 
@@ -36,7 +31,6 @@ struct Transition {
 }
 
 impl Default for TimeZone {
-    /// Central European time, where the device lives unless told otherwise.
     fn default() -> Self {
         let last_sunday = |month, hour| Transition { month, week: 5, weekday: Weekday::Sunday, seconds: hour * HOUR };
         let summer = SummerTime { offset: UtcOffset::east(2 * HOUR), starts: last_sunday(3, 2), ends: last_sunday(10, 3) };
@@ -47,7 +41,6 @@ impl Default for TimeZone {
 impl TimeZone {
     pub const UTC: Self = Self { standard_offset: UtcOffset::ZERO, summer: None };
 
-    /// `None` for anything but `std offset [dst [offset],Mm.w.d[/time],Mm.w.d[/time]]`.
     pub fn parse(posix: &str) -> Option<Self> {
         let mut text = Cursor(posix.trim().chars().peekable());
         text.name()?;
@@ -84,7 +77,6 @@ impl TimeZone {
 }
 
 impl Transition {
-    /// Seconds since 1970-01-01 00:00:00 on the wall, in `year`.
     fn on_the_wall(self, year: u16) -> i64 {
         let first = Date::new(year, self.month, 1).map_or(0, Date::days_since_epoch);
         let first_weekday = Date::from_days_since_epoch(first).weekday().days_since_sunday();
@@ -116,7 +108,6 @@ impl Cursor<'_> {
         self.eat(wanted).then_some(self)
     }
 
-    /// Three letters or more, or anything between `<` and `>`; what it says is not kept.
     fn name(&mut self) -> Option<()> {
         if self.eat('<') {
             while !self.eat('>') {
@@ -139,7 +130,6 @@ impl Cursor<'_> {
         number
     }
 
-    /// `[+|-]hh[:mm[:ss]]`, in seconds.
     fn duration(&mut self) -> Option<i32> {
         let sign = if self.eat('-') {
             -1
@@ -153,7 +143,6 @@ impl Cursor<'_> {
         (hours <= 167 && minutes < 60 && seconds < 60).then_some(sign * (hours * HOUR + minutes * 60 + seconds))
     }
 
-    /// `Mm.w.d[/time]`.
     fn transition(&mut self) -> Option<Transition> {
         self.eat('M').then_some(())?;
         let month = u8::try_from(self.number()?).ok().filter(|m| (1..=12).contains(m))?;

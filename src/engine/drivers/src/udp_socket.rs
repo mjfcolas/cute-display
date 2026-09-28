@@ -1,6 +1,3 @@
-//! UDP through the standard library's sockets, which ESP-IDF provides as well as any
-//! computer.
-
 use core::time::Duration;
 use std::net::UdpSocket;
 

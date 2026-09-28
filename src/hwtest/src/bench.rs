@@ -1,10 +1,3 @@
-//! | Control     | Exercises                                          |
-//! | ----------- | -------------------------------------------------- |
-//! | Wheel       | the front light, 10 % per detent                   |
-//! | Wheel press | the speaker, with a chime                          |
-//! | Yellow      | the reading lamp: off, 10, 50, 100 %               |
-//! | Long        | the panel, swapping the report for a checkerboard  |
-
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -325,7 +318,6 @@ mod tests {
         }
     }
 
-    /// Records how each frame was asked for, and whether it was the checkerboard.
     struct FakeDisplay(Shared<Vec<(Redraw, bool)>>);
     impl EpaperDisplay for FakeDisplay {
         fn show(&mut self, frame: &Frame, redraw: Redraw) -> Result<Refreshed, Fault> {

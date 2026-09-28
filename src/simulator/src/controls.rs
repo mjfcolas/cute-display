@@ -1,5 +1,3 @@
-//! The controls, moved by the window and read by the app through the HAL.
-
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU32, Ordering};
 use std::sync::Arc;
 
@@ -11,7 +9,7 @@ struct KeyState {
     held: AtomicBool,
 }
 
-/// A button on a key. Clones share the key; each counts the presses it has taken.
+/// Clones share the key; each counts the presses it has taken.
 #[derive(Clone, Default)]
 pub struct KeyButton {
     key: Arc<KeyState>,
@@ -19,7 +17,6 @@ pub struct KeyButton {
 }
 
 impl KeyButton {
-    /// Where the key is now; going down is a press.
     pub fn set_down(&self, down: bool) {
         let was_down = self.key.held.swap(down, Ordering::Relaxed);
         if down && !was_down {
@@ -41,7 +38,6 @@ impl PushButton for KeyButton {
     }
 }
 
-/// The wheel on arrow keys and the mouse wheel. Every clone turns the same wheel.
 #[derive(Clone, Default)]
 pub struct ScrollWheel {
     detents: Arc<AtomicI32>,

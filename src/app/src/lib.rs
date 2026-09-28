@@ -1,6 +1,3 @@
-//! The app image, on any hardware that keeps the HAL's contracts: which threads run and
-//! how the layers are wired. `firmware` runs it on the board, `simulator` on a computer.
-
 mod controls;
 mod engine_services;
 pub mod image;
@@ -43,7 +40,6 @@ use crate::presentation::{AppOnScreen, Presentation};
 
 const MAIN_PERIOD: Duration = Duration::from_millis(100);
 
-/// The devices of one kind of hardware.
 pub trait Hardware {
     type Panel: EpaperDisplay + Send + 'static;
     type Wheel: RotaryEncoder + Send + 'static;
@@ -61,7 +57,6 @@ pub trait Hardware {
     const NETWORK_STACK_BYTES: usize;
 }
 
-/// What the app image uses of the hardware.
 pub struct Devices<H: Hardware> {
     pub panel: H::Panel,
     pub wheel: H::Wheel,
@@ -79,13 +74,8 @@ pub struct Devices<H: Hardware> {
     pub system: H::System,
 }
 
-/// An installed app's service, and the app it is.
 type Service = (AppId, Arc<dyn AppService>);
 
-/// Installs those of `apps` that `general.conf` chooses, the first of them in front, then
-/// starts the ui, speaker and network
-/// threads, and keeps the time, the apps' services and the lights on the calling thread.
-/// Returns only when a thread could not be started.
 pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>]) -> Result<Infallible, Fault> {
     let settings_store: Box<dyn SettingsStore> = match &devices.sd_card {
         Ok(card) => Box::new(SettingsFile::new(card.clone())),
@@ -157,7 +147,6 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>]) -> Res
     }
 }
 
-/// Those of `apps` that `wanted` chooses, in its order; a name the image lacks is logged.
 fn to_install<'a>(apps: &'a [Installable<Frame>], wanted: Option<&[String]>) -> impl Iterator<Item = &'a Installable<Frame>> {
     let image: Vec<AppId> = apps.iter().map(|app| app.id).collect();
     for name in wanted.unwrap_or_default() {
@@ -168,12 +157,10 @@ fn to_install<'a>(apps: &'a [Installable<Frame>], wanted: Option<&[String]>) -> 
     apps::chosen(&image, wanted).into_iter().filter_map(move |id| apps.iter().find(|app| app.id == id))
 }
 
-/// The first app installed, or the system app when there is none.
 fn front_at_start(services: &[Service]) -> AppId {
     services.first().map_or(AppId::SYSTEM, |(app, _)| *app)
 }
 
-/// The lights follow the app that wants the most.
 fn light_wanted(services: &[Service]) -> Level {
     services.iter().map(|(_, service)| service.light()).max().unwrap_or(Level::OFF)
 }

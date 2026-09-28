@@ -1,4 +1,4 @@
-//! The time from the NTP pool, by SNTP (RFC 4330): one datagram out, one back.
+//! SNTP, RFC 4330.
 
 use domain::clock::TimeSource;
 use domain::fetch::Unavailable;
@@ -65,7 +65,6 @@ fn decode(answer: &[u8]) -> Result<UtcTime, Unavailable> {
 mod tests {
     use super::*;
 
-    /// A server's answer sent at `unix_seconds` and `fraction` of a second.
     fn answer(header: u8, stratum: u8, unix_seconds: i64, fraction: u32) -> Vec<u8> {
         let mut packet = vec![0u8; PACKET_BYTES];
         packet[0] = header;
@@ -100,7 +99,6 @@ mod tests {
         assert!(decode(&answer(VERSION_4_SERVER, 2, MORNING, 0)[..47]).is_err(), "cut short");
     }
 
-    /// Answers with its datagram, and keeps where the request went and what it was.
     struct Recorded {
         answer: Vec<u8>,
         request: Option<(String, u16, Vec<u8>)>,

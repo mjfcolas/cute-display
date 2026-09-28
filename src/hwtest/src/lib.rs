@@ -1,6 +1,3 @@
-//! The hardware test bench: exercises every part of the board through the HAL and
-//! reports what each one says on the panel.
-
 pub mod bench;
 pub mod chime;
 pub mod report;

@@ -1,7 +1,3 @@
-//! The device is a set of apps, one of them in front. One is special: the system app,
-//! which lists the others and holds the device's settings. It is not in the list, only
-//! the system gesture reaches it, and leaving it goes back to where it was opened from.
-
 use std::time::Instant;
 
 use crate::clock::Clock;
@@ -13,12 +9,10 @@ use crate::shared::Shared;
 use crate::sound::Sound;
 use crate::time::LocalTime;
 
-/// Which app, among those the image holds. Each app names itself.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct AppId(&'static str);
 
 impl AppId {
-    /// The engine's own app.
     pub const SYSTEM: AppId = AppId("system");
 
     pub const fn new(name: &'static str) -> Self {
@@ -30,8 +24,6 @@ impl AppId {
     }
 }
 
-/// The apps to run: those in `wanted` that the image holds, in `wanted`'s order, each once;
-/// every app of the image, in its order, when nothing says which.
 pub fn chosen(image: &[AppId], wanted: Option<&[String]>) -> Vec<AppId> {
     let Some(wanted) = wanted else {
         return image.to_vec();
@@ -47,37 +39,27 @@ pub fn chosen(image: &[AppId], wanted: Option<&[String]>) -> Vec<AppId> {
     chosen
 }
 
-/// What an app runs whatever is on screen, called from the engine's threads. Every call
-/// returns soon, but `fetch`.
 pub trait AppService: Send + Sync {
-    /// On the main thread, ten times a second. `local` is `None` until the clock is set.
     fn tick(&self, _now: Instant, _local: Option<LocalTime>) {}
 
-    /// Whether the app has something to fetch now, on the network thread.
     fn fetch_due(&self, _now: Instant) -> bool {
         false
     }
 
-    /// Fetches, once `fetch_due` said to, for as long as the network takes. The apps
-    /// fetch one after another, so a fetch keeps its requests few and bounded, and holds
-    /// nothing its screen waits for meanwhile.
+    /// The apps fetch one after another, so a fetch keeps its requests few and bounded,
+    /// and holds nothing its screen waits for meanwhile.
     fn fetch(&self, _now: Instant) {}
 
-    /// How bright the app wants the lights: they shine at least as bright as the app that
-    /// wants the most.
     fn light(&self) -> Level {
         Level::OFF
     }
 }
 
-/// What the engine lends an app when it is installed: all the app gets from outside.
 pub trait Services {
     fn foreground(&self) -> Foreground;
     fn clock(&self) -> Clock;
     fn internet(&self) -> Box<dyn Internet>;
-    /// Where the device is, as whoever set it up said.
     fn place(&self) -> Box<dyn PlaceSource>;
-    /// The files in the app's own directory: a tidy place, not a wall.
     fn files(&self) -> Box<dyn Files>;
     fn sound(&self) -> Box<dyn Sound>;
 }
@@ -85,12 +67,9 @@ pub trait Services {
 #[derive(Clone, Copy, Debug)]
 struct Front {
     app: AppId,
-    /// Where leaving the system app goes back to.
     before_system: AppId,
 }
 
-/// Which app is in front. Every clone is the same; anything may bring an app to the
-/// front, not only the person at the controls.
 #[derive(Clone, Debug)]
 pub struct Foreground(Shared<Front>);
 
@@ -103,7 +82,6 @@ impl Foreground {
         self.0.get().app
     }
 
-    /// The app the system app goes back to.
     pub fn before_system(&self) -> AppId {
         self.0.get().before_system
     }

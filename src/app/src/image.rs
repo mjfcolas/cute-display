@@ -1,14 +1,10 @@
-//! How the app image describes itself, to ESP-IDF's bootloader and to the installer: its
-//! project name and its version, the release's git tag (see build.rs).
-
 use core::ffi::c_char;
 
 pub const PROJECT: &str = "cute-display";
 pub const VERSION: &str = env!("CUTE_DISPLAY_VERSION");
 
-/// `text` in a C character array of `N`, NUL-padded. In a const context, as the images'
-/// description uses it, a `text` that leaves no room for the NUL does not build; called at
-/// run time, it would panic.
+/// In a const context, as the images' description uses it, a `text` that leaves no room
+/// for the NUL does not build; called at run time, it would panic.
 pub const fn c_text<const N: usize>(text: &str) -> [c_char; N] {
     let mut array = [0; N];
     assert!(text.len() < N, "the text does not fit the C array");

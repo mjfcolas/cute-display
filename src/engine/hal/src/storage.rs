@@ -11,10 +11,7 @@ pub struct Entry {
 pub trait FileStorage {
     fn entries(&self, dir: &str) -> Result<Vec<Entry>, Fault>;
     fn capacity_bytes(&self) -> Result<u64, Fault>;
-    /// `None` when there is no such file.
     fn read(&self, path: &str) -> Result<Option<Vec<u8>>, Fault>;
-    /// Up to `max_bytes` from `offset` on, fewer at the end of the file; `None` when there
-    /// is no such file. For files too large to be held whole.
     fn read_range(&self, path: &str, offset: u64, max_bytes: usize) -> Result<Option<Vec<u8>>, Fault> {
         Ok(self.read(path)?.map(|contents| {
             let start = usize::try_from(offset).unwrap_or(usize::MAX).min(contents.len());

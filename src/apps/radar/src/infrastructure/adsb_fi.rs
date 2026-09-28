@@ -48,7 +48,6 @@ fn url(center: GeoPoint, radius_km: u32) -> String {
     )
 }
 
-/// The `keep` aircraft nearest `center`, nearest first, from an answer read as it comes.
 fn read_nearest(body: &mut dyn Read, center: GeoPoint, keep: usize) -> Result<Vec<Aircraft>, Unavailable> {
     let mut json = serde_json::Deserializer::from_reader(BufReader::with_capacity(512, body));
     let aircraft = Answer { center, keep }.deserialize(&mut json).map_err(|e| Unavailable(format!("unreadable traffic: {e}")))?;
@@ -56,7 +55,6 @@ fn read_nearest(body: &mut dyn Read, center: GeoPoint, keep: usize) -> Result<Ve
     Ok(aircraft)
 }
 
-/// One aircraft as the feed describes it, with only the fields the radar draws.
 #[derive(Deserialize)]
 struct Reported {
     flight: Option<String>,
@@ -92,7 +90,6 @@ impl Reported {
     }
 }
 
-/// The whole answer, of which only `ac` matters.
 struct Answer {
     center: GeoPoint,
     keep: usize,
@@ -220,7 +217,6 @@ mod tests {
         assert_eq!(aircraft[0].callsign.as_deref(), Some("F499"));
     }
 
-    /// Hands over one byte at a time, as a slow network would.
     struct Trickle<'a>(&'a [u8]);
 
     impl Read for Trickle<'_> {

@@ -1,5 +1,3 @@
-//! What the bench found, one check per line of the screen.
-
 use hal::clock::ClockReading;
 use hal::display::Refreshed;
 use hal::light::Brightness;
@@ -13,9 +11,7 @@ use crate::survey::Survey;
 pub enum Verdict {
     Pass,
     Fail,
-    /// Not exercised yet.
     Pending,
-    /// A value to read, neither good nor bad.
     Reading,
 }
 

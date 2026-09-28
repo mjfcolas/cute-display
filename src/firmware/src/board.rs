@@ -41,7 +41,6 @@ pub struct Board {
     pub speaker: I2sSpeaker,
     pub clock: Ds3231Clock,
     pub thermometer: Ds3231Thermometer,
-    /// What answered on the I2C bus at power-up.
     pub i2c_devices: Vec<u8>,
     pub sd_card: Result<SdmmcCard, Fault>,
     pub wifi: EspWifiRadio,

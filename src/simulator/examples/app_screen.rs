@@ -71,7 +71,6 @@ impl Ringer for Nowhere {
     fn silence(&mut self) {}
 }
 
-/// Enabled, at 7:00 on weekdays and 9:30 on Saturdays.
 fn alarm_clock(foreground: &Foreground) -> AlarmClock {
     let alarm = AlarmClock::new(Box::new(Nowhere), Box::new(Nowhere), foreground.clone());
     for day in [Weekday::Monday, Weekday::Tuesday, Weekday::Wednesday, Weekday::Thursday, Weekday::Friday] {

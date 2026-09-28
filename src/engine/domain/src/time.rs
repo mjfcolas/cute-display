@@ -1,10 +1,7 @@
-//! Instants, and the time on the wall.
-
 use crate::calendar::Date;
 
 pub(crate) const SECONDS_PER_DAY: i64 = 86_400;
 
-/// Seconds since 1970-01-01 00:00:00 UTC, leap seconds aside.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UtcTime(i64);
 
@@ -17,7 +14,6 @@ impl UtcTime {
         self.0
     }
 
-    /// The time on the wall where the clocks are `offset` from UTC.
     pub fn at_offset(self, offset: UtcOffset) -> LocalTime {
         LocalTime::from_seconds_since_epoch(self.0 + i64::from(offset.seconds_east()))
     }
@@ -48,7 +44,6 @@ impl UtcOffset {
     }
 }
 
-/// An hour and a minute of the day.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TimeOfDay {
     hour: u8,
@@ -58,7 +53,6 @@ pub struct TimeOfDay {
 impl TimeOfDay {
     pub const MIDNIGHT: Self = Self { hour: 0, minute: 0 };
 
-    /// `None` for an hour above 23 or a minute above 59.
     pub const fn new(hour: u8, minute: u8) -> Option<Self> {
         if hour < 24 && minute < 60 { Some(Self { hour, minute }) } else { None }
     }
@@ -76,7 +70,6 @@ impl TimeOfDay {
     }
 }
 
-/// The date and time on the wall where the device is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LocalTime {
     pub date: Date,
@@ -85,7 +78,6 @@ pub struct LocalTime {
 }
 
 impl LocalTime {
-    /// Seconds since 1970-01-01 00:00:00 on the wall.
     pub fn seconds_since_epoch(self) -> i64 {
         self.date.days_since_epoch() * SECONDS_PER_DAY
             + i64::from(self.time_of_day.minutes_since_midnight()) * 60

@@ -1,7 +1,3 @@
-//! What time it is. A keeper that runs on its own, battery-backed, holds UTC; a source
-//! out in the world sets it right once a day; the time zone turns it into the time on
-//! the wall.
-
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
@@ -12,25 +8,18 @@ use crate::time_zone::TimeZone;
 
 pub const SYNC_EVERY: Duration = Duration::from_secs(24 * 60 * 60);
 pub const RETRY_SYNC_AFTER: Duration = Duration::from_secs(10 * 60);
-/// How soon a change of time zone shows.
 pub const READ_ZONE_EVERY: Duration = Duration::from_secs(60);
 
-/// Keeps the time while the device is off. A keeper that fails says so itself.
 pub trait TimeKeeper: Send {
-    /// `None` when it cannot tell, or has lost the time.
     fn read(&mut self) -> Option<UtcTime>;
     fn set(&mut self, time: UtcTime);
 }
 
-/// Knows the time for sure, but has to be asked from afar.
 pub trait TimeSource: Send {
     fn fetch(&mut self) -> Result<UtcTime, Unavailable>;
 }
 
-/// A source that cannot read the zone says why itself.
 pub trait TimeZoneSource: Send {
-    /// `Ok(None)` when none was chosen. A zone that cannot be read leaves the clock on
-    /// the one it had, rather than jumping hours to the default and back.
     fn time_zone(&mut self) -> Result<Option<TimeZone>, Unavailable>;
 }
 
@@ -48,7 +37,6 @@ struct State {
     last_sync: Option<SyncAttempt>,
 }
 
-/// Every clone is the same clock.
 #[derive(Clone)]
 pub struct Clock {
     state: Shared<State>,
@@ -67,13 +55,11 @@ impl Clock {
         }
     }
 
-    /// The time on the wall when the keeper was last read; `None` while nobody knows it.
     pub fn now(&self) -> Option<LocalTime> {
         let state = self.state.get();
         state.time.map(|time| state.zone.local(time))
     }
 
-    /// Reads the keeper, and the time zone every [`READ_ZONE_EVERY`].
     pub fn tick(&self, now: Instant) {
         let time = lock(&self.keeper).read();
         let zone_read = self.state.get().zone_read;
@@ -83,6 +69,8 @@ impl Clock {
         self.state.update(|state| {
             state.time = time;
             if let Some(reading) = zone {
+                // An unreadable zone keeps the one the clock had, rather than jumping hours
+                // to the default and back.
                 if let Ok(chosen) = reading {
                     state.zone = chosen.unwrap_or_default();
                 }
@@ -99,8 +87,6 @@ impl Clock {
         }
     }
 
-    /// Asks the source for the time if it is due, and sets the keeper to it. Blocks for
-    /// as long as the source takes, but never holds up whoever reads the time meanwhile.
     pub fn sync_if_due(&self, now: Instant) -> Result<(), Unavailable> {
         if !self.is_sync_due(now) {
             return Ok(());
@@ -128,7 +114,6 @@ mod tests {
     use super::*;
     use crate::time::TimeOfDay;
 
-    /// Keeps whatever it is set to, as an RTC would, without running.
     #[derive(Clone, Default)]
     struct FakeKeeper(Arc<Mutex<Option<UtcTime>>>);
 
@@ -141,7 +126,6 @@ mod tests {
         }
     }
 
-    /// Answers each result in turn.
     struct Scripted(Vec<Result<UtcTime, Unavailable>>);
 
     impl TimeSource for Scripted {

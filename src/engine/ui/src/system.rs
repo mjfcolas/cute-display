@@ -1,6 +1,3 @@
-//! The system app: the other apps to choose from, the device's settings, and which
-//! version of Cute Display runs.
-
 use domain::apps::{AppId, Foreground};
 use domain::settings::{BacklightDuration, ReadingLamp, Settings};
 use embedded_graphics::mono_font::MonoFont;
@@ -15,10 +12,8 @@ use crate::text::{self, BODY, HINT, LIST, TITLE};
 const NAME: &str = "System";
 const SECTION_GAP: i32 = 6;
 const COLUMN_GAP: i32 = 16;
-/// Room around a row's text, inside the bar that marks the row chosen.
 const BAR_PADDING: i32 = 3;
 const ROW_GAP: i32 = 4;
-/// Room around a choice's text, inside the box that marks the current one.
 const BOX_PADDING: i32 = 3;
 const CHOICE_GAP: i32 = 4;
 const SETTING_GAP: i32 = 10;
@@ -40,7 +35,6 @@ impl Setting {
     }
 }
 
-/// An app the system app offers, as it lists it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OfferedApp {
     pub app: AppId,
@@ -53,14 +47,12 @@ enum Row {
     Setting(Setting),
 }
 
-/// How a row is drawn: the chosen one on an ink bar.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Mark {
     Chosen,
     Plain,
 }
 
-/// One of a setting's values, as listed under it.
 #[derive(Debug, PartialEq, Eq)]
 struct Choice {
     label: String,
@@ -92,12 +84,10 @@ pub struct SystemScreen {
 }
 
 impl SystemScreen {
-    /// Offers the apps in `offered`, in that order.
     pub fn new(foreground: Foreground, settings: Settings, version: &'static str, offered: Vec<OfferedApp>) -> Self {
         Self { foreground, settings, version, offered, chosen_row: 0 }
     }
 
-    /// Every app it offers, then the settings.
     fn rows(&self) -> Vec<Row> {
         self.offered.iter().map(|&app| Row::App(app)).chain(Setting::ALL.map(Row::Setting)).collect()
     }
@@ -123,7 +113,6 @@ impl SystemScreen {
         }
     }
 
-    /// The setting's name, then each of its values, the current one boxed; how tall it is.
     fn draw_setting<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, setting: Setting, top_left: Point, width: u32) -> i32 {
         let mut top = top_left.y + draw_row(target, setting.name(), top_left, width, self.mark(Row::Setting(setting)));
         top += ROW_GAP;
@@ -145,7 +134,6 @@ impl SystemScreen {
     }
 }
 
-/// `label` across `width`; how tall it is.
 fn draw_row<D: DrawTarget<Color = BinaryColor>>(target: &mut D, label: &str, top_left: Point, width: u32, mark: Mark) -> i32 {
     let height = BODY.character_size.height + 2 * BAR_PADDING as u32;
     let color = match mark {
@@ -166,7 +154,6 @@ fn heading<D: DrawTarget<Color = BinaryColor>>(target: &mut D, name: &str, top_l
 }
 
 impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
-    /// The chosen row starts on the app the system app was opened from.
     fn entered(&mut self) {
         let origin = self.foreground.before_system();
         self.chosen_row = self.rows().iter().position(|row| matches!(row, Row::App(offered) if offered.app == origin)).unwrap_or(0);
@@ -188,7 +175,6 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
         }
     }
 
-    /// The apps on the left, the settings on the right.
     fn draw(&self, target: &mut D, area: Rectangle) {
         let (left, top) = (area.top_left.x, area.top_left.y);
         let right = left + area.size.width as i32;
@@ -260,7 +246,6 @@ mod tests {
         AppScreen::<Frame>::on_input(screen, input);
     }
 
-    /// Turns the wheel until `row` is chosen.
     fn move_to(screen: &mut SystemScreen, row: Row) {
         let target = screen.rows().iter().position(|&r| r == row).unwrap() as i32;
         input(screen, Input::Turn(target - screen.chosen_row as i32));
@@ -363,7 +348,6 @@ mod tests {
         }
     }
 
-    /// Lines inked all across the apps column but not beyond it: the chosen app's bar.
     fn bar_lines_under_the_apps(frame: &Frame) -> usize {
         let left = AREA.top_left.x;
         let right = AREA.top_left.x + AREA.size.width as i32 - 1;

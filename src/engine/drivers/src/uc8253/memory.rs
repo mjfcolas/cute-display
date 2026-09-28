@@ -21,7 +21,6 @@ pub fn render(frame: &Frame, image: &mut Image) {
     }
 }
 
-/// The first and last rows that differ, or `None` if the images are the same.
 pub fn changed_rows(a: &Image, b: &Image) -> Option<RangeInclusive<usize>> {
     let differs = |(_, (x, y)): &(usize, (&[u8; ROW_BYTES], &[u8; ROW_BYTES]))| x != y;
     let mut rows = a.as_chunks::<ROW_BYTES>().0.iter().zip(b.as_chunks::<ROW_BYTES>().0).enumerate().filter(differs);

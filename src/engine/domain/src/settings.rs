@@ -1,12 +1,9 @@
-//! What the device remembers across a power cut.
-
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use crate::lighting::Level;
 use crate::shared::Shared;
 
-/// How long the light over the screen stays on after the controls were last touched.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum BacklightDuration {
     FiveSeconds,
@@ -17,10 +14,8 @@ pub enum BacklightDuration {
 }
 
 impl BacklightDuration {
-    /// Every choice, in the order [`BacklightDuration::next`] steps through them.
     pub const ALL: [Self; 4] = [Self::FiveSeconds, Self::TenSeconds, Self::ThirtySeconds, Self::Always];
 
-    /// `None` for [`BacklightDuration::Always`].
     pub fn duration(self) -> Option<Duration> {
         match self {
             Self::FiveSeconds => Some(Duration::from_secs(5)),
@@ -30,13 +25,11 @@ impl BacklightDuration {
         }
     }
 
-    /// The next choice, back to the first after the last.
     pub fn next(self) -> Self {
         following(&Self::ALL, self)
     }
 }
 
-/// How bright the reading lamp shines.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ReadingLamp {
     #[default]
@@ -48,7 +41,6 @@ pub enum ReadingLamp {
 }
 
 impl ReadingLamp {
-    /// Every choice, in the order [`ReadingLamp::next`] steps through them.
     pub const ALL: [Self; 5] = [Self::Off, Self::TenPercent, Self::ThirtyPercent, Self::FiftyPercent, Self::Full];
 
     pub fn level(self) -> Level {
@@ -61,34 +53,27 @@ impl ReadingLamp {
         })
     }
 
-    /// The next choice, back to off after full.
     pub fn next(self) -> Self {
         following(&Self::ALL, self)
     }
 }
 
-/// The choice after `choice` in `all`, back to the first after the last.
 fn following<T: Copy + PartialEq>(all: &[T], choice: T) -> T {
     let after = all.iter().skip_while(|&&c| c != choice).nth(1);
     after.or(all.first()).copied().unwrap_or(choice)
 }
 
-/// Every setting, as it is kept.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SettingsRecord {
     pub backlight: BacklightDuration,
     pub reading_lamp: ReadingLamp,
 }
 
-/// Where the settings are kept. A store that cannot be read or written leaves the device
-/// running on the settings it has in memory.
 pub trait SettingsStore: Send {
-    /// `None` when nothing has been kept yet.
     fn load(&mut self) -> Option<SettingsRecord>;
     fn save(&mut self, record: &SettingsRecord);
 }
 
-/// The settings, kept by a store on every change. Every clone is the same.
 #[derive(Clone)]
 pub struct Settings {
     record: Shared<SettingsRecord>,
@@ -96,7 +81,6 @@ pub struct Settings {
 }
 
 impl Settings {
-    /// What the store kept, or the defaults.
     pub fn load(mut store: Box<dyn SettingsStore>) -> Self {
         let record = store.load().unwrap_or_default();
         Self { record: Shared::new(record), store: Arc::new(Mutex::new(store)) }

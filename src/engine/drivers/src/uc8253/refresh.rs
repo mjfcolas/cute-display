@@ -1,6 +1,3 @@
-//! Which refresh the glass gets: a clean one on the whole glass, or a fast one on the
-//! rows that changed. Clean ones are kept rare, ghosts accepted.
-
 use core::ops::RangeInclusive;
 
 use hal::display::{Redraw, HEIGHT};
@@ -37,7 +34,6 @@ impl RefreshPolicy {
         }
     }
 
-    /// The glass now shows what the plan asked for.
     pub fn record(&mut self, plan: &Plan) {
         match plan {
             Plan::Whole => {
@@ -55,7 +51,6 @@ impl RefreshPolicy {
     }
 }
 
-/// The rows in windows the controller accepts, one after the other.
 pub fn fast_windows(rows: &RangeInclusive<usize>) -> impl Iterator<Item = RangeInclusive<usize>> {
     let last = *rows.end();
     rows.clone().step_by(MAX_FAST_ROWS).map(move |first| first..=last.min(first + MAX_FAST_ROWS - 1))

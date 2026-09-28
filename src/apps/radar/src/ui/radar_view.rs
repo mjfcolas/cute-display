@@ -1,7 +1,3 @@
-//! The radar's geometry: where a point a few kilometres away lands on the scope, the
-//! triangle an aircraft is drawn as, and where labels go so they never cover each other.
-//! North is up.
-
 use embedded_graphics::prelude::{Point, Size};
 use embedded_graphics::primitives::Rectangle;
 
@@ -12,8 +8,6 @@ pub(crate) struct Scope {
 }
 
 impl Scope {
-    /// Where a point `east_km` and `north_km` from the center lands; `None` beyond the
-    /// range, which the scope does not show.
     pub fn locate(&self, east_km: f64, north_km: f64) -> Option<Point> {
         if self.range_km <= 0.0 || east_km.hypot(north_km) > self.range_km {
             return None;
@@ -23,8 +17,6 @@ impl Scope {
     }
 }
 
-/// Nose and two tail corners of a triangle `length` pixels long, centred on `at` and
-/// pointing along `track_degrees` (clockwise from north).
 pub(crate) fn aircraft_triangle(at: Point, track_degrees: f32, length: i32) -> [Point; 3] {
     let heading = f64::from(track_degrees).to_radians();
     let (sin, cos) = heading.sin_cos();
@@ -41,15 +33,11 @@ pub(crate) fn aircraft_triangle(at: Point, track_degrees: f32, length: i32) -> [
 /// first, since that reads best, then above and below, then the corners.
 const LABEL_SIDES: [(i32, i32); 8] = [(1, 0), (-1, 0), (0, -1), (0, 1), (1, -1), (-1, -1), (1, 1), (-1, 1)];
 
-/// A label to place: its size, and the point it names.
 pub(crate) struct LabelWanted {
     pub near: Point,
     pub size: Size,
 }
 
-/// Places labels in the order given, each where it covers no label already placed, no
-/// obstacle (the marks on the scope) and nothing outside the scope's circle; `clearance`
-/// pixels from the point it names. A label with nowhere to go is left out: `None`.
 pub(crate) fn place_labels(wanted: &[LabelWanted], obstacles: &[Rectangle], scope: &Scope, clearance: i32) -> Vec<Option<Rectangle>> {
     let mut taken: Vec<Rectangle> = obstacles.to_vec();
     wanted
@@ -81,7 +69,6 @@ pub(crate) fn place_labels(wanted: &[LabelWanted], obstacles: &[Rectangle], scop
 }
 
 impl Scope {
-    /// All four corners inside the scope's circle.
     fn contains(&self, rectangle: &Rectangle) -> bool {
         let Some(bottom_right) = rectangle.bottom_right() else { return false };
         [rectangle.top_left, bottom_right, Point::new(rectangle.top_left.x, bottom_right.y), Point::new(bottom_right.x, rectangle.top_left.y)]

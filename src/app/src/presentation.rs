@@ -16,20 +16,17 @@ use crate::controls::Controls;
 
 const CONTROLS_PERIOD: Duration = Duration::from_millis(20);
 
-/// An installed app's screen, and how the system app offers it.
 pub(crate) struct AppOnScreen {
     pub offered: OfferedApp,
     pub screen: Box<dyn AppScreen<Frame> + Send>,
 }
 
-/// The ui thread's devices: it reads the controls and draws on the panel.
 pub(crate) struct Presentation<E, B, P> {
     pub controls: Controls<E, B>,
     pub panel: P,
 }
 
 impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay> Presentation<E, B, P> {
-    /// Shows the apps' screens, and the system app's, which offers them.
     pub fn run(mut self, foreground: Foreground, settings: Settings, lighting: Lighting, apps: Vec<AppOnScreen>) {
         let offered = apps.iter().map(|app| app.offered).collect();
         let mut screens: Vec<Hosted<Frame>> = apps.into_iter().map(|app| Hosted { app: app.offered.app, screen: app.screen }).collect();
@@ -47,7 +44,6 @@ impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay> Presentation<E, B, P> {
         }
     }
 
-    /// Reads the controls once, and redraws the panel if the screen changed.
     fn tick(&mut self, shell: &mut Shell<Frame>, lighting: &Lighting, frame: &mut Frame, now: Duration) {
         let sample = self.controls.sample();
         if sample.is_touch() {

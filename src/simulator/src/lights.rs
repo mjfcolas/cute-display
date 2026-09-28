@@ -4,7 +4,6 @@ use std::sync::Arc;
 use hal::light::{Brightness, DimmableLight};
 use hal::Fault;
 
-/// A light the window shows. Every clone is the same light.
 #[derive(Clone, Default)]
 pub struct SimulatedLight {
     percent: Arc<AtomicU8>,

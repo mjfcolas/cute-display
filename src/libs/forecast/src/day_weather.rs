@@ -1,6 +1,3 @@
-//! Today's weather in little room, for a screen that is about something else: the day's
-//! sky and range on a line, a few hours in a column.
-
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
@@ -28,13 +25,11 @@ fn range(day: &DayForecast) -> String {
     format!("{} / {}", temperature(day.low), temperature(day.high))
 }
 
-/// How wide `draw_range` draws, for what shares its line.
 pub fn range_width(day: &DayForecast) -> u32 {
     let advance = BODY.character_size.width + BODY.character_spacing;
     RANGE_ICON + ICON_GAP as u32 + range(day).chars().count() as u32 * advance
 }
 
-/// The day's sky and its low and high, in BODY, ending at `top_right`.
 pub fn draw_range<D: DrawTarget<Color = BinaryColor>>(target: &mut D, day: &DayForecast, top_right: Point) {
     let left = top_right.x - range_width(day) as i32;
     icons::draw(target, day.sky, Point::new(left, top_right.y), RANGE_ICON);
@@ -42,8 +37,6 @@ pub fn draw_range<D: DrawTarget<Color = BinaryColor>>(target: &mut D, day: &DayF
     text::write(target, &range(day), Point::new(text_left, top_right.y), (top_right.x - text_left).max(0) as u32, &BODY);
 }
 
-/// The first `HOURS_SHOWN` of `hours` down `area`, a row each: the hour, its sky, its
-/// temperature.
 pub fn draw_hours<'a, D: DrawTarget<Color = BinaryColor>>(
     target: &mut D,
     hours: impl Iterator<Item = &'a HourForecast>,
@@ -73,7 +66,6 @@ mod tests {
 
     const AT: Point = Point::new(20, 10);
 
-    /// Ink outside `area`, anywhere on the frame.
     fn ink_outside(frame: &Frame, area: Rectangle) -> Vec<Point> {
         let whole = Rectangle::new(Point::zero(), Size::new(hal::display::WIDTH.into(), hal::display::HEIGHT.into()));
         whole.points().filter(|&p| frame.is_ink(p.x, p.y) && !area.contains(p)).collect()

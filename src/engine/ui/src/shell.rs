@@ -1,7 +1,3 @@
-//! Shows the screen of the app in front, on the whole glass. Which app is in front is the
-//! domain's; the shell follows it, and turns the system gesture into opening the system
-//! app, or into confirming there as the long button does.
-
 use core::time::Duration;
 
 use domain::apps::{AppId, Foreground};
@@ -15,7 +11,6 @@ use crate::gestures::{Gesture, Gestures};
 
 const MARGIN: i32 = 8;
 
-/// An app's screen, as the shell hosts it.
 pub struct Hosted<D> {
     pub app: AppId,
     pub screen: Box<dyn AppScreen<D>>,
@@ -25,20 +20,15 @@ pub struct Shell<D> {
     gestures: Gestures,
     foreground: Foreground,
     screens: Vec<Hosted<D>>,
-    /// The app whose screen was last told it came to the front.
     entered: Option<AppId>,
-    /// The app last drawn, and its version then.
     drawn: Option<(AppId, u64)>,
 }
 
 impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
-    /// `None` without any screen.
     pub fn new(foreground: Foreground, screens: Vec<Hosted<D>>) -> Option<Self> {
         (!screens.is_empty()).then_some(Self { gestures: Gestures::default(), foreground, screens, entered: None, drawn: None })
     }
 
-    /// Whether the controls did anything the glass should show. `now` is any monotonic
-    /// time, as long as it is always the same clock.
     pub fn on_sample(&mut self, sample: &ControlsSample, now: Duration) -> bool {
         let mut touched = false;
         for gesture in self.gestures.interpret(sample, now) {
@@ -47,8 +37,6 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
         touched
     }
 
-    /// The glass no longer shows what it should: something brought another app forward,
-    /// the app in front changed on its own, or nothing has been drawn yet.
     pub fn is_outdated(&self) -> bool {
         let front = self.foreground.app();
         self.drawn != Some((front, self.version_of(front)))
@@ -121,8 +109,6 @@ mod tests {
     const WEATHER: AppId = AppId::new("weather");
     const RADAR: AppId = AppId::new("radar");
 
-    /// Remembers every input it was given, and draws a line of text it may be given. Its
-    /// clones share all of it, so a test keeps one while the shell holds another.
     #[derive(Clone)]
     struct Probe {
         app: AppId,
@@ -181,7 +167,6 @@ mod tests {
         frame
     }
 
-    /// The weather and radar apps as probes, and the real system app.
     fn shell(foreground: &Foreground) -> (Shell<Frame>, Probe, Probe) {
         let (weather, radar) = (Probe::new(WEATHER), Probe::new(RADAR));
         let offered = [&weather, &radar].map(|probe| OfferedApp { app: probe.app, title: probe.app.name() }).into();

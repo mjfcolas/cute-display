@@ -6,7 +6,6 @@ pub enum Edge {
     Released,
 }
 
-/// A level change counts once it has been read the same this many samples in a row.
 pub const STABLE_SAMPLES: u8 = 4;
 
 pub struct Debouncer {
@@ -77,8 +76,8 @@ mod sampled {
         }
     }
 
-    /// Samples the buttons on a thread of their own, so a press is counted even while
-    /// whoever reads them is blocked. The pins must be pulled up.
+    /// A thread of their own counts a press even while whoever reads them is blocked. The
+    /// pins must be pulled up.
     pub fn watch<const N: usize>(pins: [PinDriver<'static, Input>; N]) -> Result<[Button; N], Fault> {
         let tallies: [Arc<Tally>; N] = core::array::from_fn(|_| Arc::default());
         let mut sampled: Vec<_> = pins

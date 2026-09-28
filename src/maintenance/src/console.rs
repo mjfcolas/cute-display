@@ -180,7 +180,6 @@ mod tests {
         }
     }
 
-    /// Every reply to the lines given, one string per line, flow control left out.
     fn talk(console: &mut MaintenanceConsole<FakeCard>, lines: &[String]) -> Vec<String> {
         let mut out = Vec::new();
         for line in lines {

@@ -1,5 +1,3 @@
-//! Maxim DS3231: a real-time clock with a temperature sensor of its own.
-
 use hal::clock::{ClockReading, DateTime};
 use hal::thermometer::Temperature;
 
@@ -70,7 +68,6 @@ pub fn encode_time(time: &DateTime) -> [u8; TIME_REGISTERS] {
     ]
 }
 
-/// The status register with the stopped-oscillator flag cleared.
 pub fn oscillator_restarted(status: u8) -> u8 {
     status & !OSCILLATOR_STOPPED
 }
@@ -107,7 +104,6 @@ mod chip {
             Self { bus, interrupt }
         }
 
-        /// Every register as it is, alarms included, for a backup.
         pub fn registers(&mut self) -> Result<[u8; ALL_REGISTERS], Fault> {
             let mut registers = [0u8; ALL_REGISTERS];
             self.bus.write_read(ADDRESS, &[SECONDS_REGISTER], &mut registers)?;

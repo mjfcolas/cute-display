@@ -1,6 +1,3 @@
-//! The alarm clock app: a wake-up time for each day, kept in its `alarm.conf`. The lights
-//! rise before it like the sun; it rings, coming to the front whatever app is there.
-
 mod domain;
 mod infrastructure;
 mod ui;
@@ -24,7 +21,6 @@ use crate::infrastructure::ringtone::SoundRinger;
 
 pub const ID: AppId = AppId::new("alarm");
 
-/// This app, for an image to hold.
 pub const fn app<D: DrawTarget<Color = BinaryColor>>() -> Installable<D> {
     Installable { id: ID, title: "Alarm clock", install: install::<D> }
 }

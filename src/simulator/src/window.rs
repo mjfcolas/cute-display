@@ -1,6 +1,3 @@
-//! The case on the computer's screen: the glass in a window, with the lights and the keys
-//! in a strip under it; the controls on the keyboard and the mouse.
-
 use std::convert::Infallible;
 
 use embedded_graphics::mono_font::iso_8859_1::FONT_6X10;
@@ -30,7 +27,6 @@ const COLUMNS: usize = VISIBLE_WIDTH as usize;
 const ROWS: usize = HEIGHT as usize;
 const STRIP_ROWS: usize = 26;
 
-/// What the window shows and what it moves. Clones of each part go to the app.
 #[derive(Default)]
 pub struct Case {
     pub panel: SimulatedPanel,
@@ -42,7 +38,6 @@ pub struct Case {
     pub reading_lamp: SimulatedLight,
 }
 
-/// Until the window is closed.
 pub fn show(case: &Case) -> Result<(), Fault> {
     let options = WindowOptions { scale: Scale::X2, ..WindowOptions::default() };
     let mut window = Window::new("Cute Display", COLUMNS, ROWS + STRIP_ROWS, options).map_err(Fault::new)?;
@@ -91,7 +86,6 @@ fn label(strip: &mut Strip<'_>, front_light: Brightness, reading_lamp: Brightnes
     }
 }
 
-/// The strip's rows of the window's pixels.
 struct Strip<'a>(&'a mut [u32]);
 
 impl OriginDimensions for Strip<'_> {

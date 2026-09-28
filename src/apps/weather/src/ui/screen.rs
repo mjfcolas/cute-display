@@ -1,5 +1,3 @@
-//! Two pages: today and the coming hours, or the week.
-
 use std::time::Instant;
 
 use domain::clock::Clock;
@@ -53,12 +51,10 @@ impl WeatherScreen {
         Self { weather, clock, page: Page::Today }
     }
 
-    /// The day on the clock, or the forecast's first while the time is not known.
     fn today<'a>(&self, forecast: &'a Forecast) -> Option<&'a DayForecast> {
         self.clock.now().map_or(forecast.week.first(), |now| forecast.day(now.date))
     }
 
-    /// From the hour under way, or from the fetch's while the time is not known.
     fn coming_hours<'a>(&self, forecast: &'a Forecast) -> Vec<&'a HourForecast> {
         match self.clock.now() {
             Some(now) => forecast.hours_from(now).take(HOURS).collect(),
@@ -103,7 +99,6 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for WeatherScreen {
 }
 
 impl WeatherScreen {
-    /// The weather now beside its icon, the details in a row, the coming hours in columns.
     fn draw_today<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle, forecast: &Forecast) {
         let (left, top) = (area.top_left.x, area.top_left.y);
         let right = left + area.size.width as i32;
@@ -156,13 +151,10 @@ impl WeatherScreen {
     }
 }
 
-/// The sky's name, how it feels and the day's line, as `draw_today` stacks them.
 fn lines_height() -> i32 {
     (BODY.character_size.height + 2 * LIST.character_size.height) as i32 + 2 * LINE_GAP
 }
 
-/// A column per hour: the hour, its sky, its temperature, its rain when likely, and what
-/// falls in a bar down to the foot of `area`.
 fn draw_hours<D: DrawTarget<Color = BinaryColor>>(target: &mut D, area: Rectangle, hours: &[&HourForecast]) {
     let pitch = area.size.width as i32 / HOURS as i32;
     let first_centre = area.top_left.x + (area.size.width as i32 - pitch * HOURS as i32) / 2 + pitch / 2;
@@ -192,7 +184,6 @@ fn draw_hours<D: DrawTarget<Color = BinaryColor>>(target: &mut D, area: Rectangl
     }
 }
 
-/// In proportion up to `FULL_BAR`; a pixel at least, whatever falls.
 fn bar_height(fallen: Millimetres, tallest: i32) -> i32 {
     let tenths = i32::from(fallen.min(FULL_BAR).tenths());
     match tenths {
@@ -201,7 +192,6 @@ fn bar_height(fallen: Millimetres, tallest: i32) -> i32 {
     }
 }
 
-/// A row per day: its name, its sky, its range, and its chance of rain at the right.
 fn draw_week<D: DrawTarget<Color = BinaryColor>>(target: &mut D, area: Rectangle, forecast: &Forecast) {
     let days = forecast.week.len().max(1) as i32;
     let pitch = (area.size.height as i32 / days).min(2 * BODY.character_size.height as i32);
@@ -225,7 +215,6 @@ fn draw_week<D: DrawTarget<Color = BinaryColor>>(target: &mut D, area: Rectangle
     }
 }
 
-/// A dot per page, the one shown filled, the last ending at `top_right`.
 fn draw_page_dots<D: DrawTarget<Color = BinaryColor>>(target: &mut D, shown: Page, top_right: Point) {
     let pitch = PAGE_DOT as i32 + GAP / 2;
     let top = top_right.y + (TITLE.character_size.height as i32 - PAGE_DOT as i32) / 2;
@@ -241,7 +230,6 @@ fn write_centred<D: DrawTarget<Color = BinaryColor>>(target: &mut D, line: &str,
     text::write(target, line, Point::new(top_centre.x - width as i32 / 2, top_centre.y), width, font);
 }
 
-/// "11° / 21°   rain 20%".
 fn day_line(day: &DayForecast) -> String {
     let range = format!("{} / {}", temperature(day.low), temperature(day.high));
     match day.rain_chance {
@@ -315,7 +303,6 @@ mod tests {
         }
     }
 
-    /// Stands still at the time it is given, in UTC.
     struct StoppedAt(Option<UtcTime>);
 
     impl TimeKeeper for StoppedAt {
@@ -348,7 +335,6 @@ mod tests {
         clock
     }
 
-    /// From Friday 17:00, a day of hours a degree warmer each; every day different.
     fn sample() -> Forecast {
         let skies = [Sky::Cloudy, Sky::Rain, Sky::PartlyCloudy, Sky::Clear, Sky::Fog, Sky::Snow, Sky::Storm];
         let week = skies

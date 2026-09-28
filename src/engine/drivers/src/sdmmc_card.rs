@@ -15,8 +15,7 @@ const MOUNT_POINT: &str = "/sdcard";
 const MOUNT_POINT_C: &core::ffi::CStr = c"/sdcard";
 const MAX_OPEN_FILES: usize = 4;
 
-/// A FAT-formatted SD card, mounted for the life of the device. Every clone is the same
-/// card, and may be used from any thread: FatFs locks the volume itself.
+/// Usable from any thread: FatFs locks the volume itself.
 #[derive(Clone)]
 pub struct SdmmcCard(());
 

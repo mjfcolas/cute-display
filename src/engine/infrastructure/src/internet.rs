@@ -1,14 +1,3 @@
-//! The Internet, reached through Wi-Fi joined on the first request and left once nothing
-//! has asked for a minute: a radar asking every fifteen seconds keeps it, a forecast once
-//! an hour does not, and the radio is off the rest of the night.
-//!
-//! The network is the one in `cute-display/wifi.conf`:
-//!
-//! ```text
-//! ssid = MyNetwork
-//! password = secret
-//! ```
-
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -23,13 +12,12 @@ use hal::Fault;
 use crate::conf_file;
 
 pub const WIFI_FILE: &str = "cute-display/wifi.conf";
+/// A radar asking every fifteen seconds keeps the Wi-Fi, a forecast once an hour does not,
+/// and the radio is off the rest of the night.
 pub const LINGER: Duration = Duration::from_secs(60);
 pub const DATAGRAM_TIMEOUT: Duration = Duration::from_secs(3);
 
-/// Datagrams, for what the web does not carry.
 pub trait Datagrams: Send {
-    /// Sends `request` to `host:port` and puts the datagram that answers in `answer`;
-    /// returns its length.
     fn exchange(&mut self, host: &str, port: u16, request: &[u8], answer: &mut [u8]) -> Result<usize, Unavailable>;
 }
 
@@ -51,7 +39,6 @@ impl<W: WifiStation, H: HttpClient, U: UdpClient, S: FileStorage> OnDemandIntern
         Self { wifi, http, udp, storage, link: Link::Left }
     }
 
-    /// Leaves the network once nothing has asked for [`LINGER`].
     pub fn release_if_idle(&mut self, now: Instant) {
         if matches!(self.link, Link::Joined { last_used } if now.saturating_duration_since(last_used) >= LINGER) {
             self.leave();
@@ -144,7 +131,6 @@ where
     }
 }
 
-/// One way to the Internet, shared by everything that fetches; requests take turns.
 pub struct SharedInternet<W, H, U, S>(Arc<Mutex<OnDemandInternet<W, H, U, S>>>);
 
 impl<W, H, U, S> Clone for SharedInternet<W, H, U, S> {
@@ -190,7 +176,6 @@ where
     }
 }
 
-/// For a device with no way to reach the Internet, and a reason to give.
 pub struct NoInternet(pub &'static str);
 
 impl Internet for NoInternet {
@@ -214,7 +199,6 @@ mod tests {
     use super::*;
     use crate::test_storage::MemoryStorage;
 
-    /// Remembers what it was asked to do, in order.
     #[derive(Clone, Default)]
     struct Journal(Arc<Mutex<Vec<String>>>);
 
@@ -250,7 +234,6 @@ mod tests {
         }
     }
 
-    /// Answers every datagram with the same one, or fails.
     struct FakeUdp(Journal, Result<Vec<u8>, Fault>);
 
     impl UdpClient for FakeUdp {

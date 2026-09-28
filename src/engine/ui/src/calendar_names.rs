@@ -1,5 +1,3 @@
-//! Days and months as the glass writes them.
-
 use domain::calendar::Weekday;
 
 pub fn weekday(day: Weekday) -> &'static str {
@@ -18,7 +16,6 @@ pub fn short_weekday(day: Weekday) -> &'static str {
     weekday(day).get(..3).unwrap_or_default()
 }
 
-/// `None` outside 1 to 12.
 pub fn month(month: u8) -> Option<&'static str> {
     const MONTHS: [&str; 12] =
         ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];

@@ -1,6 +1,5 @@
-//! Two pages: the report, as two columns of checks under a title, and a checkerboard to
-//! judge the panel itself. The report is framed by the visible edge of the glass, so a
-//! missing side means the geometry is wrong.
+//! The report is framed by the visible edge of the glass, so a missing side means the
+//! geometry is wrong.
 
 use embedded_graphics::mono_font::ascii::{FONT_6X10, FONT_7X13, FONT_9X18_BOLD};
 use embedded_graphics::mono_font::{MonoFont, MonoTextStyle};
@@ -24,7 +23,6 @@ impl Page {
     }
 }
 
-/// What the report page says around the checks.
 #[derive(Clone, Copy, Debug)]
 pub struct Legend {
     pub title: &'static str,
@@ -127,7 +125,7 @@ fn draw_mark(frame: &mut Frame, verdict: Verdict, corner: Point) {
     }
 }
 
-/// Cut to `max_chars`; the fonts are ASCII, so anything else becomes '?'.
+/// The fonts are ASCII, so anything else becomes '?'.
 fn write(frame: &mut Frame, text: &str, top_left: Point, font: &MonoFont<'_>, max_chars: usize) {
     let shown: String = text.chars().take(max_chars).map(|c| if c.is_ascii() { c } else { '?' }).collect();
     let _ = Text::with_baseline(&shown, top_left, MonoTextStyle::new(font, BinaryColor::On), Baseline::Top).draw(frame);

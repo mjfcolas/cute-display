@@ -1,5 +1,3 @@
-//! What the engine lends every app, on the hardware of the app image.
-
 use domain::apps::{AppId, Foreground, Services};
 use domain::clock::Clock;
 use domain::files::Files;
@@ -27,13 +25,11 @@ pub(crate) struct EngineServices<W, H, U, S> {
 }
 
 impl<W, H, U, S> EngineServices<W, H, U, S> {
-    /// What `app` is lent.
     pub fn to(&self, app: AppId) -> AppServices<'_, W, H, U, S> {
         AppServices { engine: self, app }
     }
 }
 
-/// The same for every app, but its files.
 pub(crate) struct AppServices<'a, W, H, U, S> {
     engine: &'a EngineServices<W, H, U, S>,
     app: AppId,

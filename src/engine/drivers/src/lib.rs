@@ -1,9 +1,3 @@
-//! The HAL implemented on the chips of the Habity board (ESP32-S3).
-//!
-//! Chip logic that needs no ESP32 compiles everywhere and is tested on the host; the
-//! rest only exists when building for `espidf`. Which chip sits on which pin is the
-//! firmware's `board`, not this crate.
-
 pub mod button;
 pub mod detents;
 pub mod ds3231;

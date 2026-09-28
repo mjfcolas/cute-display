@@ -6,7 +6,6 @@ use hal::Fault;
 
 use crate::or_fault::OrFault;
 
-/// The ESP32's Wi-Fi, off until something needs it.
 pub struct EspWifiRadio {
     wifi: BlockingWifi<EspWifi<'static>>,
 }
@@ -53,7 +52,6 @@ impl WifiStation for EspWifiRadio {
         self.wifi.wait_netif_up().or_fault("getting an address")
     }
 
-    /// Also turns the radio off.
     fn disconnect(&mut self) -> Result<(), Fault> {
         // Fails when Wi-Fi was never started; stopping ends any association anyway.
         let _ = self.wifi.disconnect();

@@ -1,6 +1,3 @@
-//! Where on Earth: a point, and a place a person names.
-
-/// Kilometres, as the device reckons short distances.
 const EARTH_RADIUS_KM: f64 = 6371.0;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -28,13 +25,11 @@ impl GeoPoint {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Place {
-    /// What the place is called on the glass.
     pub name: String,
     pub point: GeoPoint,
 }
 
 pub trait PlaceSource: Send {
-    /// `None` when no place has been set.
     fn place(&mut self) -> Option<Place>;
 }
 

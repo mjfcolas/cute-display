@@ -65,7 +65,6 @@ impl<C: RealTimeClock + Send> TimeKeeper for RtcKeeper<C> {
     }
 }
 
-/// `None` for a date or a time that does not exist.
 fn utc(time: DateTime) -> Option<UtcTime> {
     let date = Date::new(time.year, time.month, time.day)?;
     let time_of_day = TimeOfDay::new(time.hour, time.minute)?;

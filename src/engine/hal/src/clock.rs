@@ -13,13 +13,11 @@ pub struct DateTime {
 }
 
 impl DateTime {
-    /// Seconds since 1970-01-01 00:00:00, the time read as UTC.
     pub fn unix_seconds(self) -> i64 {
         let days = days_from_civil(i64::from(self.year), i64::from(self.month), i64::from(self.day));
         days * SECONDS_PER_DAY + i64::from(self.hour) * 3600 + i64::from(self.minute) * 60 + i64::from(self.second)
     }
 
-    /// The UTC time `seconds` after 1970-01-01 00:00:00, held to years 0 to 65535.
     pub fn from_unix_seconds(seconds: i64) -> Self {
         let (days, second_of_day) = (seconds.div_euclid(SECONDS_PER_DAY), seconds.rem_euclid(SECONDS_PER_DAY));
         let (year, month, day) = civil_from_days(days);
@@ -35,7 +33,7 @@ impl DateTime {
     }
 }
 
-/// Days since 1970-01-01 in the proleptic Gregorian calendar (Howard Hinnant's algorithm).
+/// Howard Hinnant's algorithm.
 fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
     let year = if month <= 2 { year - 1 } else { year };
     let era = year.div_euclid(400);
@@ -45,7 +43,6 @@ fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
     era * 146_097 + day_of_era - 719_468
 }
 
-/// Year, month and day of a count of days since 1970-01-01.
 fn civil_from_days(days: i64) -> (i64, i64, i64) {
     let days = days + 719_468;
     let era = days.div_euclid(146_097);

@@ -1,7 +1,3 @@
-//! Configuration as `key = value` lines, readable and writable by a person. A damaged
-//! line loses its own setting and not the others; a line without `=` is ignored, which
-//! makes room for comments.
-
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ConfText(Vec<(String, String)>);
 
@@ -15,7 +11,6 @@ impl ConfText {
         )
     }
 
-    /// The last value given for `key`.
     pub fn get(&self, key: &str) -> Option<&str> {
         self.0.iter().rev().find(|(k, _)| k == key).map(|(_, v)| v.as_str())
     }

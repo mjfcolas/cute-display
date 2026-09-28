@@ -32,7 +32,6 @@ pub struct Aircraft {
     pub track_degrees: Option<f32>,
 }
 
-/// How far the radar looks.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Range {
     FiveKm,
@@ -56,12 +55,10 @@ impl Range {
         }
     }
 
-    /// The next wider range, or this one at the widest.
     pub fn wider(self) -> Self {
         Self::ALL.into_iter().find(|&r| r > self).unwrap_or(self)
     }
 
-    /// The next closer range, or this one at the closest.
     pub fn closer(self) -> Self {
         Self::ALL.into_iter().rev().find(|&r| r < self).unwrap_or(self)
     }
@@ -76,13 +73,11 @@ pub struct Airport {
     /// ICAO where it has one, `LFPG`.
     pub code: String,
     pub point: GeoPoint,
-    /// Whoever set the radar up wants this one named on the scope.
     pub labelled: bool,
 }
 
 /// Read again only when the place changes, since the list is written for a place.
 pub trait AirportSource: Send {
-    /// Empty when none are known.
     fn airports(&mut self) -> Vec<Airport>;
 }
 
@@ -96,7 +91,6 @@ pub struct RadarReport {
     pub airports: Vec<Airport>,
     pub fetched_at: Option<Instant>,
     pub status: FetchStatus,
-    /// Moves on at every change, so a screen knows when to redraw.
     pub revision: u64,
 }
 
@@ -113,7 +107,6 @@ struct State {
     requested: bool,
 }
 
-/// Every clone is the same radar.
 #[derive(Clone)]
 pub struct Radar {
     state: Arc<Mutex<State>>,
@@ -178,8 +171,6 @@ impl Radar {
         state.requested || now.saturating_duration_since(last) >= wait
     }
 
-    /// Fetches if the radar is in front and it is time to. Blocks for as long as the
-    /// fetch takes, but never holds up whoever reads the report meanwhile.
     pub fn refresh_if_due(&self, now: Instant) {
         if !self.is_due(now) {
             return;
@@ -239,7 +230,6 @@ impl Radar {
     }
 }
 
-/// Fetched on the engine's network thread, while the radar is in front.
 impl AppService for Radar {
     fn fetch_due(&self, now: Instant) -> bool {
         self.is_due(now)
@@ -258,7 +248,6 @@ mod tests {
 
     const NOTRE_DAME: GeoPoint = GeoPoint { latitude: 48.8530, longitude: 2.3499 };
 
-    /// Orly, and how many times it was read.
     #[derive(Clone, Default)]
     struct Orly(Arc<Mutex<usize>>);
 
@@ -269,7 +258,6 @@ mod tests {
         }
     }
 
-    /// Notre-Dame, until somebody names another place.
     #[derive(Clone)]
     struct Settable(Arc<Mutex<Place>>);
 
@@ -285,7 +273,6 @@ mod tests {
         }
     }
 
-    /// Answers with the same traffic every time, and remembers each radius asked for.
     #[derive(Clone)]
     struct Sky(Arc<Mutex<Vec<u32>>>, Vec<Aircraft>);
 

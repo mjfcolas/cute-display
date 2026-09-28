@@ -1,6 +1,3 @@
-//! The Internet, as the engine lends it to whoever fetches: one request at a time, the
-//! Wi-Fi brought up for it.
-
 use std::io::Read;
 
 use crate::fetch::Unavailable;
@@ -11,10 +8,8 @@ pub const MAX_HELD_BYTES: u64 = 32 * 1024;
 pub type BodyReader<'a> = dyn FnMut(&mut dyn Read) -> Result<(), Unavailable> + 'a;
 
 pub trait Internet: Send {
-    /// Hands the body to `read` as it arrives.
     fn fetch(&mut self, url: &str, read: &mut BodyReader<'_>) -> Result<(), Unavailable>;
 
-    /// The whole body, for answers small enough to hold.
     fn get(&mut self, url: &str) -> Result<Vec<u8>, Unavailable> {
         let mut body = Vec::new();
         self.fetch(url, &mut |reader| {

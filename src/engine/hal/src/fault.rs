@@ -1,6 +1,5 @@
 use core::fmt;
 
-/// A piece of hardware did not do what it was asked.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Fault(String);
 

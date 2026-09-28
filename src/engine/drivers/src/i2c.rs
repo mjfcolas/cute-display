@@ -12,7 +12,6 @@ use crate::or_fault::OrFault;
 
 const TIMEOUT: TickType_t = TickType::new_millis(50).ticks();
 
-/// A handle on the I2C bus; every device driver on the bus holds a clone.
 #[derive(Clone)]
 pub struct I2cMaster(Arc<Mutex<I2cDriver<'static>>>);
 

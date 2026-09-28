@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 
-/// The most recent value one thread published for others to read.
 pub(crate) struct Latest<T>(Arc<Mutex<T>>);
 
 impl<T: Clone> Latest<T> {

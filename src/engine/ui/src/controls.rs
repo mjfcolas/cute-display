@@ -1,20 +1,15 @@
-//! The controls on the case: a wheel that turns and presses, a yellow button and a long
-//! button.
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Button {
     Yellow,
     Long,
 }
 
-/// What one button did since the previous sample.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ButtonSample {
     pub presses: u32,
     pub held: bool,
 }
 
-/// What the controls did since the previous sample.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ControlsSample {
     /// Positive clockwise.
@@ -25,15 +20,14 @@ pub struct ControlsSample {
 }
 
 impl ControlsSample {
-    /// Somebody did something to a control: a detent, a press, a button held.
     pub fn is_touch(&self) -> bool {
         let buttons = [self.wheel, self.yellow, self.long];
         self.detents != 0 || buttons.iter().any(|b| b.presses > 0 || b.held)
     }
 }
 
-/// What an app receives. By convention a press of the long button confirms, and one of
-/// the yellow button goes back.
+/// By convention a press of the long button confirms, and one of the yellow button goes
+/// back.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Input {
     Turn(i32),

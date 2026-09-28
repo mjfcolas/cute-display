@@ -1,5 +1,3 @@
-//! A scope on the left, the nearest aircraft on the right.
-
 use domain::fetch::FetchStatus;
 use domain::place::GeoPoint;
 use embedded_graphics::pixelcolor::BinaryColor;
@@ -15,12 +13,10 @@ use crate::ui::radar_view::{aircraft_triangle, place_labels, short_registration,
 const NEAREST_LISTED: usize = 5;
 const AIRPORT_DIAMETER: u32 = 4;
 const TRACKLESS_AIRCRAFT_DIAMETER: u32 = 4;
-/// From the center of a mark to its label.
 const LABEL_CLEARANCE: i32 = AIRCRAFT_LENGTH / 2 + 2;
 const HOME_ARM: i32 = 3;
 const AIRCRAFT_LENGTH: i32 = 9;
 const COLUMN_GAP: i32 = 10;
-/// Two lines an aircraft: who it is, then where.
 const ENTRY_PITCH: i32 = 26;
 const LINE_GAP: i32 = 2;
 const TICK: i32 = 4;
@@ -56,7 +52,6 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for RadarScreen {
         }
     }
 
-    /// The scope takes the whole height; everything written goes in the column beside it.
     fn draw(&self, target: &mut D, area: Rectangle) {
         let report = self.radar.report();
         let diameter = (area.size.height as i32).min(area.size.width as i32 * 3 / 5);
@@ -117,7 +112,6 @@ fn draw_scope<D: DrawTarget<Color = BinaryColor>>(target: &mut D, scope: &Scope,
         }
     }
 
-    // What labels must not cover: every mark on the scope.
     let mark = |at: Point, side: u32| Rectangle::with_center(at, Size::new(side, side));
     let mut obstacles: Vec<Rectangle> = shown.iter().map(|&(_, at)| mark(at, AIRCRAFT_LENGTH as u32)).collect();
     obstacles.extend(report.airports.iter().filter_map(|a| on_scope(a.point)).map(|at| mark(at, AIRPORT_DIAMETER)));
@@ -165,7 +159,6 @@ fn draw_nearest<D: DrawTarget<Color = BinaryColor>>(target: &mut D, column: Rect
     }
 }
 
-/// At the foot of the column: what is wrong if anything is, the controls, the source.
 fn draw_footer<D: DrawTarget<Color = BinaryColor>>(target: &mut D, column: Rectangle, report: &RadarReport) {
     let lines = footer(report, text::chars_across(column.size.width, &HINT));
     let pitch = HINT.character_size.height as i32 + 1;
@@ -297,7 +290,6 @@ mod tests {
         AREA.top_left + Point::new(radius, radius)
     }
 
-    /// Ink in the square of `size` pixels at `top_left`.
     fn ink_in(frame: &Frame, top_left: Point, size: i32) -> usize {
         (0..size).flat_map(|dy| (0..size).map(move |dx| (dx, dy))).filter(|&(dx, dy)| frame.is_ink(top_left.x + dx, top_left.y + dy)).count()
     }

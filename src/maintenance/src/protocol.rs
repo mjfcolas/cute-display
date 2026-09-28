@@ -1,5 +1,3 @@
-//! The console's lines, both ways.
-
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 
@@ -19,8 +17,7 @@ pub enum Request {
     Remove(SdPath),
 }
 
-/// One line of the protocol: `None` for any other line. A path comes last and runs to
-/// the end of the line, since names on the card have spaces.
+/// A path comes last and runs to the end of the line, since names on the card have spaces.
 pub fn parse(line: &str) -> Option<(String, Result<Request, String>)> {
     let rest = line.trim_end_matches(['\r', '\n']).strip_prefix(PREFIX)?.strip_prefix(' ')?;
     let (id, rest) = first_word(rest);
@@ -66,7 +63,6 @@ pub fn ok(id: &str, detail: &str) -> String {
     }
 }
 
-/// A put was accepted: its data may come.
 pub fn ready(id: &str) -> String {
     format!("{PREFIX} {id} ready")
 }

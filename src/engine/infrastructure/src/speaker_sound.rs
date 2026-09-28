@@ -1,6 +1,3 @@
-//! Sounds on the speaker. Playing blocks, so a player of its own does it on a thread of
-//! its own; the sound only tells it what to play.
-
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
@@ -12,7 +9,6 @@ use hal::audio::Speaker;
 /// test's chime is comfortable at 0.08, a pure tone at 0.25 already hurts.
 const LOUDEST: f32 = 0.2;
 
-/// What an app holds: every call returns at once. Every clone plays on the same speaker.
 #[derive(Clone)]
 pub struct SpeakerSound {
     sample_rate_hz: u32,
@@ -22,7 +18,6 @@ pub struct SpeakerSound {
     next: Sender<(u32, Samples)>,
 }
 
-/// Plays on the calling thread whatever the sounds ask for.
 pub struct SoundPlayer<S> {
     speaker: S,
     turn: Arc<AtomicU32>,
@@ -53,7 +48,6 @@ impl Sound for SpeakerSound {
 }
 
 impl<S: Speaker> SoundPlayer<S> {
-    /// Returns when every sound is gone.
     pub fn run(mut self) {
         for (turn, samples) in &self.asked {
             let mut playing = Playing { samples, turn, now: &self.turn };
@@ -64,7 +58,6 @@ impl<S: Speaker> SoundPlayer<S> {
     }
 }
 
-/// A sound's samples, scaled to the loudest, until another sound's turn.
 struct Playing<'a> {
     samples: Samples,
     turn: u32,
@@ -93,7 +86,6 @@ mod tests {
 
     const RATE: u32 = 8_000;
 
-    /// Keeps every sample played.
     #[derive(Clone, Default)]
     struct FakeSpeaker(Arc<Mutex<Vec<i16>>>);
 

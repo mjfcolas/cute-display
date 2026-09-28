@@ -1,12 +1,3 @@
-//! The settings as a few lines of text, in the device's own directory of a storage:
-//!
-//! ```text
-//! backlight = 10s
-//! reading_lamp = 30%
-//! ```
-//!
-//! A setting that is missing or unreadable takes its default.
-
 use conf_text::ConfText;
 use domain::settings::{BacklightDuration, ReadingLamp, SettingsRecord, SettingsStore};
 use hal::storage::FileStorage;
@@ -62,7 +53,6 @@ impl<S: FileStorage + Send> SettingsStore for SettingsFile<S> {
     }
 }
 
-/// For a device with nowhere to keep its settings: they last until the power goes.
 pub struct Unkept;
 
 impl SettingsStore for Unkept {

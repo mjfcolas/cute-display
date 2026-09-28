@@ -1,5 +1,3 @@
-//! Days in the Gregorian calendar.
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Date {
     year: u16,
@@ -19,7 +17,6 @@ pub enum Weekday {
 }
 
 impl Weekday {
-    /// Monday first.
     pub const ALL: [Weekday; 7] = [
         Weekday::Monday,
         Weekday::Tuesday,
@@ -30,7 +27,6 @@ impl Weekday {
         Weekday::Sunday,
     ];
 
-    /// 0 for Sunday, 1 for Monday, and so on to 6 for Saturday.
     pub fn days_since_sunday(self) -> u8 {
         match self {
             Self::Sunday => 0,
@@ -43,12 +39,10 @@ impl Weekday {
         }
     }
 
-    /// 0 for Monday, and so on to 6 for Sunday: where it is in [`Weekday::ALL`].
     pub fn days_since_monday(self) -> usize {
         usize::from((self.days_since_sunday() + 6) % 7)
     }
 
-    /// `None` above 6.
     pub fn from_days_since_sunday(days: u8) -> Option<Self> {
         Self::ALL.into_iter().find(|day| day.days_since_sunday() == days)
     }
@@ -59,7 +53,6 @@ impl Weekday {
 }
 
 impl Date {
-    /// `None` for a month outside 1 to 12 or a day the month does not have.
     pub fn new(year: u16, month: u8, day: u8) -> Option<Self> {
         ((1..=12).contains(&month) && (1..=days_in_month(year, month)).contains(&day)).then_some(Self { year, month, day })
     }
@@ -76,7 +69,7 @@ impl Date {
         self.day
     }
 
-    /// Days since 1970-01-01, negative before (Howard Hinnant's algorithm).
+    /// Howard Hinnant's algorithm.
     pub fn days_since_epoch(self) -> i64 {
         let (month, day) = (i64::from(self.month), i64::from(self.day));
         let year = i64::from(self.year) - i64::from(month <= 2);
@@ -87,7 +80,6 @@ impl Date {
         era * 146_097 + day_of_era - 719_468
     }
 
-    /// The date `days` after 1970-01-01, held between 0000-03-01 and 65535-12-31.
     pub fn from_days_since_epoch(days: i64) -> Self {
         let days = days.clamp(-719_468, 23_217_003) + 719_468;
         let era = days.div_euclid(146_097);
@@ -105,7 +97,6 @@ impl Date {
         }
     }
 
-    /// The date `days` later, or earlier when negative.
     pub fn plus_days(self, days: i64) -> Self {
         Self::from_days_since_epoch(self.days_since_epoch() + days)
     }
