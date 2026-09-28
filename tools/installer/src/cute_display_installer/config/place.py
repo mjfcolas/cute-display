@@ -1,4 +1,4 @@
-"""A place the weather or the radar is about, as src/infrastructure/src/place_file.rs
+"""A place the weather or the radar is about, as src/engine/infrastructure/src/place_file.rs
 reads it."""
 from dataclasses import dataclass
 

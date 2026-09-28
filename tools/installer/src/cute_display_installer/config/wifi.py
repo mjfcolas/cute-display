@@ -1,4 +1,4 @@
-"""wifi.conf: the network every app that goes online joins (src/infrastructure/src/internet.rs)."""
+"""wifi.conf: the network every app that goes online joins (src/engine/infrastructure/src/internet.rs)."""
 from dataclasses import dataclass
 
 from . import conf_text

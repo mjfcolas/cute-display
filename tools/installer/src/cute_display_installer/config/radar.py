@@ -21,7 +21,7 @@ def place_of(radar_conf):
 
 def labels(radar_conf):
     listed = conf_text.parse(radar_conf).get('airport_labels', '')
-    # As src/infrastructure/src/airports_file.rs splits them: on commas and spaces.
+    # As src/engine/infrastructure/src/airports_file.rs splits them: on commas and spaces.
     return [code.upper() for code in re.split(r'[,\s]+', listed) if code]
 
 

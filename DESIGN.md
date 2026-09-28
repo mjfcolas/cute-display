@@ -86,15 +86,16 @@ a "latest value" out:
 
 ```
 src/            the sources, one crate per directory
-  domain/         what the product does: the apps, the one in front, settings, lighting,
-                  the time and time zones, the alarm, weather, radar, places
-  infrastructure/ the domain's contracts on the HAL: conf files, lights, the RTC, the
-                  ringtone, Internet on demand, NTP, Open-Meteo, adsb.fi, airports
-  ui/             app screens (the system app's among them), gestures; host-tested with
-                  hal's Frame as a dev-dependency
-  hal/            contracts with the hardware, and the Frame the display shows
-  drivers/        ESP32-S3 implementations of hal; chip logic that needs no ESP32 is
-                  host-tested
+  engine/         what the apps run on
+    domain/         what the product does: the apps, the one in front, settings,
+                    lighting, the time and time zones, the alarm, weather, radar, places
+    infrastructure/ the domain's contracts on the HAL: conf files, lights, the RTC, the
+                    ringtone, Internet on demand, NTP, Open-Meteo, adsb.fi, airports
+    ui/             app screens (the system app's among them), gestures; host-tested
+                    with hal's Frame as a dev-dependency
+    hal/            contracts with the hardware, and the Frame the display shows
+    drivers/        ESP32-S3 implementations of hal; chip logic that needs no ESP32 is
+                    host-tested
   maintenance/    the console that serves the SD card on the USB cable
   hwtest/         the hardware test bench
   app/            the app image's threads and wiring, generic over the HAL

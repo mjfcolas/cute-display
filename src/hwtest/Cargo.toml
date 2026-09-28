@@ -9,6 +9,6 @@ description = "The hardware test bench: exercises every part of the board throug
 workspace = true
 
 [dependencies]
-hal = { path = "../hal" }
+hal = { path = "../engine/hal" }
 embedded-graphics = "0.8"
 log = "0.4"

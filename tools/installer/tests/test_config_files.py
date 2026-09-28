@@ -5,8 +5,8 @@ import unittest
 from cute_display_installer.config import clock, place, places, time_zone, wifi
 from cute_display_installer.config.place import Place
 
-# What src/domain/tests/tzdata_rules.rs parses as the device does.
-DEVICE_RULES = pathlib.Path(__file__).resolve().parents[3] / 'src' / 'domain' / 'tests' / 'tzdata_rules.txt'
+# What src/engine/domain/tests/tzdata_rules.rs parses as the device does.
+DEVICE_RULES = pathlib.Path(__file__).resolve().parents[3] / 'src' / 'engine' / 'domain' / 'tests' / 'tzdata_rules.txt'
 
 
 class Wifi(unittest.TestCase):

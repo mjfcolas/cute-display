@@ -42,7 +42,7 @@ The console is the USB Serial/JTAG (`303a:1001`); there is no reachable UART.
 ## The panel controller
 
 Measured, no datasheet. What the driver relies on is written beside the code, in
-[`src/drivers/src/uc8253/`](../src/drivers/src/uc8253/). Clean full refresh ≈ 2.6 s (up
+[`src/engine/drivers/src/uc8253/`](../src/engine/drivers/src/uc8253/). Clean full refresh ≈ 2.6 s (up
 to 6.9 s cold); fast partial ≈ 350 ms.
 
 ## Flash layout of this unit

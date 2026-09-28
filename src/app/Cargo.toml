@@ -10,9 +10,9 @@ description = "The app image on any hardware that keeps the HAL's contracts: its
 workspace = true
 
 [dependencies]
-domain = { path = "../domain" }
-infrastructure = { path = "../infrastructure" }
-hal = { path = "../hal" }
-ui = { path = "../ui" }
+domain = { path = "../engine/domain" }
+infrastructure = { path = "../engine/infrastructure" }
+hal = { path = "../engine/hal" }
+ui = { path = "../engine/ui" }
 embedded-graphics = "0.8"
 log = "0.4"

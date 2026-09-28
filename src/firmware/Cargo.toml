@@ -33,8 +33,8 @@ harness = false
 log = "0.4"
 esp-idf-svc = "0.52.1"
 app = { path = "../app" }
-hal = { path = "../hal" }
-drivers = { path = "../drivers" }
+hal = { path = "../engine/hal" }
+drivers = { path = "../engine/drivers" }
 hwtest = { path = "../hwtest" }
 maintenance = { path = "../maintenance" }
 

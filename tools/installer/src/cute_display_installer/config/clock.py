@@ -1,5 +1,5 @@
 """clock.conf: the time zone, as a POSIX rule for the device
-(src/infrastructure/src/time_zone_file.rs) and by its name for the installer."""
+(src/engine/infrastructure/src/time_zone_file.rs) and by its name for the installer."""
 from . import conf_text, time_zone
 
 FILE = 'cute-display/clock.conf'

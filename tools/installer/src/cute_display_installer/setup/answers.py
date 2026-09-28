@@ -6,7 +6,7 @@ from ..config.place import Place
 from ..config.wifi import Wifi
 
 CARD_FILES = [wifi.FILE, place.WEATHER_FILE, radar.FILE, clock.FILE]
-# The ESP-IDF Wi-Fi driver's limits (src/drivers/src/esp_wifi.rs).
+# The ESP-IDF Wi-Fi driver's limits (src/engine/drivers/src/esp_wifi.rs).
 SSID_BYTES, PASSWORD_BYTES = 32, 64
 
 

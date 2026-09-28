@@ -9,6 +9,6 @@ description = "A console on the serial line to read the SD card and put files on
 workspace = true
 
 [dependencies]
-hal = { path = "../hal" }
+hal = { path = "../engine/hal" }
 base64 = "0.22"
 crc32fast = "1"
