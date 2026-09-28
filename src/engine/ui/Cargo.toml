@@ -3,7 +3,7 @@ name = "ui"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "The presentation: a screen per app, the system app's included, and how the controls are read. Draws on any DrawTarget; knows no hardware."
+description = "The presentation: the shell that hosts the app in front, the system app's screen, the toolkit apps draw with, and how the controls are read. Draws on any DrawTarget; knows no hardware."
 
 [lints]
 workspace = true

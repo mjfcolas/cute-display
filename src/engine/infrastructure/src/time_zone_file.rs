@@ -9,7 +9,7 @@ use domain::fetch::Unavailable;
 use domain::time_zone::TimeZone;
 use hal::storage::FileStorage;
 
-use crate::conf_text::ConfText;
+use crate::conf_file;
 
 pub const CLOCK_FILE: &str = "cute-display/clock.conf";
 const TIME_ZONE: &str = "time_zone";
@@ -28,7 +28,7 @@ impl<S: FileStorage> TimeZoneFile<S> {
 
 impl<S: FileStorage + Send> TimeZoneSource for TimeZoneFile<S> {
     fn time_zone(&mut self) -> Result<Option<TimeZone>, Unavailable> {
-        let conf = ConfText::read(&self.storage, CLOCK_FILE).map_err(|fault| {
+        let conf = conf_file::read(&self.storage, CLOCK_FILE).map_err(|fault| {
             log::warn!("clock: {fault}");
             Unavailable(fault.to_string())
         })?;

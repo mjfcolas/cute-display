@@ -2,24 +2,23 @@
 //! how the layers are wired. `firmware` runs it on the board, `simulator` on a computer.
 
 mod controls;
+mod engine_services;
 pub mod image;
 mod network;
 mod presentation;
 
 use std::convert::Infallible;
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use domain::alarm::{AlarmClock, AlarmScheduleStore};
-use domain::apps::{App, Foreground};
+use domain::apps::{AppId, AppService, Foreground};
 use domain::clock::Clock;
-use domain::lighting::Lighting;
-use domain::radar::Radar;
+use domain::lighting::{Level, Lighting};
 use domain::settings::{Settings, SettingsStore};
-use domain::weather::Weather;
 use hal::audio::Speaker;
 use hal::clock::RealTimeClock;
-use hal::display::EpaperDisplay;
+use hal::display::{EpaperDisplay, Frame};
 use hal::http::HttpClient;
 use hal::input::{PushButton, RotaryEncoder};
 use hal::light::DimmableLight;
@@ -28,20 +27,17 @@ use hal::storage::FileStorage;
 use hal::system::SystemMonitor;
 use hal::udp::UdpClient;
 use hal::Fault;
-use infrastructure::adsb_fi::AdsbFi;
-use infrastructure::alarm_file::{AlarmFile, UnkeptAlarm};
-use infrastructure::airports_file::{AirportsFile, NoAirports};
 use infrastructure::hal_light::HalLight;
 use infrastructure::internet::{NoInternet, OnDemandInternet, SharedInternet};
 use infrastructure::ntp::NtpServer;
-use infrastructure::open_meteo::OpenMeteo;
-use infrastructure::place_file::{NoPlace, PlaceFile, RADAR_FILE, WEATHER_FILE};
 use infrastructure::rtc_keeper::RtcKeeper;
 use infrastructure::settings_file::{SettingsFile, Unkept};
-use infrastructure::speaker_ringer::{self, RingtonePlayer};
+use infrastructure::speaker_sound::{self, SoundPlayer};
 use infrastructure::time_zone_file::{NoTimeZone, TimeZoneFile};
+use ui::{AppScreen, Install};
 
 use crate::controls::Controls;
+use crate::engine_services::EngineServices;
 use crate::presentation::Presentation;
 
 const MAIN_PERIOD: Duration = Duration::from_millis(100);
@@ -82,20 +78,13 @@ pub struct Devices<H: Hardware> {
     pub system: H::System,
 }
 
-/// Everything the domain is made of, shared by the threads that use it.
-struct Domain {
-    foreground: Foreground,
-    clock: Clock,
-    alarm: AlarmClock,
-    settings: Settings,
-    lighting: Lighting,
-    weather: Weather,
-    radar: Radar,
-}
+/// An installed app's service, and the app it is.
+type Service = (AppId, Arc<dyn AppService>);
 
-/// Starts the ui, speaker and network threads, then keeps the time, the alarm and the
-/// lights on the calling thread. Returns only when a thread could not be started.
-pub fn run<H: Hardware>(devices: Devices<H>) -> Result<Infallible, Fault> {
+/// Installs `apps`, the first of them in front, then starts the ui, speaker and network
+/// threads, and keeps the time, the apps' services and the lights on the calling thread.
+/// Returns only when a thread could not be started.
+pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Install<Frame>]) -> Result<Infallible, Fault> {
     let settings_store: Box<dyn SettingsStore> = match &devices.sd_card {
         Ok(card) => Box::new(SettingsFile::new(card.clone())),
         Err(fault) => {
@@ -111,48 +100,29 @@ pub fn run<H: Hardware>(devices: Devices<H>) -> Result<Infallible, Fault> {
     );
     lighting.touched(Instant::now());
 
-    let foreground = Foreground::new(App::Alarm);
-    let alarm_store: Box<dyn AlarmScheduleStore> = match &devices.sd_card {
-        Ok(card) => Box::new(AlarmFile::new(card.clone())),
-        Err(_) => Box::new(UnkeptAlarm),
-    };
-    let (ringer, player) = speaker_ringer::ringer(devices.speaker);
+    let (sound, player) = speaker_sound::sound(devices.speaker);
     start_speaker(player)?;
-    let alarm = AlarmClock::new(alarm_store, Box::new(ringer), foreground.clone());
 
     let keeper = Box::new(RtcKeeper::new(devices.rtc));
-    let (clock, weather, radar, internet) = match devices.sd_card {
-        Ok(card) => {
-            let internet = SharedInternet::new(OnDemandInternet::new(devices.wifi, devices.https, devices.udp, card.clone()));
-            let clock = Clock::new(keeper, Box::new(NtpServer::new(internet.clone())), Box::new(TimeZoneFile::new(card.clone())));
-            let weather = Weather::new(
-                Box::new(PlaceFile::new(card.clone(), WEATHER_FILE)),
-                Box::new(OpenMeteo::new(internet.clone())),
-            );
-            let radar = Radar::new(
-                Box::new(PlaceFile::new(card.clone(), RADAR_FILE)),
-                Box::new(AdsbFi::new(internet.clone())),
-                Box::new(AirportsFile::new(card)),
-                foreground.clone(),
-            );
-            (clock, weather, radar, Some(internet))
+    let card = devices.sd_card;
+    let internet = card.clone().ok().map(|card| SharedInternet::new(OnDemandInternet::new(devices.wifi, devices.https, devices.udp, card)));
+    let clock = match (&card, &internet) {
+        (Ok(card), Some(internet)) => {
+            Clock::new(keeper, Box::new(NtpServer::new(internet.clone())), Box::new(TimeZoneFile::new(card.clone())))
         }
-        Err(_) => (
-            Clock::new(keeper, Box::new(NtpServer::new(NoInternet("no SD card"))), Box::new(NoTimeZone)),
-            Weather::new(Box::new(NoPlace), Box::new(OpenMeteo::new(NoInternet("no SD card")))),
-            Radar::new(
-                Box::new(NoPlace),
-                Box::new(AdsbFi::new(NoInternet("no SD card"))),
-                Box::new(NoAirports),
-                foreground.clone(),
-            ),
-            None,
-        ),
+        _ => Clock::new(keeper, Box::new(NtpServer::new(NoInternet("no SD card"))), Box::new(NoTimeZone)),
     };
     clock.tick(Instant::now());
-    network::start(clock.clone(), weather.clone(), radar.clone(), internet, devices.system, H::NETWORK_STACK_BYTES)?;
 
-    let domain = Domain { foreground, clock: clock.clone(), alarm: alarm.clone(), settings, lighting: lighting.clone(), weather, radar };
+    let foreground = Foreground::new(AppId::SYSTEM);
+    let engine_services = EngineServices { foreground: foreground.clone(), clock: clock.clone(), card, internet: internet.clone(), sound };
+    let installed: Vec<_> = apps.iter().map(|install| install(&engine_services)).collect();
+    let services: Vec<Service> = installed.iter().map(|app| (app.screen.app(), Arc::clone(&app.service))).collect();
+    foreground.bring_to_front(front_at_start(&services));
+    let screens: Vec<Box<dyn AppScreen<Frame> + Send>> = installed.into_iter().map(|app| app.screen).collect();
+
+    network::start(clock.clone(), services.clone(), internet, devices.system, H::NETWORK_STACK_BYTES)?;
+
     let controls = Controls {
         wheel: devices.wheel,
         wheel_button: devices.wheel_button,
@@ -160,25 +130,66 @@ pub fn run<H: Hardware>(devices: Devices<H>) -> Result<Infallible, Fault> {
         long_button: devices.long_button,
     };
     let presentation = Presentation { controls, panel: devices.panel };
+    let shown_lighting = lighting.clone();
     thread::Builder::new()
         .name("ui".into())
         .stack_size(32 * 1024)
-        .spawn(move || presentation.run(domain))
+        .spawn(move || presentation.run(foreground, settings, shown_lighting, screens))
         .map_err(Fault::new)?;
 
     loop {
         let now = Instant::now();
         clock.tick(now);
-        if let Some(local) = clock.now() {
-            alarm.tick(local);
+        let local = clock.now();
+        for (_, service) in &services {
+            service.tick(now, local);
         }
-        lighting.rise_sun_to(alarm.sunrise());
+        lighting.shine_at_least(light_wanted(&services));
         lighting.refresh(now);
         thread::sleep(MAIN_PERIOD);
     }
 }
 
-fn start_speaker<S: Speaker + Send + 'static>(player: RingtonePlayer<S>) -> Result<(), Fault> {
+/// The first app installed, or the system app when there is none.
+fn front_at_start(services: &[Service]) -> AppId {
+    services.first().map_or(AppId::SYSTEM, |(app, _)| *app)
+}
+
+/// The lights follow the app that wants the most.
+fn light_wanted(services: &[Service]) -> Level {
+    services.iter().map(|(_, service)| service.light()).max().unwrap_or(Level::OFF)
+}
+
+fn start_speaker<S: Speaker + Send + 'static>(player: SoundPlayer<S>) -> Result<(), Fault> {
     thread::Builder::new().name("speaker".into()).stack_size(8 * 1024).spawn(move || player.run()).map_err(Fault::new)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Lamp(Level);
+
+    impl AppService for Lamp {
+        fn light(&self) -> Level {
+            self.0
+        }
+    }
+
+    fn service(name: &'static str, light: u8) -> Service {
+        (AppId::new(name), Arc::new(Lamp(Level::percent(light))))
+    }
+
+    #[test]
+    fn the_first_app_installed_is_in_front_and_without_any_the_system_app() {
+        assert_eq!(front_at_start(&[service("alarm", 0), service("radar", 0)]), AppId::new("alarm"));
+        assert_eq!(front_at_start(&[]), AppId::SYSTEM);
+    }
+
+    #[test]
+    fn the_lights_follow_the_app_that_wants_the_most() {
+        assert_eq!(light_wanted(&[service("alarm", 40), service("radar", 0), service("lamp", 70)]), Level::percent(70));
+        assert_eq!(light_wanted(&[]), Level::OFF);
+    }
 }

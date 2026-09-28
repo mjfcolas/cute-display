@@ -1,0 +1,19 @@
+[package]
+name = "weather"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "The weather app: today and the coming hours, or the week, at one place."
+
+[lints]
+workspace = true
+
+[dependencies]
+domain = { path = "../../engine/domain" }
+ui = { path = "../../engine/ui" }
+forecast = { path = "../../libs/forecast" }
+embedded-graphics = "0.8"
+
+[dev-dependencies]
+hal = { path = "../../engine/hal" }
+place = { path = "../../libs/place" }

@@ -14,6 +14,17 @@ Both are flashed into an OTA slot, `app0` or `app1`, beside Habity's firmware.
 The [simulator](simulator/README.md) runs the app image on a computer, and the
 [installer](../tools/installer/README.md) is how a computer reaches the device.
 
+## Apps
+
+- An app is a crate in [`src/apps/`](../src/apps/), and what several share, one in
+  [`src/libs/`](../src/libs/); [DESIGN.md](../DESIGN.md#applications) says what the
+  engine lends an app and what it gives back.
+- The images hold every app. Their Cargo features pick fewer, or none but the system
+  app: `cargo run -p simulator --no-default-features --features weather`.
+- A new app: its crate among the workspace's members, its feature and its line in the
+  list of `src/simulator/src/main.rs` and `src/firmware/src/bin/app.rs`, and its README
+  in `docs/apps/<app>/`.
+
 ## Commands
 
 ```sh

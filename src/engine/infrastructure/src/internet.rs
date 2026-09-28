@@ -9,44 +9,22 @@
 //! password = secret
 //! ```
 
-use std::io::Read;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use domain::fetch::Unavailable;
+use domain::internet::{BodyReader, Internet};
 use hal::http::HttpClient;
 use hal::radio::WifiStation;
 use hal::storage::FileStorage;
 use hal::udp::UdpClient;
 use hal::Fault;
 
-use crate::conf_text::ConfText;
+use crate::conf_file;
 
 pub const WIFI_FILE: &str = "cute-display/wifi.conf";
 pub const LINGER: Duration = Duration::from_secs(60);
-/// What a caller may hold whole with `get`; anything larger has to be streamed.
-pub const MAX_HELD_BYTES: u64 = 32 * 1024;
 pub const DATAGRAM_TIMEOUT: Duration = Duration::from_secs(3);
-
-pub type BodyReader<'a> = dyn FnMut(&mut dyn Read) -> Result<(), Unavailable> + 'a;
-
-pub trait Internet: Send {
-    /// Hands the body to `read` as it arrives.
-    fn fetch(&mut self, url: &str, read: &mut BodyReader<'_>) -> Result<(), Unavailable>;
-
-    /// The whole body, for answers small enough to hold.
-    fn get(&mut self, url: &str) -> Result<Vec<u8>, Unavailable> {
-        let mut body = Vec::new();
-        self.fetch(url, &mut |reader| {
-            reader.take(MAX_HELD_BYTES + 1).read_to_end(&mut body).map_err(|e| Unavailable(e.to_string()))?;
-            if body.len() as u64 > MAX_HELD_BYTES {
-                return Err(Unavailable(format!("the answer is larger than {MAX_HELD_BYTES} bytes")));
-            }
-            Ok(())
-        })?;
-        Ok(body)
-    }
-}
 
 /// Datagrams, for what the web does not carry.
 pub trait Datagrams: Send {
@@ -102,7 +80,7 @@ impl<W: WifiStation, H: HttpClient, U: UdpClient, S: FileStorage> OnDemandIntern
 
     fn credentials(&self) -> Result<(String, String), Unavailable> {
         let missing = || Unavailable(format!("no Wi-Fi: put {WIFI_FILE}"));
-        let conf = ConfText::read(&self.storage, WIFI_FILE).map_err(|f| Unavailable(f.to_string()))?.ok_or_else(missing)?;
+        let conf = conf_file::read(&self.storage, WIFI_FILE).map_err(|f| Unavailable(f.to_string()))?.ok_or_else(missing)?;
         let ssid = conf.get("ssid").filter(|s| !s.is_empty()).ok_or_else(missing)?;
         Ok((ssid.to_owned(), conf.get("password").unwrap_or_default().to_owned()))
     }
@@ -229,6 +207,10 @@ impl Datagrams for NoInternet {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Read;
+
+    use domain::internet::MAX_HELD_BYTES;
+
     use super::*;
     use crate::test_storage::MemoryStorage;
 

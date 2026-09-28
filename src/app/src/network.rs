@@ -2,8 +2,6 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use domain::clock::Clock;
-use domain::radar::Radar;
-use domain::weather::Weather;
 use hal::http::HttpClient;
 use hal::radio::WifiStation;
 use hal::storage::FileStorage;
@@ -12,14 +10,15 @@ use hal::udp::UdpClient;
 use hal::Fault;
 use infrastructure::internet::SharedInternet;
 
+use crate::Service;
+
 const NETWORK_PERIOD: Duration = Duration::from_secs(1);
 
-/// Everything that fetches, on one thread: the requests share one Wi-Fi and take turns
-/// anyway, and each thread's stack is internal RAM.
+/// Everything that fetches, on one thread: the clock, then each app in turn. The requests
+/// share one Wi-Fi and take turns anyway, and each thread's stack is internal RAM.
 pub(crate) fn start<W, H, U, S, M>(
     clock: Clock,
-    weather: Weather,
-    radar: Radar,
+    services: Vec<Service>,
     internet: Option<SharedInternet<W, H, U, S>>,
     system: M,
     stack_bytes: usize,
@@ -47,13 +46,11 @@ where
             if let Err(unavailable) = clock.sync_if_due(now) {
                 log::warn!("clock: not set from the network: {unavailable}");
             }
-            if weather.is_due(now) {
-                log_heap("weather");
-                weather.refresh_if_due(now);
-            }
-            if radar.is_due(now) {
-                log_heap("radar");
-                radar.refresh_if_due(now);
+            for (app, service) in &services {
+                if service.fetch_due(now) {
+                    log_heap(app.name());
+                    service.fetch(now);
+                }
             }
             if let Some(internet) = &internet {
                 internet.release_if_idle(Instant::now());

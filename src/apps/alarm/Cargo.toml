@@ -1,0 +1,21 @@
+[package]
+name = "alarm"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "The alarm clock app: the time, the weather beside it, a wake-up time for each day, a sunrise and a ring."
+
+[lints]
+workspace = true
+
+[dependencies]
+conf_text = { path = "../../engine/conf_text" }
+domain = { path = "../../engine/domain" }
+ui = { path = "../../engine/ui" }
+forecast = { path = "../../libs/forecast" }
+embedded-graphics = "0.8"
+log = "0.4"
+
+[dev-dependencies]
+hal = { path = "../../engine/hal" }
+place = { path = "../../libs/place" }

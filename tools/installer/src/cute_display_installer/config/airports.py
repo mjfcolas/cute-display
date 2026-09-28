@@ -1,5 +1,5 @@
 """The airports the radar draws around its place, from OurAirports (ourairports.com,
-public domain), as src/engine/infrastructure/src/airports_file.rs reads them."""
+public domain), as src/apps/radar/src/infrastructure/airports_file.rs reads them."""
 import csv
 import math
 import os

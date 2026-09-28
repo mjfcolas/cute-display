@@ -1,5 +1,5 @@
 """The device's configuration files: `key = value` lines, as
-src/engine/infrastructure/src/conf_text.rs reads them."""
+src/engine/conf_text/src/lib.rs reads them."""
 
 
 def parse(text):

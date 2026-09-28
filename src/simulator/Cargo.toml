@@ -8,13 +8,29 @@ description = "The app image on a computer: the panel in a window, the controls 
 [lints]
 workspace = true
 
+[features]
+default = ["alarm", "weather", "radar"]
+
 [dependencies]
 app = { path = "../app" }
 drivers = { path = "../engine/drivers" }
 hal = { path = "../engine/hal" }
 infrastructure = { path = "../engine/infrastructure" }
+ui = { path = "../engine/ui" }
+alarm = { path = "../apps/alarm", optional = true }
+weather = { path = "../apps/weather", optional = true }
+radar = { path = "../apps/radar", optional = true }
 embedded-graphics = "0.8"
 env_logger = "0.11"
 log = "0.4"
 minifb = "0.28"
 ureq = "3"
+
+[dev-dependencies]
+domain = { path = "../engine/domain" }
+forecast = { path = "../libs/forecast" }
+place = { path = "../libs/place" }
+
+[[example]]
+name = "app_screen"
+required-features = ["alarm", "weather", "radar"]

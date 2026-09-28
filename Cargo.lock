@@ -18,6 +18,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "alarm"
+version = "0.1.0"
+dependencies = [
+ "conf_text",
+ "domain",
+ "embedded-graphics",
+ "forecast",
+ "hal",
+ "log",
+ "place",
+ "ui",
+]
+
+[[package]]
 name = "aligned"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -314,6 +328,10 @@ name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
+
+[[package]]
+name = "conf_text"
+version = "0.1.0"
 
 [[package]]
 name = "console_error_panic_hook"
@@ -838,6 +856,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
+name = "forecast"
+version = "0.1.0"
+dependencies = [
+ "domain",
+ "embedded-graphics",
+ "hal",
+ "log",
+ "place",
+ "serde",
+ "serde_json",
+ "ui",
+]
+
+[[package]]
 name = "fs_at"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1139,6 +1171,7 @@ dependencies = [
 name = "infrastructure"
 version = "0.1.0"
 dependencies = [
+ "conf_text",
  "domain",
  "hal",
  "log",
@@ -1500,6 +1533,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
+name = "place"
+version = "0.1.0"
+dependencies = [
+ "conf_text",
+ "domain",
+ "log",
+]
+
+[[package]]
 name = "plain"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1562,6 +1604,21 @@ name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
+
+[[package]]
+name = "radar"
+version = "0.1.0"
+dependencies = [
+ "conf_text",
+ "domain",
+ "embedded-graphics",
+ "hal",
+ "log",
+ "place",
+ "serde",
+ "serde_json",
+ "ui",
+]
 
 [[package]]
 name = "raw-window-handle"
@@ -1821,15 +1878,22 @@ checksum = "3a219298ac11a56ea9a6d2120044824d6f01aeb034955e7af7bc16858527deea"
 name = "simulator"
 version = "0.1.0"
 dependencies = [
+ "alarm",
  "app",
+ "domain",
  "drivers",
  "embedded-graphics",
  "env_logger",
+ "forecast",
  "hal",
  "infrastructure",
  "log",
  "minifb",
+ "place",
+ "radar",
+ "ui",
  "ureq",
+ "weather",
 ]
 
 [[package]]
@@ -2264,6 +2328,18 @@ dependencies = [
  "dlib",
  "lazy_static",
  "pkg-config",
+]
+
+[[package]]
+name = "weather"
+version = "0.1.0"
+dependencies = [
+ "domain",
+ "embedded-graphics",
+ "forecast",
+ "hal",
+ "place",
+ "ui",
 ]
 
 [[package]]

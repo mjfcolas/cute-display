@@ -1,0 +1,9 @@
+[package]
+name = "conf_text"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "The device's conf files as `key = value` lines: the engine's own, and any app's that takes up the format."
+
+[lints]
+workspace = true

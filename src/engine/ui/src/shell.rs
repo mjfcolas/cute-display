@@ -4,7 +4,7 @@
 
 use core::time::Duration;
 
-use domain::apps::{App, Foreground};
+use domain::apps::{AppId, Foreground};
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
@@ -20,9 +20,9 @@ pub struct Shell<D> {
     foreground: Foreground,
     screens: Vec<Box<dyn AppScreen<D>>>,
     /// The app whose screen was last told it came to the front.
-    entered: Option<App>,
+    entered: Option<AppId>,
     /// The app last drawn, and its version then.
-    drawn: Option<(App, u64)>,
+    drawn: Option<(AppId, u64)>,
 }
 
 impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
@@ -58,7 +58,7 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
 
     fn follow(&mut self, gesture: Gesture) -> bool {
         match gesture {
-            Gesture::System if self.foreground.app() == App::System => return self.deliver(Input::Press(Button::Long)),
+            Gesture::System if self.foreground.app() == AppId::SYSTEM => return self.deliver(Input::Press(Button::Long)),
             Gesture::System => self.foreground.open_system(),
             Gesture::Input(input) => return self.deliver(input),
         }
@@ -74,12 +74,12 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
         true
     }
 
-    fn version_of(&self, app: App) -> u64 {
+    fn version_of(&self, app: AppId) -> u64 {
         self.screens.iter().find(|s| s.app() == app).map_or(0, |s| s.version())
     }
 
     /// Tells a screen it came to the front before it is given anything else.
-    fn enter_front(&mut self) -> App {
+    fn enter_front(&mut self) -> AppId {
         let front = self.foreground.app();
         if self.entered != Some(front) {
             if let Some(screen) = self.screens.iter_mut().find(|s| s.app() == front) {
@@ -100,29 +100,35 @@ mod tests {
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
 
     use super::*;
-    use crate::apps::SystemScreen;
+    use crate::system::{OfferedApp, SystemScreen};
     use crate::controls::{Button, ButtonSample};
     use crate::text::{self, BODY};
+
+    const WEATHER: AppId = AppId::new("weather");
+    const RADAR: AppId = AppId::new("radar");
 
     /// Remembers every input it was given, and draws a line of text it may be given. Its
     /// clones share all of it, so a test keeps one while the shell holds another.
     #[derive(Clone)]
     struct Probe {
-        app: App,
+        app: AppId,
         inputs: Rc<RefCell<Vec<Input>>>,
         text: Rc<RefCell<String>>,
         version: Rc<RefCell<u64>>,
     }
 
     impl Probe {
-        fn new(app: App) -> Self {
+        fn new(app: AppId) -> Self {
             Self { app, inputs: Rc::default(), text: Rc::new(RefCell::new("probe".into())), version: Rc::default() }
         }
     }
 
     impl AppScreen<Frame> for Probe {
-        fn app(&self) -> App {
+        fn app(&self) -> AppId {
             self.app
+        }
+        fn title(&self) -> &'static str {
+            self.app.name()
         }
         fn version(&self) -> u64 {
             *self.version.borrow()
@@ -169,36 +175,37 @@ mod tests {
 
     /// The weather and radar apps as probes, and the real system app.
     fn shell(foreground: &Foreground) -> (Shell<Frame>, Probe, Probe) {
-        let (weather, radar) = (Probe::new(App::Weather), Probe::new(App::Radar));
+        let (weather, radar) = (Probe::new(WEATHER), Probe::new(RADAR));
+        let offered = [&weather, &radar].map(|probe| OfferedApp { app: probe.app, title: probe.app.name() }).into();
         let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
             Box::new(weather.clone()),
             Box::new(radar.clone()),
-            Box::new(SystemScreen::new(foreground.clone(), Settings::load(Box::new(Nowhere)), "2026.9.0")),
+            Box::new(SystemScreen::new(foreground.clone(), Settings::load(Box::new(Nowhere)), "2026.9.0", offered)),
         ];
         (Shell::new(foreground.clone(), screens).unwrap(), weather, radar)
     }
 
     #[test]
     fn a_click_of_the_wheel_opens_the_system_app_and_there_confirms_like_the_long_button() {
-        let foreground = Foreground::new(App::Radar);
+        let foreground = Foreground::new(RADAR);
         let (mut shell, _, _) = shell(&foreground);
         click_wheel(&mut shell, Duration::ZERO);
-        assert_eq!(foreground.app(), App::System);
+        assert_eq!(foreground.app(), AppId::SYSTEM);
         shell.on_sample(&turn(-1), Duration::from_secs(5));
         click_wheel(&mut shell, Duration::from_secs(10));
-        assert_eq!(foreground.app(), App::Weather, "the app under the dot, not the one it was opened from");
+        assert_eq!(foreground.app(), WEATHER, "the app under the dot, not the one it was opened from");
     }
 
     #[test]
     fn inputs_reach_only_the_app_in_front_and_never_the_wheels_click() {
-        let foreground = Foreground::new(App::Weather);
+        let foreground = Foreground::new(WEATHER);
         let (mut shell, weather, radar) = shell(&foreground);
 
         shell.on_sample(&turn(5), Duration::ZERO);
         click_wheel(&mut shell, Duration::from_secs(10));
         shell.on_sample(&turn(1), Duration::from_secs(20));
         shell.on_sample(&press(Button::Long), Duration::from_secs(20));
-        assert_eq!(foreground.app(), App::Radar);
+        assert_eq!(foreground.app(), RADAR);
         shell.on_sample(&press(Button::Yellow), Duration::from_secs(30));
 
         assert_eq!(*weather.inputs.borrow(), [Input::Turn(5)]);
@@ -207,25 +214,25 @@ mod tests {
 
     #[test]
     fn a_screen_is_told_it_came_to_the_front_before_its_first_input() {
-        let foreground = Foreground::new(App::Radar);
+        let foreground = Foreground::new(RADAR);
         let (mut shell, _, _) = shell(&foreground);
         click_wheel(&mut shell, Duration::ZERO);
         shell.on_sample(&press(Button::Long), Duration::from_secs(10));
-        assert_eq!(foreground.app(), App::Radar, "the dot started on Radar, where it was opened from");
+        assert_eq!(foreground.app(), RADAR, "the dot started on Radar, where it was opened from");
     }
 
     #[test]
     fn a_press_of_the_long_button_goes_to_the_app() {
-        let foreground = Foreground::new(App::Radar);
+        let foreground = Foreground::new(RADAR);
         let (mut shell, _, radar) = shell(&foreground);
         assert!(shell.on_sample(&press(Button::Long), Duration::ZERO));
-        assert_eq!(foreground.app(), App::Radar);
+        assert_eq!(foreground.app(), RADAR);
         assert_eq!(*radar.inputs.borrow(), [Input::Press(Button::Long)]);
     }
 
     #[test]
     fn drawing_brings_the_glass_up_to_date_until_another_app_comes_to_the_front() {
-        let foreground = Foreground::new(App::Weather);
+        let foreground = Foreground::new(WEATHER);
         let (mut shell, _, _) = shell(&foreground);
         assert!(shell.is_outdated(), "nothing drawn yet");
         render(&mut shell);
@@ -239,16 +246,16 @@ mod tests {
 
     #[test]
     fn an_app_brought_forward_by_the_domain_outdates_the_glass() {
-        let foreground = Foreground::new(App::Weather);
+        let foreground = Foreground::new(WEATHER);
         let (mut shell, _, _) = shell(&foreground);
         render(&mut shell);
-        foreground.bring_to_front(App::Radar);
+        foreground.bring_to_front(RADAR);
         assert!(shell.is_outdated());
     }
 
     #[test]
     fn an_app_that_changed_on_its_own_outdates_the_glass() {
-        let (mut shell, weather, _) = shell(&Foreground::new(App::Weather));
+        let (mut shell, weather, _) = shell(&Foreground::new(WEATHER));
         let before = render(&mut shell);
         assert!(!shell.is_outdated());
         *weather.text.borrow_mut() = "changed".into();
@@ -261,7 +268,7 @@ mod tests {
 
     #[test]
     fn nothing_is_drawn_outside_the_area_given() {
-        let foreground = Foreground::new(App::Weather);
+        let foreground = Foreground::new(WEATHER);
         let (mut shell, weather, _) = shell(&foreground);
         *weather.text.borrow_mut() = "a line far too long to fit on the glass at all, however small".into();
         let app = render(&mut shell);

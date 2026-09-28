@@ -1,0 +1,14 @@
+[package]
+name = "place"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Where on Earth an app is about: a point, a place a person names, and how it is written in an app's conf file."
+
+[lints]
+workspace = true
+
+[dependencies]
+conf_text = { path = "../../engine/conf_text" }
+domain = { path = "../../engine/domain" }
+log = "0.4"

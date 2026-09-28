@@ -7,10 +7,12 @@
 //!
 //! A setting that is missing or unreadable takes its default.
 
+use conf_text::ConfText;
 use domain::settings::{BacklightDuration, ReadingLamp, SettingsRecord, SettingsStore};
 use hal::storage::FileStorage;
 
-use crate::conf_text::ConfText;
+
+use crate::conf_file;
 
 pub const FILE_NAME: &str = "cute-display/settings.conf";
 
@@ -44,7 +46,7 @@ impl<S: FileStorage> SettingsFile<S> {
 
 impl<S: FileStorage + Send> SettingsStore for SettingsFile<S> {
     fn load(&mut self) -> Option<SettingsRecord> {
-        match ConfText::read(&self.storage, FILE_NAME) {
+        match conf_file::read(&self.storage, FILE_NAME) {
             Ok(conf) => conf.map(|conf| decode(&conf)),
             Err(fault) => {
                 log::warn!("settings: {fault}; starting on the defaults");

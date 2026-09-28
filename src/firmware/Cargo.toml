@@ -29,12 +29,19 @@ name = "hwtest"
 path = "src/bin/hwtest.rs"
 harness = false
 
+[features]
+default = ["alarm", "weather", "radar"]
+
 [dependencies]
 log = "0.4"
 esp-idf-svc = "0.52.1"
 app = { path = "../app" }
 hal = { path = "../engine/hal" }
+ui = { path = "../engine/ui" }
 drivers = { path = "../engine/drivers" }
+alarm = { path = "../apps/alarm", optional = true }
+weather = { path = "../apps/weather", optional = true }
+radar = { path = "../apps/radar", optional = true }
 hwtest = { path = "../hwtest" }
 maintenance = { path = "../maintenance" }
 

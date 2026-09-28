@@ -1,17 +1,18 @@
 use std::thread;
 use std::time::{Duration, Instant};
 
+use domain::apps::Foreground;
 use domain::lighting::Lighting;
+use domain::settings::Settings;
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 use hal::display::{EpaperDisplay, Frame, Redraw, HEIGHT, VISIBLE_WIDTH};
 use hal::input::{PushButton, RotaryEncoder};
-use ui::apps::{AlarmScreen, RadarScreen, SystemScreen, WeatherScreen};
+use ui::system::{OfferedApp, SystemScreen};
 use ui::{AppScreen, Shell};
 
 use crate::controls::Controls;
-use crate::Domain;
 
 const CONTROLS_PERIOD: Duration = Duration::from_millis(20);
 
@@ -22,21 +23,19 @@ pub(crate) struct Presentation<E, B, P> {
 }
 
 impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay> Presentation<E, B, P> {
-    pub fn run(mut self, domain: Domain) {
-        let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
-            Box::new(SystemScreen::new(domain.foreground.clone(), domain.settings, crate::image::VERSION)),
-            Box::new(AlarmScreen::new(domain.alarm, domain.clock.clone(), domain.weather.clone())),
-            Box::new(WeatherScreen::new(domain.weather, domain.clock)),
-            Box::new(RadarScreen::new(domain.radar)),
-        ];
-        let Some(mut shell) = Shell::new(domain.foreground, screens) else {
+    /// Shows the apps' `screens`, and the system app's, which offers them.
+    pub fn run(mut self, foreground: Foreground, settings: Settings, lighting: Lighting, screens: Vec<Box<dyn AppScreen<Frame> + Send>>) {
+        let offered = screens.iter().map(|screen| OfferedApp::of(screen.as_ref())).collect();
+        let mut screens: Vec<Box<dyn AppScreen<Frame>>> = screens.into_iter().map(|screen| screen as Box<dyn AppScreen<Frame>>).collect();
+        screens.push(Box::new(SystemScreen::new(foreground.clone(), settings, crate::image::VERSION, offered)));
+        let Some(mut shell) = Shell::new(foreground, screens) else {
             log::error!("ui: no app to show");
             return;
         };
         let mut frame = Frame::blank();
         let started = Instant::now();
         loop {
-            self.tick(&mut shell, &domain.lighting, &mut frame, started.elapsed());
+            self.tick(&mut shell, &lighting, &mut frame, started.elapsed());
             thread::sleep(CONTROLS_PERIOD);
         }
     }
@@ -66,9 +65,9 @@ mod tests {
     use std::rc::Rc;
     use std::sync::{Arc, Mutex};
 
-    use domain::apps::{App, Foreground};
+    use domain::apps::AppId;
     use domain::lighting::{Level, Light};
-    use domain::settings::{Settings, SettingsRecord, SettingsStore};
+    use domain::settings::{SettingsRecord, SettingsStore};
     use hal::display::Refreshed;
     use hal::Fault;
     use ui::controls::Input;
@@ -115,8 +114,11 @@ mod tests {
 
     struct Weather;
     impl AppScreen<Frame> for Weather {
-        fn app(&self) -> App {
-            App::Weather
+        fn app(&self) -> AppId {
+            AppId::new("weather")
+        }
+        fn title(&self) -> &'static str {
+            "Weather"
         }
         fn on_input(&mut self, _: Input) {}
         fn draw(&self, _: &mut Frame, _: Rectangle) {}
@@ -149,10 +151,10 @@ mod tests {
             },
             panel: panel.clone(),
         };
-        let foreground = Foreground::new(App::Weather);
+        let foreground = Foreground::new(AppId::new("weather"));
         let settings = Settings::load(Box::new(Nowhere));
         let screens: Vec<Box<dyn AppScreen<Frame>>> =
-            vec![Box::new(Weather), Box::new(SystemScreen::new(foreground.clone(), settings.clone(), crate::image::VERSION))];
+            vec![Box::new(Weather), Box::new(SystemScreen::new(foreground.clone(), settings.clone(), crate::image::VERSION, vec![OfferedApp::of(&Weather)]))];
         let mut shell = Shell::new(foreground, screens).unwrap();
         let backlight = Arc::new(Mutex::new(Level::OFF));
         let lighting = Lighting::new(Box::new(FakeLight(backlight.clone())), Box::new(FakeLight(Arc::default())), settings);

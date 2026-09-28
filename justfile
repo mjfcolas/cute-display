@@ -28,7 +28,7 @@ lint:
 
 # render an app screen to a PNG: system, system-settings, alarm, alarm-days, weather, weather-week or radar
 preview screen="system" zoom="2":
-    cargo run --quiet -p ui --example app_screen -- /tmp/cute-display.fb {{screen}}
+    cargo run --quiet -p simulator --example app_screen -- /tmp/cute-display.fb {{screen}}
     uv run --quiet --no-project python tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
     xdg-open /tmp/cute-display.png >/dev/null 2>&1 &
 

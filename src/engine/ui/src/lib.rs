@@ -1,23 +1,18 @@
-//! The presentation: a screen per app, the system app's among them.
+//! The presentation: the shell that hosts the app in front, the system app's screen, and
+//! the toolkit apps draw with.
 //!
 //! It knows no hardware. Controls come in as a [`controls::ControlsSample`], and screens
-//! go out through any embedded-graphics `DrawTarget`. Which app is in front, and every
-//! app's state, belong to the domain.
+//! go out through any embedded-graphics `DrawTarget`. Which app is in front belongs to the
+//! domain; each app's state, to the app.
 
 pub mod app_screen;
-pub mod apps;
+pub mod big_digits;
+pub mod calendar_names;
 pub mod controls;
 pub mod gestures;
 pub mod shell;
+pub mod system;
+pub mod text;
 
-mod big_digits;
-mod calendar_names;
-mod day_weather;
-mod radar_view;
-mod text;
-mod weather_icons;
-mod weather_units;
-mod wind_arrow;
-
-pub use app_screen::AppScreen;
+pub use app_screen::{AppScreen, Install, InstalledApp};
 pub use shell::Shell;

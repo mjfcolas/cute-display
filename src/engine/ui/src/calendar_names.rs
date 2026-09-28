@@ -2,7 +2,7 @@
 
 use domain::calendar::Weekday;
 
-pub(crate) fn weekday(day: Weekday) -> &'static str {
+pub fn weekday(day: Weekday) -> &'static str {
     match day {
         Weekday::Monday => "Monday",
         Weekday::Tuesday => "Tuesday",
@@ -14,12 +14,12 @@ pub(crate) fn weekday(day: Weekday) -> &'static str {
     }
 }
 
-pub(crate) fn short_weekday(day: Weekday) -> &'static str {
+pub fn short_weekday(day: Weekday) -> &'static str {
     weekday(day).get(..3).unwrap_or_default()
 }
 
 /// `None` outside 1 to 12.
-pub(crate) fn month(month: u8) -> Option<&'static str> {
+pub fn month(month: u8) -> Option<&'static str> {
     const MONTHS: [&str; 12] =
         ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     MONTHS.get(usize::from(month).checked_sub(1)?).copied()

@@ -23,13 +23,13 @@ the app in front when the device starts.
 
 - Beside the date, the day's sky and its low and high; beside the time, seven hours from
   the one under way. Coming back to the clock goes back to the hour under way.
-- It is the [weather app](../weather/README.md)'s forecast, at its place; it shows
-  nothing until that app has one.
+- From Open-Meteo every hour, at the place in `cute-display/weather.conf`, the
+  [weather app](../weather/README.md)'s; nothing shows until a forecast came.
 
 ## The time
 
-- Set from the Internet once a day, over the Wi-Fi of the
-  [weather app](../weather/README.md); the battery-backed clock keeps it meanwhile.
+- Set from the Internet once a day, over the Wi-Fi in `cute-display/wifi.conf` (see the
+  [weather app](../weather/README.md)); the battery-backed clock keeps it meanwhile.
 
 ## Configuration
 

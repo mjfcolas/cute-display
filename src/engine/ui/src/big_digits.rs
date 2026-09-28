@@ -2,7 +2,6 @@
 //! stop at 20 pixels.
 
 use domain::time::TimeOfDay;
-use domain::weather::Degrees;
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, StrokeAlignment};
@@ -13,15 +12,15 @@ const DIGITS: [u8; 10] = [0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 
 /// Only the middle bar.
 const DASH: u8 = 0x40;
 
-pub(crate) struct DigitSize {
-    pub(crate) digit_width: u32,
-    pub(crate) height: u32,
+pub struct DigitSize {
+    pub digit_width: u32,
+    pub height: u32,
     stroke: u32,
     gap: u32,
 }
 
-pub(crate) const CLOCK: DigitSize = DigitSize { digit_width: 48, height: 86, stroke: 10, gap: 12 };
-pub(crate) const TEMPERATURE: DigitSize = DigitSize { digit_width: 26, height: 48, stroke: 6, gap: 6 };
+pub const CLOCK: DigitSize = DigitSize { digit_width: 48, height: 86, stroke: 10, gap: 12 };
+pub const TEMPERATURE: DigitSize = DigitSize { digit_width: 26, height: 48, stroke: 6, gap: 6 };
 
 impl DigitSize {
     /// The colon, and a gap on each side.
@@ -34,12 +33,12 @@ impl DigitSize {
     }
 
     /// How wide `hh:mm` is.
-    pub(crate) const fn time_width(&self) -> u32 {
+    pub const fn time_width(&self) -> u32 {
         4 * self.digit_width + 2 * self.gap + self.colon_width()
     }
 
     /// `hh:mm` from `top_left`; `None` draws dashes.
-    pub(crate) fn draw_time<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, time: Option<TimeOfDay>, top_left: Point) {
+    pub fn draw_time<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, time: Option<TimeOfDay>, top_left: Point) {
         let digits = time.map_or([DASH; 4], |time| {
             let (hour, minute) = (time.hour(), time.minute());
             [segments(hour / 10), segments(hour % 10), segments(minute / 10), segments(minute % 10)]
@@ -57,13 +56,13 @@ impl DigitSize {
     }
 
     /// How wide `draw_degrees` draws `degrees`.
-    pub(crate) fn degrees_width(&self, degrees: Degrees) -> u32 {
+    pub fn degrees_width(&self, degrees: i16) -> u32 {
         let glyphs = degree_glyphs(degrees).len() as u32;
         glyphs * (self.digit_width + self.gap) + self.degree_side()
     }
 
-    /// `-12°` from `top_left`.
-    pub(crate) fn draw_degrees<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, degrees: Degrees, top_left: Point) {
+    /// Whole degrees, `-12°`, from `top_left`.
+    pub fn draw_degrees<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, degrees: i16, top_left: Point) {
         let mut left = top_left.x;
         for glyph in degree_glyphs(degrees) {
             self.draw_digit(target, glyph, Point::new(left, top_left.y));
@@ -112,9 +111,9 @@ fn segments(n: u8) -> u8 {
 }
 
 /// A dash below zero, then the digits.
-fn degree_glyphs(degrees: Degrees) -> Vec<u8> {
-    let sign = (degrees.0 < 0).then_some(DASH);
-    let digits = degrees.0.unsigned_abs().to_string().bytes().map(|b| segments(b.saturating_sub(b'0'))).collect::<Vec<_>>();
+fn degree_glyphs(degrees: i16) -> Vec<u8> {
+    let sign = (degrees < 0).then_some(DASH);
+    let digits = degrees.unsigned_abs().to_string().bytes().map(|b| segments(b.saturating_sub(b'0'))).collect::<Vec<_>>();
     sign.into_iter().chain(digits).collect()
 }
 
@@ -172,7 +171,7 @@ mod tests {
 
     #[test]
     fn degrees_stay_in_their_box_below_zero_too() {
-        for degrees in [Degrees(7), Degrees(21), Degrees(-3), Degrees(-12), Degrees(104)] {
+        for degrees in [7, 21, -3, -12, 104] {
             let mut frame = Frame::blank();
             TEMPERATURE.draw_degrees(&mut frame, degrees, Point::zero());
             let width = TEMPERATURE.degrees_width(degrees) as i32;
@@ -180,8 +179,8 @@ mod tests {
             assert!(frame.is_ink(width - 1, 1), "{degrees:?}: the ring ends the box");
         }
         let (mut warm, mut cold) = (Frame::blank(), Frame::blank());
-        TEMPERATURE.draw_degrees(&mut warm, Degrees(7), Point::zero());
-        TEMPERATURE.draw_degrees(&mut cold, Degrees(-7), Point::zero());
+        TEMPERATURE.draw_degrees(&mut warm, 7, Point::zero());
+        TEMPERATURE.draw_degrees(&mut cold, -7, Point::zero());
         assert!(cold.is_ink(TEMPERATURE.digit_width as i32 / 2, TEMPERATURE.height as i32 / 2), "a minus first");
         assert!(!warm.is_ink(TEMPERATURE.digit_width as i32 / 2, TEMPERATURE.height as i32 / 2));
     }

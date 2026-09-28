@@ -1,0 +1,21 @@
+[package]
+name = "forecast"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "The weather at one place, from Open-Meteo, and how it is drawn: for every app that shows a forecast."
+
+[lints]
+workspace = true
+
+[dependencies]
+domain = { path = "../../engine/domain" }
+ui = { path = "../../engine/ui" }
+place = { path = "../place" }
+embedded-graphics = "0.8"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+hal = { path = "../../engine/hal" }

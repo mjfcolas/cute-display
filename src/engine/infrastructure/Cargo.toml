@@ -9,6 +9,7 @@ description = "The domain's contracts, implemented on the HAL."
 workspace = true
 
 [dependencies]
+conf_text = { path = "../conf_text" }
 domain = { path = "../domain" }
 hal = { path = "../hal" }
 log = "0.4"
