@@ -262,7 +262,6 @@ wheels = [
 
 [[package]]
 name = "cute-display-installer"
-version = "2026.9.0"
 source = { editable = "." }
 dependencies = [
     { name = "esptool" },

@@ -16,6 +16,13 @@ class Offers(unittest.TestCase):
         found = offer(habity(booting=Slot.APP1, slots=slots(HABITY_1_1_1, OLD)), LATEST)
         self.assertEqual((found.offering, found.installed, found.slot), (Offering.UPDATE, OLD, Slot.APP1))
 
+    def test_a_snapshot_or_a_modified_build_is_always_offered_the_update(self):
+        for installed, latest in ((AppImage('cute-display', '2026.10.0-snapshot'), LATEST),
+                                  (AppImage('cute-display', '2026.10.0-dirty'), LATEST),
+                                  (LATEST, AppImage('cute-display', '2026.10.1-snapshot'))):
+            found = offer(habity(booting=Slot.APP1, slots=slots(HABITY_1_1_1, installed)), latest)
+            self.assertIs(found.offering, Offering.UPDATE, (installed, latest))
+
     def test_an_up_to_date_cute_display_that_runs_is_left_alone(self):
         self.assertIs(offer(habity(booting=Slot.APP1, slots=slots(HABITY_1_1_1, LATEST)), LATEST).offering,
                       Offering.NOTHING)

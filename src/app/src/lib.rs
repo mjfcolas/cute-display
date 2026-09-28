@@ -2,6 +2,7 @@
 //! how the layers are wired. `firmware` runs it on the board, `simulator` on a computer.
 
 mod controls;
+pub mod image;
 mod network;
 mod presentation;
 
@@ -42,22 +43,6 @@ use infrastructure::time_zone_file::{NoTimeZone, TimeZoneFile};
 
 use crate::controls::Controls;
 use crate::presentation::Presentation;
-
-/// The app image's version, the one a release carries.
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// Whether `version` is [`VERSION`]; usable in a `const` assertion, where the images
-/// check that they describe themselves with it.
-pub const fn is_version(version: &str) -> bool {
-    let (mut ours, mut theirs) = (VERSION.as_bytes(), version.as_bytes());
-    loop {
-        match (ours.split_first(), theirs.split_first()) {
-            (None, None) => return true,
-            (Some((a, ours_rest)), Some((b, theirs_rest))) if *a == *b => (ours, theirs) = (ours_rest, theirs_rest),
-            _ => return false,
-        }
-    }
-}
 
 const MAIN_PERIOD: Duration = Duration::from_millis(100);
 
@@ -196,19 +181,4 @@ pub fn run<H: Hardware>(devices: Devices<H>) -> Result<Infallible, Fault> {
 fn start_speaker<S: Speaker + Send + 'static>(player: RingtonePlayer<S>) -> Result<(), Fault> {
     thread::Builder::new().name("speaker".into()).stack_size(8 * 1024).spawn(move || player.run()).map_err(Fault::new)?;
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn only_the_app_image_version_is_it() {
-        assert!(is_version(VERSION));
-        assert!(!is_version(""));
-        let shorter: String = VERSION.chars().take(VERSION.chars().count() - 1).collect();
-        assert!(!is_version(&shorter));
-        assert!(!is_version(&format!("{VERSION}0")));
-        assert!(!is_version("99.0.0"));
-    }
 }

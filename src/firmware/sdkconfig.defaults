@@ -28,3 +28,7 @@ CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
 
 # Nothing of ours is in NVS: the PHY recalibrates at every boot instead of caching there.
 CONFIG_ESP_PHY_CALIBRATION_AND_DATA_STORAGE=n
+
+# The images' description (firmware::image_description!) carries no compile time: its
+# version says which build it is.
+CONFIG_APP_COMPILE_TIME_DATE=n

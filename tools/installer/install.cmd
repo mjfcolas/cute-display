@@ -4,10 +4,10 @@ rem command it is given, from the Command Prompt:
 rem
 rem   curl -LsSfo "%TEMP%\cute-display.cmd" https://github.com/mjfcolas/cute-display/releases/latest/download/install.cmd && "%TEMP%\cute-display.cmd"
 rem
-rem `just release` fills in the version.
+rem `just release` fills in the wheel: the release's on GitHub, or a snapshot's on this computer.
 setlocal
 
-set "WHEEL=https://github.com/mjfcolas/cute-display/releases/download/v@VERSION@/cute_display_installer-@VERSION@-py3-none-any.whl"
+set "WHEEL=@WHEEL@"
 
 where uv >nul 2>nul || (
     echo Installing uv, which runs the installer...

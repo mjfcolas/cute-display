@@ -14,11 +14,12 @@ cute_display := "uv run --quiet --project " + justfile_directory() / "tools/inst
 default:
     @just --list
 
-# run the host tests: the crates, the installer, and the test images' maker
+# run the host tests: the crates, the installer, the test images' maker, the release's version
 test:
     cargo test --workspace
     uv run --quiet --project tools/installer python -m unittest discover --start-directory tools/installer/tests --quiet
     uv run --quiet --project tools/installer python -m unittest discover --start-directory tools/test_flashes/tests --quiet
+    python3 -m unittest discover --start-directory tools/release/tests --quiet
 
 # clippy over the host workspace and the firmware
 lint:
@@ -53,15 +54,24 @@ fw-flash bin="app":
     espflash save-image --chip esp32s3 {{elf_dir}}/{{bin}} {{app_bin}}
     {{cute_display}} install {{app_bin}}
 
-# build a release into release/ from a committed tree: the app image, its SHA-256, the installer and its scripts
+# build a release into release/ from a tagged commit: the app image, its SHA-256, the installer and its scripts
 release:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [ -n "$(git status --porcelain)" ]; then
-        echo 'Commit first: a release is built from a commit, and its log says which.' >&2
+    version=$(git describe --tags --exact-match --match 'v[0-9]*' 2>/dev/null | sed 's/^v//' || true)
+    wheel_version=$version
+    if [ -z "$version" ]; then
+        next=$(sh tools/release/next_version.sh)
+        version=$next-snapshot wheel_version=$next.dev0
+        echo "No tag on this commit: snapshot $version, to try out, not to publish." >&2
+    elif ! echo "$version" | grep -Eq '^[0-9]{4}\.[1-9][0-9]?\.(0|[1-9][0-9]*)$'; then
+        echo "The tag v$version is not v<year>.<month>.<n> with no leading zero." >&2
         exit 1
+    elif [ -n "$(git status --porcelain)" ]; then
+        echo "Uncommitted changes go into the release, which still says $version." >&2
     fi
-    version=$(sed -n 's/^version = "\(.*\)"/\1/p' src/app/Cargo.toml)
+    # Forced: the builds would otherwise say git describe's -<n>-g<hash> or -dirty.
+    export CUTE_DISPLAY_VERSION=$version SETUPTOOLS_SCM_PRETEND_VERSION=$wheel_version
     just fw-build app
     mkdir -p {{release_dir}}
     image={{release_dir}}/cute-display-$version.bin
@@ -69,10 +79,20 @@ release:
     (cd {{release_dir}} && sha256sum "$(basename "$image")" > "$(basename "$image").sha256")
     cat "$image.sha256"
     uv build --quiet --wheel --out-dir {{release_dir}} tools/installer
-    sed "s/@VERSION@/$version/g" tools/installer/install.sh > {{release_dir}}/install.sh
-    sed "s/@VERSION@/$version/g; s/\r*\$/\r/" tools/installer/install.cmd > {{release_dir}}/install.cmd
-    ls {{release_dir}}/*$version* {{release_dir}}/install.*
-    echo "Next: tag v$version, push it, and attach these five files to its GitHub release."
+    wheel=cute_display_installer-$wheel_version-py3-none-any.whl
+    if [ "$version" = "$wheel_version" ]; then
+        wheel=https://github.com/mjfcolas/cute-display/releases/download/v$version/$wheel
+    else
+        wheel=$(cd {{release_dir}} && pwd)/$wheel
+    fi
+    sed "s|@WHEEL@|$wheel|g" tools/installer/install.sh > {{release_dir}}/install.sh
+    sed "s|@WHEEL@|$wheel|g; s/\r*\$/\r/" tools/installer/install.cmd > {{release_dir}}/install.cmd
+    ls {{release_dir}}/*$version* {{release_dir}}/*$wheel_version* {{release_dir}}/install.*
+    if [ "$version" = "$wheel_version" ]; then
+        echo "Next: push v$version, and attach these five files to its GitHub release."
+    else
+        echo "To try it: sh {{release_dir}}/install.sh, which installs this snapshot's installer and runs its setup."
+    fi
 
 # attach to the serial log of an image (ctrl-C to quit)
 fw-monitor bin="app":

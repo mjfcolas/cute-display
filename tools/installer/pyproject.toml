@@ -1,7 +1,7 @@
 [project]
 name = "cute-display-installer"
-# The app image's version, which tests/test_version.py holds it to.
-version = "2026.9.0"
+# The release's git tag, as the app image's (hatch-vcs).
+dynamic = ["version"]
 description = "Install Cute Display on a Habity bedside clock, and go back to Habity's firmware."
 readme = "README.md"
 license = "MIT OR Apache-2.0"
@@ -18,5 +18,14 @@ dependencies = [
 cute-display = "cute_display_installer.cli:main"
 
 [build-system]
-requires = ["uv_build>=0.12,<0.13"]
-build-backend = "uv_build"
+requires = ["hatchling>=1.27,<2", "hatch-vcs>=0.4,<1"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+root = "../.."
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cute_display_installer"]

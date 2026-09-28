@@ -1,5 +1,4 @@
 import pathlib
-import re
 import shutil
 import stat
 import subprocess
@@ -26,9 +25,9 @@ def executable(path, text):
     path.chmod(path.stat().st_mode | stat.S_IEXEC)
 
 
-def filled_in(script, version):
+def filled_in(script, wheel):
     """The script as the justfile's `release` recipe fills it in."""
-    return script.replace('@VERSION@', version)
+    return script.replace('@WHEEL@', wheel)
 
 
 class InstallScript(unittest.TestCase):
@@ -45,7 +44,7 @@ class InstallScript(unittest.TestCase):
         executable(self.home / 'tools' / 'cute-display',
                    '#!/bin/sh\nif [ -t 0 ]; then input=terminal; else input=none; fi\necho cute-display "$@" "($input)"\n')
         self.script = self.home / 'install.sh'
-        self.script.write_text(filled_in((INSTALLER / 'install.sh').read_text(), '2026.9.1'))
+        self.script.write_text(filled_in((INSTALLER / 'install.sh').read_text(), WHEEL))
 
     def run_script(self, *arguments):
         """What the installer printed, run by each shell there is."""
@@ -87,15 +86,16 @@ class InstallScript(unittest.TestCase):
 
 
 class BothScripts(unittest.TestCase):
-    def test_both_install_the_same_wheel_once_filled_in(self):
-        wheels = {name: re.findall(r'https://\S+\.whl', filled_in((INSTALLER / name).read_text(), '2026.9.1'))
-                  for name in ('install.sh', 'install.cmd')}
-        self.assertEqual(wheels, {'install.sh': [WHEEL], 'install.cmd': [WHEEL]})
+    def test_both_take_the_wheel_they_are_given_and_no_other(self):
+        for name in ('install.sh', 'install.cmd'):
+            script = (INSTALLER / name).read_text()
+            self.assertEqual(script.count('@WHEEL@'), 1, name)
+            self.assertNotIn('.whl', script.replace('@WHEEL@', ''), name)
 
     def test_the_release_recipe_fills_in_both(self):
         lines = JUSTFILE.read_text().splitlines()
         for name in ('install.sh', 'install.cmd'):
-            self.assertTrue(any('s/@VERSION@/$version/g' in line and f'tools/installer/{name} >' in line
+            self.assertTrue(any('s|@WHEEL@|$wheel|g' in line and f'tools/installer/{name} >' in line
                                 for line in lines), name)
 
 

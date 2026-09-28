@@ -4,10 +4,10 @@
 #
 #   curl -LsSf https://github.com/mjfcolas/cute-display/releases/latest/download/install.sh | sh
 #
-# `just release` fills in the version.
+# `just release` fills in the wheel: the release's on GitHub, or a snapshot's on this computer.
 set -eu
 
-WHEEL="https://github.com/mjfcolas/cute-display/releases/download/v@VERSION@/cute_display_installer-@VERSION@-py3-none-any.whl"
+WHEEL="@WHEEL@"
 
 # Run only once read whole: piped into sh, a download cut short would run half a script.
 main() {

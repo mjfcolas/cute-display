@@ -135,6 +135,11 @@ class Placing(unittest.TestCase):
             self.assertEqual(device.install_refusals(), [])
             self.assertEqual(device.placement(), Placement(older, erases=device.slots[older]))
 
+    def test_only_a_release_reads_as_numbers(self):
+        self.assertEqual(AppImage('cute-display', '2026.9.0').release, (2026, 9, 0))
+        for version in ('2026.9.1-snapshot', '2026.9.0-4-ged99824', '2026.9.0-dirty', '0.0.0-untagged', '1.2-beta', ''):
+            self.assertIsNone(AppImage('cute-display', version).release, version)
+
     def test_versions_are_compared_as_numbers(self):
         device = habity(slots=slots(AppImage('habity', '1.10.0'), AppImage('habity', '1.9.0')))
         self.assertEqual(device.placement().slot, Slot.APP1)

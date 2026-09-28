@@ -1,6 +1,7 @@
 [package]
 name = "app"
-version = "2026.9.0"
+# Not the release's: the app image takes its version from the git tag (src/image.rs).
+version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "The app image on any hardware that keeps the HAL's contracts: its threads, and how the layers are wired."

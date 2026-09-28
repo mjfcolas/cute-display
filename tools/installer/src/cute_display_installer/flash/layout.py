@@ -93,7 +93,8 @@ class AppImage:
 
     @property
     def release(self):
-        """The version as numbers to compare, `1.1.2` > `1.1.1`; None when it does not read so."""
+        """The version as numbers to compare, `1.1.2` > `1.1.1`; None when it does not read so,
+        as a snapshot or a build between releases does (`-snapshot`, `-4-gabc1234`, `-dirty`)."""
         parts = self.version.split('.')
         return tuple(int(part) for part in parts) if all(part.isdigit() for part in parts) else None
 

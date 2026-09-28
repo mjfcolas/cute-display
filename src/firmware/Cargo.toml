@@ -1,8 +1,6 @@
 [package]
-# The name and version the images describe themselves with (their esp_app_desc), which
-# the installer's flash/layout.py reads; the version is the app image's, `app::VERSION`.
-name = "cute-display"
-version = "2026.9.0"
+name = "firmware"
+version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 resolver = "2"
@@ -20,9 +18,6 @@ exit = "warn"
 panic_in_result_fn = "warn"
 indexing_slicing = "warn"
 string_slice = "warn"
-
-[lib]
-name = "firmware"
 
 [[bin]]
 name = "app"
