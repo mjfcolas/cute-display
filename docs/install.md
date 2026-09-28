@@ -4,16 +4,37 @@ Cute Display goes beside Habity's firmware, which stays on the device: going bac
 takes one command. Installing is at your own risk and may void the warranty
 ([notice](../NOTICE.md)).
 
+## In short
+
+One after the other, in a terminal (on Windows, the Command Prompt):
+
+```sh
+# 1. uv, once, then open a new terminal
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"   # Windows
+curl -LsSf https://astral.sh/uv/install.sh | sh                                       # macOS, Linux
+
+# 2. the installer: the line under "Installer" on the latest release, such as
+uv tool install https://github.com/mjfcolas/cute-display/releases/download/v2026.9.0/cute_display_installer-2026.9.0-py3-none-any.whl
+
+# 3. the clock plugged in
+cute-display backup    # its whole memory into a file: keep it, and to yourself
+cute-display check     # what it holds and where Cute Display would go; nothing is written
+cute-display install   # the latest Cute Display, then the clock restarts on it
+cute-display setup     # the Wi-Fi, the town, the time zone, the radar's airports
+```
+
+The sections below say what each step does, and what to check first.
+
 ## What you need
 
 - The clock.
-- A computer connected to the Internet: tried on Linux; Windows 10 or later and macOS
-  are expected to work.
+- A computer connected to the Internet: tried on Linux and Windows 10 or later; macOS is
+  expected to work.
 - A terminal to type the commands in: on Windows, the **Command Prompt** (`cmd`), not
   PowerShell, where the setup assistant does not show up.
-- [uv](https://docs.astral.sh/uv/getting-started/installation/), which runs the installer:
-  - Windows, in the Command Prompt: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
-  - macOS and Linux, in a terminal: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- [uv](https://docs.astral.sh/uv/getting-started/installation/), which runs the installer,
+  installed with the first command [above](#in-short); a terminal opened before it does
+  not know it yet.
 - On Linux, the right to open the clock's port: join the group that owns it, then log in
   again (`sudo usermod -aG dialout $USER`; `uucp` on Arch).
 
