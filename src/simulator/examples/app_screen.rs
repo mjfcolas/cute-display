@@ -7,7 +7,7 @@
 use std::time::Instant;
 
 use alarm::{AlarmClock, AlarmSchedule, AlarmScheduleStore, AlarmScreen, Ringer, Volume};
-use domain::apps::Foreground;
+use domain::apps::{AppId, Foreground};
 use domain::calendar::{Date, Weekday};
 use domain::clock::{Clock, TimeKeeper, TimeSource, TimeZoneSource};
 use domain::fetch::Unavailable;
@@ -25,7 +25,7 @@ use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH};
 use radar::{AirTrafficSource, Aircraft, Airport, AirportSource, Altitude, Radar, RadarScreen};
 use ui::controls::{ButtonSample, ControlsSample};
 use ui::system::{OfferedApp, SystemScreen};
-use ui::{AppScreen, Shell};
+use ui::{Hosted, Shell};
 use weather::WeatherScreen;
 
 struct Nowhere;
@@ -225,13 +225,14 @@ fn main() -> std::io::Result<()> {
     if let Some(now) = clock.now() {
         alarm.tick(now);
     }
-    let mut screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
-        Box::new(AlarmScreen::new(alarm, clock.clone(), weather.clone())),
-        Box::new(WeatherScreen::new(weather, clock)),
-        Box::new(RadarScreen::new(radar.clone())),
+    let mut screens: Vec<Hosted<Frame>> = vec![
+        Hosted { app: alarm::ID, screen: Box::new(AlarmScreen::new(alarm, clock.clone(), weather.clone())) },
+        Hosted { app: weather::ID, screen: Box::new(WeatherScreen::new(weather, clock)) },
+        Hosted { app: radar::ID, screen: Box::new(RadarScreen::new(radar.clone())) },
     ];
-    let offered = screens.iter().map(|screen| OfferedApp::of(screen.as_ref())).collect();
-    screens.push(Box::new(SystemScreen::new(foreground.clone(), settings, "2026.9.0", offered)));
+    let offered = catalog::APPS.iter().map(|app| OfferedApp { app: app.id, title: app.title }).collect();
+    let system = SystemScreen::new(foreground.clone(), settings, "2026.9.0", offered);
+    screens.push(Hosted { app: AppId::SYSTEM, screen: Box::new(system) });
     let Some(mut shell) = Shell::new(foreground.clone(), screens) else {
         return Ok(());
     };

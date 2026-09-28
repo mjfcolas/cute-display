@@ -23,7 +23,7 @@ The engine, what the apps run on:
                                                           └─────────┘
 ```
 
-The apps, on it, picked by the composition roots:
+The apps, on it, listed by `catalog`, which the composition roots share:
 
 ```
    apps/alarm, apps/weather ──▶ libs/forecast        apps/radar
@@ -48,8 +48,9 @@ The apps, on it, picked by the composition roots:
 | `libs`           | What several apps share, as code: each app has its own instance of it | `domain`, `ui`, `conf_text`, other `libs` |
 | `apps`           | One crate per app, layered as the engine is: `domain`, its concepts and the contracts they need; `infrastructure`, those contracts on what the engine lends; `ui`, its screen. Its root installs it | `domain`, `ui`, `conf_text`, `libs` |
 | `app`            | The app image on any hardware that keeps the HAL's contracts: wires the layers, runs the threads, runs the apps it is given | `domain`, `infrastructure`, `ui`, `hal` |
-| `firmware`       | Composition roots on the board: builds the drivers from the pin map (`board`), hands them and the apps to `app`, or hands them to `hwtest` | everything but `simulator` |
-| `simulator`      | Composition root on a computer: the HAL in a window, on the keyboard, in a directory, on the computer's Internet; hands it and the apps to `app`; the panel refreshes by the UC8253 driver's policy | `app`, `apps`, `ui`, `hal`, `infrastructure`, `drivers` (its host half); `domain` and `libs` for its screen preview |
+| `catalog`        | The apps an image can hold, picked by its Cargo features; the same list for the board and the computer | `apps`, `ui`, `hal` |
+| `firmware`       | Composition roots on the board: builds the drivers from the pin map (`board`), hands them and the catalog's apps to `app`, or hands them to `hwtest` | everything but `simulator` |
+| `simulator`      | Composition root on a computer: the HAL in a window, on the keyboard, in a directory, on the computer's Internet; hands it and the catalog's apps to `app`; the panel refreshes by the UC8253 driver's policy | `app`, `catalog`, `hal`, `infrastructure`, `drivers` (its host half); `domain`, `ui`, `libs` and `apps` for its screen preview |
 
 The arrows are the only allowed dependencies. In particular the domain never sees a HAL
 type, the UI never sees hardware, `app` never sees a chip, and nothing but `firmware`
@@ -117,6 +118,7 @@ src/            the sources, one crate per directory
                     host-tested
   libs/           what apps share: forecasts
   apps/           one crate per app: the alarm clock, the weather, the radar
+  catalog/        the apps an image can hold, the same for the board and the computer
   maintenance/    the console that serves the SD card on the USB cable
   hwtest/         the hardware test bench
   app/            the app image's threads and wiring, generic over the HAL
@@ -134,15 +136,15 @@ tools/          host tools: the [installer](tools/installer/README.md) (the devi
 
 The main image (`src/app/`, on the board by `src/firmware/src/bin/app.rs`, on a computer
 by `src/simulator/`) runs small apps, one in front at a time. The engine has one app of
-its own, the system app; the others come from `src/apps/`. The composition roots pick
-those an image holds with Cargo features; `general.conf` chooses, at start, those that
-run and their order.
+its own, the system app; the others come from `src/apps/`. `catalog` lists them, and
+its Cargo features pick those an image holds; `general.conf` chooses, at start, those
+that run and their order.
 
 - **An app is a crate**, in the engine's layers: its `domain` needs nothing else of the
-  app but its `ID`, its `infrastructure` and `ui` build on its `domain`. Its root has
-  the `ID` and an `install` that takes what the engine lends it,
-  `domain::apps::Services`, and gives a `ui::InstalledApp`: a `domain::apps::AppService`
-  that runs whatever is on screen, and a `ui::AppScreen`.
+  app but its `ID`, its `infrastructure` and `ui` build on its `domain`. Its root gives
+  a `ui::Installable`: its `ID`, its title, and an `install` that takes what the engine
+  lends it, `domain::apps::Services`, and gives a `ui::InstalledApp`: a
+  `domain::apps::AppService` that runs whatever is on screen, and a `ui::AppScreen`.
 - **What the engine lends** is all an app gets from outside: the app in front, the
   clock, where the device is, the Internet, the files in its own directory
   (`cute-display/apps/<id>/`), the sound.

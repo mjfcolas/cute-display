@@ -12,6 +12,7 @@ use crate::app_screen::AppScreen;
 use crate::controls::{Button, Input};
 use crate::text::{self, BODY, HINT, LIST, TITLE};
 
+const NAME: &str = "System";
 const SECTION_GAP: i32 = 6;
 const COLUMN_GAP: i32 = 16;
 /// Room around a row's text, inside the bar that marks the row chosen.
@@ -44,12 +45,6 @@ impl Setting {
 pub struct OfferedApp {
     pub app: AppId,
     pub title: &'static str,
-}
-
-impl OfferedApp {
-    pub fn of<D: DrawTarget<Color = BinaryColor>>(screen: &dyn AppScreen<D>) -> Self {
-        Self { app: screen.app(), title: screen.title() }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -171,14 +166,6 @@ fn heading<D: DrawTarget<Color = BinaryColor>>(target: &mut D, name: &str, top_l
 }
 
 impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
-    fn app(&self) -> AppId {
-        AppId::SYSTEM
-    }
-
-    fn title(&self) -> &'static str {
-        "System"
-    }
-
     /// The chosen row starts on the app the system app was opened from.
     fn entered(&mut self) {
         let origin = self.foreground.before_system();
@@ -207,7 +194,7 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
         let right = left + area.size.width as i32;
         let bottom = top + area.size.height as i32;
         let stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
-        text::write(target, AppScreen::<D>::title(self), area.top_left, area.size.width, &TITLE);
+        text::write(target, NAME, area.top_left, area.size.width, &TITLE);
         let version = format!("Cute Display {}", self.version);
         let version_width = text::width(&version, &HINT);
         let version_top = top + (TITLE.character_size.height - HINT.character_size.height) as i32;

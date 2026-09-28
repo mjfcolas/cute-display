@@ -2,7 +2,6 @@
 
 use std::time::Instant;
 
-use domain::apps::AppId;
 use domain::clock::Clock;
 use domain::fetch::FetchStatus;
 use domain::time::TimeOfDay;
@@ -69,14 +68,6 @@ impl WeatherScreen {
 }
 
 impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for WeatherScreen {
-    fn app(&self) -> AppId {
-        crate::ID
-    }
-
-    fn title(&self) -> &'static str {
-        "Weather"
-    }
-
     /// The report's revision, and the minutes since it was fetched: "updated 12 min ago"
     /// has to move on by itself, and so do the hours.
     fn version(&self) -> u64 {

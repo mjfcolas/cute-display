@@ -10,9 +10,6 @@ use crate::controls::Input;
 /// What an app looks like, and what its controls mean. It turns the controls into its
 /// app's intents and draws its state.
 pub trait AppScreen<D: DrawTarget<Color = BinaryColor>> {
-    fn app(&self) -> AppId;
-    /// What the app is called on the glass.
-    fn title(&self) -> &'static str;
     /// The app just came to the front.
     fn entered(&mut self) {}
     /// Changes whenever what the screen shows changed without an input: the screen is
@@ -37,5 +34,7 @@ pub type Install<D> = fn(&dyn Services) -> InstalledApp<D>;
 /// An app an image holds, not installed yet.
 pub struct Installable<D> {
     pub id: AppId,
+    /// What the app is called on the glass.
+    pub title: &'static str,
     pub install: Install<D>,
 }

@@ -10,7 +10,7 @@ use std::sync::Arc;
 use ::domain::apps::{AppId, Services};
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
-use ::ui::InstalledApp;
+use ::ui::{Installable, InstalledApp};
 
 pub use crate::domain::radar::{AirTrafficSource, Aircraft, Airport, AirportSource, Altitude, Radar, RadarReport, Range};
 pub use crate::ui::screen::RadarScreen;
@@ -20,11 +20,16 @@ use crate::infrastructure::airports_file::AirportsFile;
 
 pub const ID: AppId = AppId::new("radar");
 
-pub fn install<D: DrawTarget<Color = BinaryColor>>(services: &dyn Services) -> InstalledApp<D> {
+/// This app, for an image to hold.
+pub const fn app<D: DrawTarget<Color = BinaryColor>>() -> Installable<D> {
+    Installable { id: ID, title: "Radar", install: install::<D> }
+}
+
+fn install<D: DrawTarget<Color = BinaryColor>>(services: &dyn Services) -> InstalledApp<D> {
     let radar = Radar::new(
         services.place(),
         Box::new(AdsbFi::new(services.internet())),
-        Box::new(AirportsFile::new(services.files(ID))),
+        Box::new(AirportsFile::new(services.files())),
         services.foreground(),
     );
     InstalledApp { service: Arc::new(radar.clone()), screen: Box::new(RadarScreen::new(radar)) }

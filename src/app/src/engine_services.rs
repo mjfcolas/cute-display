@@ -26,7 +26,20 @@ pub(crate) struct EngineServices<W, H, U, S> {
     pub sound: SpeakerSound,
 }
 
-impl<W, H, U, S> Services for EngineServices<W, H, U, S>
+impl<W, H, U, S> EngineServices<W, H, U, S> {
+    /// What `app` is lent.
+    pub fn to(&self, app: AppId) -> AppServices<'_, W, H, U, S> {
+        AppServices { engine: self, app }
+    }
+}
+
+/// The same for every app, but its files.
+pub(crate) struct AppServices<'a, W, H, U, S> {
+    engine: &'a EngineServices<W, H, U, S>,
+    app: AppId,
+}
+
+impl<W, H, U, S> Services for AppServices<'_, W, H, U, S>
 where
     W: WifiStation + Send + 'static,
     H: HttpClient + Send + 'static,
@@ -34,30 +47,30 @@ where
     S: FileStorage + Clone + Send + 'static,
 {
     fn foreground(&self) -> Foreground {
-        self.foreground.clone()
+        self.engine.foreground.clone()
     }
 
     fn clock(&self) -> Clock {
-        self.clock.clone()
+        self.engine.clock.clone()
     }
 
     fn internet(&self) -> Box<dyn Internet> {
-        internet_through(self.internet.as_ref())
+        internet_through(self.engine.internet.as_ref())
     }
 
     fn place(&self) -> Box<dyn PlaceSource> {
-        match &self.card {
+        match &self.engine.card {
             Ok(card) => Box::new(GeneralFile::new(card.clone())),
             Err(_) => Box::new(NoGeneralFile),
         }
     }
 
-    fn files(&self, app: AppId) -> Box<dyn Files> {
-        files_on(&self.card, app)
+    fn files(&self) -> Box<dyn Files> {
+        files_on(&self.engine.card, self.app)
     }
 
     fn sound(&self) -> Box<dyn Sound> {
-        Box::new(self.sound.clone())
+        Box::new(self.engine.sound.clone())
     }
 }
 

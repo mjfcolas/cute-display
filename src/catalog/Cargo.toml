@@ -1,0 +1,22 @@
+[package]
+name = "catalog"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "The apps an image of Cute Display can hold; its features pick them."
+
+[lints]
+workspace = true
+
+[features]
+default = ["alarm", "weather", "radar"]
+alarm = ["dep:alarm"]
+weather = ["dep:weather"]
+radar = ["dep:radar"]
+
+[dependencies]
+hal = { path = "../engine/hal" }
+ui = { path = "../engine/ui" }
+alarm = { path = "../apps/alarm", optional = true }
+weather = { path = "../apps/weather", optional = true }
+radar = { path = "../apps/radar", optional = true }

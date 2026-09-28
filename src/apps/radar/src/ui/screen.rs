@@ -1,6 +1,5 @@
 //! A scope on the left, the nearest aircraft on the right.
 
-use domain::apps::AppId;
 use domain::fetch::FetchStatus;
 use domain::place::GeoPoint;
 use embedded_graphics::pixelcolor::BinaryColor;
@@ -39,14 +38,6 @@ impl RadarScreen {
 }
 
 impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for RadarScreen {
-    fn app(&self) -> AppId {
-        crate::ID
-    }
-
-    fn title(&self) -> &'static str {
-        "Radar"
-    }
-
     fn version(&self) -> u64 {
         self.radar.report().revision
     }

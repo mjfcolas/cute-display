@@ -15,10 +15,16 @@ use crate::gestures::{Gesture, Gestures};
 
 const MARGIN: i32 = 8;
 
+/// An app's screen, as the shell hosts it.
+pub struct Hosted<D> {
+    pub app: AppId,
+    pub screen: Box<dyn AppScreen<D>>,
+}
+
 pub struct Shell<D> {
     gestures: Gestures,
     foreground: Foreground,
-    screens: Vec<Box<dyn AppScreen<D>>>,
+    screens: Vec<Hosted<D>>,
     /// The app whose screen was last told it came to the front.
     entered: Option<AppId>,
     /// The app last drawn, and its version then.
@@ -27,7 +33,7 @@ pub struct Shell<D> {
 
 impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
     /// `None` without any screen.
-    pub fn new(foreground: Foreground, screens: Vec<Box<dyn AppScreen<D>>>) -> Option<Self> {
+    pub fn new(foreground: Foreground, screens: Vec<Hosted<D>>) -> Option<Self> {
         (!screens.is_empty()).then_some(Self { gestures: Gestures::default(), foreground, screens, entered: None, drawn: None })
     }
 
@@ -50,8 +56,8 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
 
     pub fn draw(&mut self, target: &mut D, area: Rectangle) {
         let front = self.enter_front();
-        if let Some(screen) = self.screens.iter().find(|s| s.app() == front) {
-            screen.draw(target, area.offset(-MARGIN));
+        if let Some(hosted) = self.hosted(front) {
+            hosted.screen.draw(target, area.offset(-MARGIN));
         }
         self.drawn = Some((front, self.version_of(front)));
     }
@@ -67,23 +73,31 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
 
     fn deliver(&mut self, input: Input) -> bool {
         let front = self.enter_front();
-        let Some(screen) = self.screens.iter_mut().find(|s| s.app() == front) else {
+        let Some(hosted) = self.hosted_mut(front) else {
             return false;
         };
-        screen.on_input(input);
+        hosted.screen.on_input(input);
         true
     }
 
     fn version_of(&self, app: AppId) -> u64 {
-        self.screens.iter().find(|s| s.app() == app).map_or(0, |s| s.version())
+        self.hosted(app).map_or(0, |hosted| hosted.screen.version())
+    }
+
+    fn hosted(&self, app: AppId) -> Option<&Hosted<D>> {
+        self.screens.iter().find(|hosted| hosted.app == app)
+    }
+
+    fn hosted_mut(&mut self, app: AppId) -> Option<&mut Hosted<D>> {
+        self.screens.iter_mut().find(|hosted| hosted.app == app)
     }
 
     /// Tells a screen it came to the front before it is given anything else.
     fn enter_front(&mut self) -> AppId {
         let front = self.foreground.app();
         if self.entered != Some(front) {
-            if let Some(screen) = self.screens.iter_mut().find(|s| s.app() == front) {
-                screen.entered();
+            if let Some(hosted) = self.hosted_mut(front) {
+                hosted.screen.entered();
             }
             self.entered = Some(front);
         }
@@ -124,12 +138,6 @@ mod tests {
     }
 
     impl AppScreen<Frame> for Probe {
-        fn app(&self) -> AppId {
-            self.app
-        }
-        fn title(&self) -> &'static str {
-            self.app.name()
-        }
         fn version(&self) -> u64 {
             *self.version.borrow()
         }
@@ -177,10 +185,13 @@ mod tests {
     fn shell(foreground: &Foreground) -> (Shell<Frame>, Probe, Probe) {
         let (weather, radar) = (Probe::new(WEATHER), Probe::new(RADAR));
         let offered = [&weather, &radar].map(|probe| OfferedApp { app: probe.app, title: probe.app.name() }).into();
-        let screens: Vec<Box<dyn AppScreen<Frame>>> = vec![
-            Box::new(weather.clone()),
-            Box::new(radar.clone()),
-            Box::new(SystemScreen::new(foreground.clone(), Settings::load(Box::new(Nowhere)), "2026.9.0", offered)),
+        let screens: Vec<Hosted<Frame>> = vec![
+            Hosted { app: WEATHER, screen: Box::new(weather.clone()) },
+            Hosted { app: RADAR, screen: Box::new(radar.clone()) },
+            Hosted {
+                app: AppId::SYSTEM,
+                screen: Box::new(SystemScreen::new(foreground.clone(), Settings::load(Box::new(Nowhere)), "2026.9.0", offered)),
+            },
         ];
         (Shell::new(foreground.clone(), screens).unwrap(), weather, radar)
     }

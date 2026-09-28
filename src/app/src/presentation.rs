@@ -1,7 +1,7 @@
 use std::thread;
 use std::time::{Duration, Instant};
 
-use domain::apps::Foreground;
+use domain::apps::{AppId, Foreground};
 use domain::lighting::Lighting;
 use domain::settings::Settings;
 use embedded_graphics::pixelcolor::BinaryColor;
@@ -10,11 +10,17 @@ use embedded_graphics::primitives::Rectangle;
 use hal::display::{EpaperDisplay, Frame, Redraw, HEIGHT, VISIBLE_WIDTH};
 use hal::input::{PushButton, RotaryEncoder};
 use ui::system::{OfferedApp, SystemScreen};
-use ui::{AppScreen, Shell};
+use ui::{AppScreen, Hosted, Shell};
 
 use crate::controls::Controls;
 
 const CONTROLS_PERIOD: Duration = Duration::from_millis(20);
+
+/// An installed app's screen, and how the system app offers it.
+pub(crate) struct AppOnScreen {
+    pub offered: OfferedApp,
+    pub screen: Box<dyn AppScreen<Frame> + Send>,
+}
 
 /// The ui thread's devices: it reads the controls and draws on the panel.
 pub(crate) struct Presentation<E, B, P> {
@@ -23,11 +29,12 @@ pub(crate) struct Presentation<E, B, P> {
 }
 
 impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay> Presentation<E, B, P> {
-    /// Shows the apps' `screens`, and the system app's, which offers them.
-    pub fn run(mut self, foreground: Foreground, settings: Settings, lighting: Lighting, screens: Vec<Box<dyn AppScreen<Frame> + Send>>) {
-        let offered = screens.iter().map(|screen| OfferedApp::of(screen.as_ref())).collect();
-        let mut screens: Vec<Box<dyn AppScreen<Frame>>> = screens.into_iter().map(|screen| screen as Box<dyn AppScreen<Frame>>).collect();
-        screens.push(Box::new(SystemScreen::new(foreground.clone(), settings, crate::image::VERSION, offered)));
+    /// Shows the apps' screens, and the system app's, which offers them.
+    pub fn run(mut self, foreground: Foreground, settings: Settings, lighting: Lighting, apps: Vec<AppOnScreen>) {
+        let offered = apps.iter().map(|app| app.offered).collect();
+        let mut screens: Vec<Hosted<Frame>> = apps.into_iter().map(|app| Hosted { app: app.offered.app, screen: app.screen }).collect();
+        let system = SystemScreen::new(foreground.clone(), settings, crate::image::VERSION, offered);
+        screens.push(Hosted { app: AppId::SYSTEM, screen: Box::new(system) });
         let Some(mut shell) = Shell::new(foreground, screens) else {
             log::error!("ui: no app to show");
             return;
@@ -65,7 +72,6 @@ mod tests {
     use std::rc::Rc;
     use std::sync::{Arc, Mutex};
 
-    use domain::apps::AppId;
     use domain::lighting::{Level, Light};
     use domain::settings::{SettingsRecord, SettingsStore};
     use hal::display::Refreshed;
@@ -114,12 +120,6 @@ mod tests {
 
     struct Weather;
     impl AppScreen<Frame> for Weather {
-        fn app(&self) -> AppId {
-            AppId::new("weather")
-        }
-        fn title(&self) -> &'static str {
-            "Weather"
-        }
         fn on_input(&mut self, _: Input) {}
         fn draw(&self, _: &mut Frame, _: Rectangle) {}
     }
@@ -153,8 +153,12 @@ mod tests {
         };
         let foreground = Foreground::new(AppId::new("weather"));
         let settings = Settings::load(Box::new(Nowhere));
-        let screens: Vec<Box<dyn AppScreen<Frame>>> =
-            vec![Box::new(Weather), Box::new(SystemScreen::new(foreground.clone(), settings.clone(), crate::image::VERSION, vec![OfferedApp::of(&Weather)]))];
+        let offered = vec![OfferedApp { app: AppId::new("weather"), title: "Weather" }];
+        let system = SystemScreen::new(foreground.clone(), settings.clone(), crate::image::VERSION, offered);
+        let screens = vec![
+            Hosted { app: AppId::new("weather"), screen: Box::new(Weather) as Box<dyn AppScreen<Frame>> },
+            Hosted { app: AppId::SYSTEM, screen: Box::new(system) },
+        ];
         let mut shell = Shell::new(foreground, screens).unwrap();
         let backlight = Arc::new(Mutex::new(Level::OFF));
         let lighting = Lighting::new(Box::new(FakeLight(backlight.clone())), Box::new(FakeLight(Arc::default())), settings);

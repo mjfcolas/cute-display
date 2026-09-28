@@ -10,16 +10,16 @@ workspace = true
 
 [features]
 default = ["alarm", "weather", "radar"]
+alarm = ["catalog/alarm"]
+weather = ["catalog/weather"]
+radar = ["catalog/radar"]
 
 [dependencies]
 app = { path = "../app" }
 drivers = { path = "../engine/drivers" }
 hal = { path = "../engine/hal" }
 infrastructure = { path = "../engine/infrastructure" }
-ui = { path = "../engine/ui" }
-alarm = { path = "../apps/alarm", optional = true }
-weather = { path = "../apps/weather", optional = true }
-radar = { path = "../apps/radar", optional = true }
+catalog = { path = "../catalog", default-features = false }
 embedded-graphics = "0.8"
 env_logger = "0.11"
 log = "0.4"
@@ -28,7 +28,11 @@ ureq = "3"
 
 [dev-dependencies]
 domain = { path = "../engine/domain" }
+ui = { path = "../engine/ui" }
 forecast = { path = "../libs/forecast" }
+alarm = { path = "../apps/alarm" }
+weather = { path = "../apps/weather" }
+radar = { path = "../apps/radar" }
 
 [[example]]
 name = "app_screen"

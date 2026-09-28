@@ -19,12 +19,14 @@ The [simulator](simulator/README.md) runs the app image on a computer, and the
 - An app is a crate in [`src/apps/`](../src/apps/), and what several share, one in
   [`src/libs/`](../src/libs/); [DESIGN.md](../DESIGN.md#applications) says what the
   engine lends an app and what it gives back.
-- The images hold every app. Their Cargo features pick fewer, or none but the system
-  app: `cargo run -p simulator --no-default-features --features weather`. On the card,
+- The images hold every app of [`src/catalog/`](../src/catalog/). Their Cargo features
+  pick fewer, or none but the system app:
+  `cargo run -p simulator --no-default-features --features weather`. On the card,
   [`general.conf`](apps/system/README.md#the-apps) chooses among those of the image.
-- A new app: its crate among the workspace's members, its feature and its line in the
-  list of `src/simulator/src/main.rs` and `src/firmware/src/bin/app.rs`, its title in
-  the installer's `config/apps.py`, and its README in `docs/apps/<app>/`.
+- A new app: its crate among the workspace's members, its line and its feature in
+  `catalog`, the same feature in `simulator` and `firmware`, its name and title in the
+  installer's `config/apps.py` (`catalog`'s test says what to write), and its README in
+  `docs/apps/<app>/`.
 
 ## Commands
 

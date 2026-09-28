@@ -3,7 +3,6 @@
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-use domain::apps::AppId;
 use domain::calendar::Weekday;
 use domain::clock::Clock;
 use domain::time::{LocalTime, TimeOfDay};
@@ -106,14 +105,6 @@ impl AlarmScreen {
 }
 
 impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for AlarmScreen {
-    fn app(&self) -> AppId {
-        crate::ID
-    }
-
-    fn title(&self) -> &'static str {
-        "Alarm clock"
-    }
-
     fn entered(&mut self) {
         self.mode = Mode::Clock;
         self.hours_ahead = 0;

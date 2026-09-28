@@ -34,11 +34,12 @@ use infrastructure::ntp::NtpServer;
 use infrastructure::rtc_keeper::RtcKeeper;
 use infrastructure::settings_file::{SettingsFile, Unkept};
 use infrastructure::speaker_sound::{self, SoundPlayer};
-use ui::{AppScreen, Installable};
+use ui::system::OfferedApp;
+use ui::Installable;
 
 use crate::controls::Controls;
 use crate::engine_services::EngineServices;
-use crate::presentation::Presentation;
+use crate::presentation::{AppOnScreen, Presentation};
 
 const MAIN_PERIOD: Duration = Duration::from_millis(100);
 
@@ -118,10 +119,14 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>]) -> Res
     let foreground = Foreground::new(AppId::SYSTEM);
     let engine_services = EngineServices { foreground: foreground.clone(), clock: clock.clone(), card, internet: internet.clone(), sound };
     let wanted = engine_services.card.as_ref().ok().and_then(|card| GeneralFile::new(card.clone()).apps());
-    let installed: Vec<_> = to_install(apps, wanted.as_deref()).map(|app| (app.install)(&engine_services)).collect();
-    let services: Vec<Service> = installed.iter().map(|app| (app.screen.app(), Arc::clone(&app.service))).collect();
+    let mut services: Vec<Service> = Vec::new();
+    let mut screens: Vec<AppOnScreen> = Vec::new();
+    for app in to_install(apps, wanted.as_deref()) {
+        let installed = (app.install)(&engine_services.to(app.id));
+        services.push((app.id, installed.service));
+        screens.push(AppOnScreen { offered: OfferedApp { app: app.id, title: app.title }, screen: installed.screen });
+    }
     foreground.bring_to_front(front_at_start(&services));
-    let screens: Vec<Box<dyn AppScreen<Frame> + Send>> = installed.into_iter().map(|app| app.screen).collect();
 
     network::start(clock.clone(), services.clone(), internet, devices.system, H::NETWORK_STACK_BYTES)?;
 
@@ -192,13 +197,7 @@ mod tests {
 
     struct Blank;
 
-    impl AppScreen<Frame> for Blank {
-        fn app(&self) -> AppId {
-            AppId::new("blank")
-        }
-        fn title(&self) -> &'static str {
-            "Blank"
-        }
+    impl ui::AppScreen<Frame> for Blank {
         fn on_input(&mut self, _: ui::controls::Input) {}
         fn draw(&self, _: &mut Frame, _: embedded_graphics::primitives::Rectangle) {}
     }
@@ -208,7 +207,7 @@ mod tests {
     }
 
     fn installable(name: &'static str) -> Installable<Frame> {
-        Installable { id: AppId::new(name), install }
+        Installable { id: AppId::new(name), title: name, install }
     }
 
     #[test]

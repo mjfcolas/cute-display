@@ -15,11 +15,9 @@ use std::thread;
 
 use app::{Devices, Hardware};
 use drivers::udp_socket::StdUdpClient;
-use hal::display::Frame;
 use hal::storage::FileStorage;
 use hal::Fault;
 use infrastructure::internet::WIFI_FILE;
-use ui::Installable;
 
 use crate::card::DirectoryCard;
 use crate::clock::HostClock;
@@ -32,17 +30,6 @@ use crate::system::HostSystem;
 use crate::window::Case;
 
 const DEFAULT_CARD: &str = "sim-sd";
-
-/// The apps the image holds, in the order the system app offers them unless
-/// `general.conf` chooses; the first is in front at start.
-const APPS: &[Installable<Frame>] = &[
-    #[cfg(feature = "alarm")]
-    Installable { id: alarm::ID, install: alarm::install::<Frame> },
-    #[cfg(feature = "weather")]
-    Installable { id: weather::ID, install: weather::install::<Frame> },
-    #[cfg(feature = "radar")]
-    Installable { id: radar::ID, install: radar::install::<Frame> },
-];
 
 enum Computer {}
 
@@ -92,7 +79,7 @@ fn main() -> Result<(), Fault> {
     };
     thread::Builder::new()
         .name("app".into())
-        .spawn(move || match app::run(devices, APPS) {
+        .spawn(move || match app::run(devices, catalog::APPS) {
             Ok(never) => match never {},
             Err(fault) => log::error!("app: {fault}"),
         })

@@ -16,27 +16,14 @@ use drivers::uc8253::Uc8253;
 use drivers::udp_socket::StdUdpClient;
 use drivers::usb_console;
 use esp_idf_svc::hal::delay::FreeRtos;
-use hal::display::Frame;
 use hal::Fault;
 use maintenance::MaintenanceConsole;
-use ui::Installable;
 
 use firmware::board::Board;
 
 firmware::image_description!();
 
 const BUILD: &str = concat!("built ", env!("BUILD_TIME"));
-
-/// The apps the image holds, in the order the system app offers them unless
-/// `general.conf` chooses; the first is in front at start.
-const APPS: &[Installable<Frame>] = &[
-    #[cfg(feature = "alarm")]
-    Installable { id: alarm::ID, install: alarm::install::<Frame> },
-    #[cfg(feature = "weather")]
-    Installable { id: weather::ID, install: weather::install::<Frame> },
-    #[cfg(feature = "radar")]
-    Installable { id: radar::ID, install: radar::install::<Frame> },
-];
 
 enum Habity {}
 
@@ -83,7 +70,7 @@ fn main() -> Result<(), Fault> {
         udp: StdUdpClient,
         system: board.system,
     };
-    match app::run(devices, APPS)? {}
+    match app::run(devices, catalog::APPS)? {}
 }
 
 /// Serves the SD card to a computer on the USB cable; see the installer's `card` command.

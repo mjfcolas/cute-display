@@ -77,8 +77,8 @@ pub trait Services {
     fn internet(&self) -> Box<dyn Internet>;
     /// Where the device is, as whoever set it up said.
     fn place(&self) -> Box<dyn PlaceSource>;
-    /// The files in `app`'s own directory: a tidy place, not a wall.
-    fn files(&self, app: AppId) -> Box<dyn Files>;
+    /// The files in the app's own directory: a tidy place, not a wall.
+    fn files(&self) -> Box<dyn Files>;
     fn sound(&self) -> Box<dyn Sound>;
 }
 
