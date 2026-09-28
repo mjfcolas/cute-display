@@ -30,6 +30,23 @@ impl AppId {
     }
 }
 
+/// The apps to run: those in `wanted` that the image holds, in `wanted`'s order, each once;
+/// every app of the image, in its order, when nothing says which.
+pub fn chosen(image: &[AppId], wanted: Option<&[String]>) -> Vec<AppId> {
+    let Some(wanted) = wanted else {
+        return image.to_vec();
+    };
+    let mut chosen: Vec<AppId> = Vec::new();
+    for name in wanted {
+        if let Some(&app) = image.iter().find(|app| app.name() == name) {
+            if !chosen.contains(&app) {
+                chosen.push(app);
+            }
+        }
+    }
+    chosen
+}
+
 /// What an app runs whatever is on screen, called from the engine's threads. Every call
 /// returns soon, but `fetch`.
 pub trait AppService: Send + Sync {
@@ -158,5 +175,17 @@ mod tests {
         let foreground = Foreground::new(AppId::SYSTEM);
         foreground.close_system();
         assert_eq!(foreground.app(), AppId::SYSTEM);
+    }
+
+    #[test]
+    fn without_a_choice_every_app_of_the_image_runs() {
+        assert_eq!(chosen(&[WEATHER, RADAR], None), [WEATHER, RADAR]);
+    }
+
+    #[test]
+    fn the_apps_chosen_run_in_the_order_chosen_once_each_if_the_image_holds_them() {
+        let wanted = ["radar", "alarm", "weather", "radar"].map(String::from);
+        assert_eq!(chosen(&[WEATHER, RADAR], Some(&wanted)), [RADAR, WEATHER]);
+        assert_eq!(chosen(&[WEATHER, RADAR], Some(&[])), []);
     }
 }

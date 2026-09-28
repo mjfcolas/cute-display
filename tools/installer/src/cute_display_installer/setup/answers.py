@@ -1,7 +1,7 @@
 """What the setup asks, from what the card already holds to the files it writes back."""
 from dataclasses import dataclass, field
 
-from ..config import airports, general, place, radar, wifi
+from ..config import airports, apps, general, place, radar, wifi
 from ..config.place import Place
 from ..config.wifi import Wifi
 
@@ -16,6 +16,7 @@ class Answers:
     place: Place | None = None
     time_zone: str | None = None
     labels: list[str] = field(default_factory=list)
+    apps: list[str] = field(default_factory=lambda: list(apps.TITLES))
 
     @classmethod
     def from_card(cls, texts):
@@ -23,21 +24,26 @@ class Answers:
         def text(path):
             return texts.get(path) or ''
 
+        chosen = general.apps_of(text(general.FILE))
         return cls(
             wifi=wifi.read(text(wifi.FILE)),
             place=place.read(text(general.FILE)),
             time_zone=general.time_zone_of(text(general.FILE)),
             labels=radar.labels(text(radar.FILE)),
+            apps=list(apps.TITLES) if chosen is None else [name for name in chosen if name in apps.TITLES],
         )
 
     def files(self, airports_found):
-        """Every file the setup writes, `airports_found` around the place among them."""
-        return {
+        """Every file the setup writes: the radar's too when it is chosen, `airports_found`
+        around the place among them."""
+        files = {
             wifi.FILE: wifi.render(self.wifi),
-            general.FILE: general.render(self.place, self.time_zone),
-            radar.FILE: radar.render(self.labels),
-            airports.FILE: airports.render(airports_found),
+            general.FILE: general.render(self.place, self.time_zone, self.apps),
         }
+        if 'radar' in self.apps:
+            files[radar.FILE] = radar.render(self.labels)
+            files[airports.FILE] = airports.render(airports_found)
+        return files
 
 
 def wifi_problem(ssid, password):

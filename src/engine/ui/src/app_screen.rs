@@ -33,3 +33,9 @@ pub struct InstalledApp<D> {
 
 /// How an app installs itself on what the engine lends it.
 pub type Install<D> = fn(&dyn Services) -> InstalledApp<D>;
+
+/// An app an image holds, not installed yet.
+pub struct Installable<D> {
+    pub id: AppId,
+    pub install: Install<D>,
+}

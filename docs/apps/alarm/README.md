@@ -1,7 +1,8 @@
 # Alarm clock
 
-The time, large, today's weather, and a wake-up time for each day of the week. It is
-the app in front when the device starts.
+The time, large, today's weather, and a wake-up time for each day of the week. First
+among the [apps](../system/README.md#the-apps) unless they say otherwise, it is in front
+when the device starts.
 
 - **Yellow**: alarm on or off, the wake-up times kept.
 - **Wheel**: the weather's later hours, and back.

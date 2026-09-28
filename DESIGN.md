@@ -134,8 +134,9 @@ tools/          host tools: the [installer](tools/installer/README.md) (the devi
 
 The main image (`src/app/`, on the board by `src/firmware/src/bin/app.rs`, on a computer
 by `src/simulator/`) runs small apps, one in front at a time. The engine has one app of
-its own, the system app; the others come from `src/apps/`, and the composition roots
-pick them with Cargo features.
+its own, the system app; the others come from `src/apps/`. The composition roots pick
+those an image holds with Cargo features; `general.conf` chooses, at start, those that
+run and their order.
 
 - **An app is a crate**, in the engine's layers: its `domain` needs nothing else of the
   app but its `ID`, its `infrastructure` and `ui` build on its `domain`. Its root has

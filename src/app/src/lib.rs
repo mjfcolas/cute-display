@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use domain::apps::{AppId, AppService, Foreground};
+use domain::apps::{self, AppId, AppService, Foreground};
 use domain::clock::Clock;
 use domain::lighting::{Level, Lighting};
 use domain::settings::{Settings, SettingsStore};
@@ -34,7 +34,7 @@ use infrastructure::ntp::NtpServer;
 use infrastructure::rtc_keeper::RtcKeeper;
 use infrastructure::settings_file::{SettingsFile, Unkept};
 use infrastructure::speaker_sound::{self, SoundPlayer};
-use ui::{AppScreen, Install};
+use ui::{AppScreen, Installable};
 
 use crate::controls::Controls;
 use crate::engine_services::EngineServices;
@@ -81,10 +81,11 @@ pub struct Devices<H: Hardware> {
 /// An installed app's service, and the app it is.
 type Service = (AppId, Arc<dyn AppService>);
 
-/// Installs `apps`, the first of them in front, then starts the ui, speaker and network
+/// Installs those of `apps` that `general.conf` chooses, the first of them in front, then
+/// starts the ui, speaker and network
 /// threads, and keeps the time, the apps' services and the lights on the calling thread.
 /// Returns only when a thread could not be started.
-pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Install<Frame>]) -> Result<Infallible, Fault> {
+pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>]) -> Result<Infallible, Fault> {
     let settings_store: Box<dyn SettingsStore> = match &devices.sd_card {
         Ok(card) => Box::new(SettingsFile::new(card.clone())),
         Err(fault) => {
@@ -116,7 +117,8 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Install<Frame>]) -> Result<
 
     let foreground = Foreground::new(AppId::SYSTEM);
     let engine_services = EngineServices { foreground: foreground.clone(), clock: clock.clone(), card, internet: internet.clone(), sound };
-    let installed: Vec<_> = apps.iter().map(|install| install(&engine_services)).collect();
+    let wanted = engine_services.card.as_ref().ok().and_then(|card| GeneralFile::new(card.clone()).apps());
+    let installed: Vec<_> = to_install(apps, wanted.as_deref()).map(|app| (app.install)(&engine_services)).collect();
     let services: Vec<Service> = installed.iter().map(|app| (app.screen.app(), Arc::clone(&app.service))).collect();
     foreground.bring_to_front(front_at_start(&services));
     let screens: Vec<Box<dyn AppScreen<Frame> + Send>> = installed.into_iter().map(|app| app.screen).collect();
@@ -150,6 +152,17 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Install<Frame>]) -> Result<
     }
 }
 
+/// Those of `apps` that `wanted` chooses, in its order; a name the image lacks is logged.
+fn to_install<'a>(apps: &'a [Installable<Frame>], wanted: Option<&[String]>) -> impl Iterator<Item = &'a Installable<Frame>> {
+    let image: Vec<AppId> = apps.iter().map(|app| app.id).collect();
+    for name in wanted.unwrap_or_default() {
+        if !image.iter().any(|app| app.name() == name) {
+            log::warn!("apps: this image has no {name:?}");
+        }
+    }
+    apps::chosen(&image, wanted).into_iter().filter_map(move |id| apps.iter().find(|app| app.id == id))
+}
+
 /// The first app installed, or the system app when there is none.
 fn front_at_start(services: &[Service]) -> AppId {
     services.first().map_or(AppId::SYSTEM, |(app, _)| *app)
@@ -175,6 +188,36 @@ mod tests {
         fn light(&self) -> Level {
             self.0
         }
+    }
+
+    struct Blank;
+
+    impl AppScreen<Frame> for Blank {
+        fn app(&self) -> AppId {
+            AppId::new("blank")
+        }
+        fn title(&self) -> &'static str {
+            "Blank"
+        }
+        fn on_input(&mut self, _: ui::controls::Input) {}
+        fn draw(&self, _: &mut Frame, _: embedded_graphics::primitives::Rectangle) {}
+    }
+
+    fn install(_: &dyn domain::apps::Services) -> ui::InstalledApp<Frame> {
+        ui::InstalledApp { service: Arc::new(Lamp(Level::OFF)), screen: Box::new(Blank) }
+    }
+
+    fn installable(name: &'static str) -> Installable<Frame> {
+        Installable { id: AppId::new(name), install }
+    }
+
+    #[test]
+    fn the_apps_installed_are_those_chosen_in_their_order_once_each() {
+        let image = [installable("alarm"), installable("weather"), installable("radar")];
+        let names = |wanted: Option<&[String]>| -> Vec<&str> { to_install(&image, wanted).map(|app| app.id.name()).collect() };
+        assert_eq!(names(None), ["alarm", "weather", "radar"]);
+        let wanted = ["radar", "clock", "alarm", "radar"].map(String::from);
+        assert_eq!(names(Some(&wanted)), ["radar", "alarm"]);
     }
 
     fn service(name: &'static str, light: u8) -> Service {

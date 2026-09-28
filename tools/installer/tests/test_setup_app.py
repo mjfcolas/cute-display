@@ -11,6 +11,7 @@ from cute_display_installer.setup.answers import Answers
 from cute_display_installer.setup.app import SetupApp
 from cute_display_installer.setup.clock import Failed
 from cute_display_installer.setup.screens.airports import AirportsScreen
+from cute_display_installer.setup.screens.apps import AppsScreen
 from cute_display_installer.setup.screens.done import DoneScreen
 from cute_display_installer.setup.screens.install import InstallScreen
 from cute_display_installer.setup.screens.message import Message, Tone
@@ -57,6 +58,9 @@ class FakeClock:
 
     def read_card(self):
         return self.answers
+
+    def restart(self):
+        self.done.append('restart')
 
     def write_card(self, files):
         if self.unplugged:
@@ -181,6 +185,10 @@ class Questions(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(app.screen.query_one('#filter', Input).value, 'Europe/Paris')
 
             await pilot.click(Button)
+            self.assertIsInstance(app.screen, AppsScreen)
+            self.assertEqual(app.screen.query_one(SelectionList).selected, ['alarm', 'weather', 'radar'])
+
+            await pilot.click(Button)
             self.assertIsInstance(app.screen, AirportsScreen)
             await app.workers.wait_for_complete()
             await pilot.pause()
@@ -193,10 +201,44 @@ class Questions(unittest.IsolatedAsyncioTestCase):
             self.assertIsInstance(app.screen, DoneScreen)
             message = app.screen.query_one(Message)
             self.assertTrue(message.has_class(Tone.DONE.value))
-            self.assertIn('Written.', str(message.render()))
+            self.assertIn('Written, and the clock restarted', str(message.render()))
 
         self.assertEqual(app.answers, Answers(Wifi('Home', 's3cret'), LYON.place, 'Europe/Paris', ['LFLL']))
         self.assertEqual(clock.written, [app.answers.files(AIRPORTS)])
+        self.assertEqual(clock.done[-1], 'restart')
+
+    async def test_the_order_of_the_apps_on_the_card_is_kept(self):
+        known = Answers(Wifi('Home', 's3cret'), LYON.place, 'Europe/Paris', ['LFLY'], ['radar', 'alarm'])
+        app = setup_app(FakeClock(answers=known))
+        async with app.run_test() as pilot:
+            await to_the_questions(pilot)
+            await type_into(pilot, '#password', 's3cret')
+            await pilot.click(Button)
+            await pilot.click(Button)
+            self.assertIsInstance(app.screen, AppsScreen)
+            app.screen.query_one(SelectionList).select('weather')
+            await pilot.click(Button)
+        self.assertEqual(app.answers.apps, ['radar', 'alarm', 'weather'])
+
+    async def test_without_the_radar_its_airports_are_not_asked_nor_written(self):
+        known = Answers(Wifi('Home', 's3cret'), LYON.place, 'Europe/Paris', ['LFLY'])
+        clock = FakeClock(answers=known)
+        app = setup_app(clock)
+        async with app.run_test() as pilot:
+            await to_the_questions(pilot)
+            await type_into(pilot, '#password', 's3cret')
+            await pilot.click(Button)
+            await pilot.click(Button)
+            self.assertIsInstance(app.screen, AppsScreen)
+            app.screen.query_one(SelectionList).deselect('radar')
+            await pilot.click(Button)
+            self.assertIsInstance(app.screen, SummaryScreen)
+            await pilot.click(Button)
+            await settle(pilot)
+            self.assertIsInstance(app.screen, DoneScreen)
+
+        self.assertEqual(app.answers.apps, ['alarm', 'weather'])
+        self.assertEqual(sorted(clock.written[0]), ['cute-display/general.conf', 'cute-display/wifi.conf'])
 
     async def test_a_wifi_the_device_cannot_keep_is_refused_on_the_spot(self):
         app = setup_app(FakeClock())
@@ -212,6 +254,7 @@ class Questions(unittest.IsolatedAsyncioTestCase):
         async with app.run_test() as pilot:
             await to_the_questions(pilot)
             await type_into(pilot, '#password', 's3cret')
+            await pilot.click(Button)
             await pilot.click(Button)
             await pilot.click(Button)
             await app.workers.wait_for_complete()
@@ -233,9 +276,13 @@ class Questions(unittest.IsolatedAsyncioTestCase):
             await type_into(pilot, '#password', 's3cret')
             await pilot.click(Button)
             await pilot.click(Button)
+            await pilot.click(Button)
             await app.workers.wait_for_complete()
             await pilot.pause()
             self.assertEqual(app.screen.query_one(SelectionList).selected, ['LFLY'])
+            await pilot.press('escape')
+            self.assertIsInstance(app.screen, AppsScreen)
+            self.assertEqual(app.screen.query_one(SelectionList).selected, ['alarm', 'weather', 'radar'])
             await pilot.press('escape')
             self.assertIsInstance(app.screen, TimeZoneScreen)
             self.assertEqual(len(app.screen.query_one(OptionList).options), 1)

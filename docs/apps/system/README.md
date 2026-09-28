@@ -31,3 +31,15 @@ longitude = 2.3499
 time_zone = CET-1CEST,M3.5.0,M10.5.0/3
 time_zone_name = Europe/Paris
 ```
+
+## The apps
+
+`apps` in the same file: the apps the clock runs, in the order the system app offers
+them; the first is in front when the device starts. Without the line, every app runs;
+`apps =` alone leaves only the system app. The setup asks which, and keeps their order.
+Read when the device starts.
+
+```text
+# cute-display/general.conf
+apps = alarm, weather, radar
+```

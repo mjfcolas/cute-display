@@ -19,7 +19,7 @@ use hal::display::Frame;
 use hal::storage::FileStorage;
 use hal::Fault;
 use infrastructure::internet::WIFI_FILE;
-use ui::Install;
+use ui::Installable;
 
 use crate::card::DirectoryCard;
 use crate::clock::HostClock;
@@ -33,15 +33,15 @@ use crate::window::Case;
 
 const DEFAULT_CARD: &str = "sim-sd";
 
-/// The apps the image holds, in the order the system app offers them; the first is in
-/// front at start.
-const APPS: &[Install<Frame>] = &[
+/// The apps the image holds, in the order the system app offers them unless
+/// `general.conf` chooses; the first is in front at start.
+const APPS: &[Installable<Frame>] = &[
     #[cfg(feature = "alarm")]
-    alarm::install::<Frame>,
+    Installable { id: alarm::ID, install: alarm::install::<Frame> },
     #[cfg(feature = "weather")]
-    weather::install::<Frame>,
+    Installable { id: weather::ID, install: weather::install::<Frame> },
     #[cfg(feature = "radar")]
-    radar::install::<Frame>,
+    Installable { id: radar::ID, install: radar::install::<Frame> },
 ];
 
 enum Computer {}

@@ -20,10 +20,11 @@ The [simulator](simulator/README.md) runs the app image on a computer, and the
   [`src/libs/`](../src/libs/); [DESIGN.md](../DESIGN.md#applications) says what the
   engine lends an app and what it gives back.
 - The images hold every app. Their Cargo features pick fewer, or none but the system
-  app: `cargo run -p simulator --no-default-features --features weather`.
+  app: `cargo run -p simulator --no-default-features --features weather`. On the card,
+  [`general.conf`](apps/system/README.md#the-apps) chooses among those of the image.
 - A new app: its crate among the workspace's members, its feature and its line in the
-  list of `src/simulator/src/main.rs` and `src/firmware/src/bin/app.rs`, and its README
-  in `docs/apps/<app>/`.
+  list of `src/simulator/src/main.rs` and `src/firmware/src/bin/app.rs`, its title in
+  the installer's `config/apps.py`, and its README in `docs/apps/<app>/`.
 
 ## Commands
 

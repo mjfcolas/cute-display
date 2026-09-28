@@ -1,11 +1,12 @@
-//! What every app shares, as the installer writes it: where the device is and its time
-//! zone, in POSIX `TZ` form.
+//! What every app shares, as the installer writes it: where the device is, its time zone
+//! in POSIX `TZ` form, and which apps run.
 //!
 //! ```text
 //! place = Notre-Dame
 //! latitude = 48.8530
 //! longitude = 2.3499
 //! time_zone = CET-1CEST,M3.5.0,M10.5.0/3
+//! apps = alarm, weather, radar
 //! ```
 
 use conf_text::ConfText;
@@ -19,6 +20,7 @@ use crate::conf_file;
 
 pub const GENERAL_FILE: &str = "cute-display/general.conf";
 const TIME_ZONE: &str = "time_zone";
+const APPS: &str = "apps";
 
 pub struct GeneralFile<S> {
     storage: S,
@@ -29,6 +31,13 @@ pub struct GeneralFile<S> {
 impl<S: FileStorage> GeneralFile<S> {
     pub fn new(storage: S) -> Self {
         Self { storage, unreadable: None }
+    }
+
+    /// The apps asked for, by name, separated by commas or spaces; `None` when nothing says.
+    pub fn apps(&self) -> Option<Vec<String>> {
+        let conf = self.conf().inspect_err(|unavailable| log::warn!("apps: {unavailable}")).ok()??;
+        let listed = conf.get(APPS)?;
+        Some(listed.split([',', ' ']).filter(|name| !name.is_empty()).map(str::to_owned).collect())
     }
 
     fn conf(&self) -> Result<Option<ConfText>, Unavailable> {
@@ -130,5 +139,13 @@ mod tests {
         let mut file = general("latitude = 1\nlongitude = 2\ntime_zone = UTC0\n");
         assert!(file.place().is_some());
         assert_eq!(file.time_zone(), Ok(Some(TimeZone::UTC)));
+    }
+
+    #[test]
+    fn the_apps_are_listed_by_name_and_none_listed_is_not_saying() {
+        assert_eq!(general("apps = alarm, radar weather\n").apps(), Some(vec!["alarm".into(), "radar".into(), "weather".into()]));
+        assert_eq!(general("apps =\n").apps(), Some(vec![]));
+        assert_eq!(general("time_zone = UTC0\n").apps(), None);
+        assert_eq!(GeneralFile::new(MemoryStorage::default()).apps(), None);
     }
 }

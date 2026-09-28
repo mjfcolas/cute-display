@@ -19,7 +19,7 @@ use esp_idf_svc::hal::delay::FreeRtos;
 use hal::display::Frame;
 use hal::Fault;
 use maintenance::MaintenanceConsole;
-use ui::Install;
+use ui::Installable;
 
 use firmware::board::Board;
 
@@ -27,15 +27,15 @@ firmware::image_description!();
 
 const BUILD: &str = concat!("built ", env!("BUILD_TIME"));
 
-/// The apps the image holds, in the order the system app offers them; the first is in
-/// front at start.
-const APPS: &[Install<Frame>] = &[
+/// The apps the image holds, in the order the system app offers them unless
+/// `general.conf` chooses; the first is in front at start.
+const APPS: &[Installable<Frame>] = &[
     #[cfg(feature = "alarm")]
-    alarm::install::<Frame>,
+    Installable { id: alarm::ID, install: alarm::install::<Frame> },
     #[cfg(feature = "weather")]
-    weather::install::<Frame>,
+    Installable { id: weather::ID, install: weather::install::<Frame> },
     #[cfg(feature = "radar")]
-    radar::install::<Frame>,
+    Installable { id: radar::ID, install: radar::install::<Frame> },
 ];
 
 enum Habity {}

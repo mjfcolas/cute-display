@@ -22,6 +22,11 @@ class FromTheCard(unittest.TestCase):
         self.assertEqual(Answers.from_card(texts),
                          Answers(Wifi('Home', 's3cret'), NOTRE_DAME, 'Europe/Paris', ['LFPO']))
 
+    def test_the_apps_chosen_are_kept_and_names_this_release_lacks_dropped(self):
+        texts = dict.fromkeys(CARD_FILES)
+        texts['cute-display/general.conf'] = 'apps = radar, clock, alarm\n'
+        self.assertEqual(Answers.from_card(texts).apps, ['radar', 'alarm'])
+
     def test_an_empty_card_answers_nothing(self):
         self.assertEqual(Answers.from_card(dict.fromkeys(CARD_FILES)), Answers())
 

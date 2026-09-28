@@ -65,11 +65,18 @@ class TimeZones(unittest.TestCase):
                          f'tzdata changed: write the new list into {DEVICE_RULES} for the device\'s test')
 
     def test_general_conf_keeps_the_rule_for_the_device_and_the_name_for_the_installer(self):
-        text = general.render(Place('Notre-Dame', 48.853, 2.3499), 'Europe/Paris')
+        text = general.render(Place('Notre-Dame', 48.853, 2.3499), 'Europe/Paris', ['alarm', 'radar'])
         self.assertEqual(text, 'place = Notre-Dame\nlatitude = 48.8530\nlongitude = 2.3499\n'
-                               'time_zone = CET-1CEST,M3.5.0,M10.5.0/3\ntime_zone_name = Europe/Paris\n')
-        self.assertEqual((general.place_of(text), general.time_zone_of(text)), (Place('Notre-Dame', 48.853, 2.3499), 'Europe/Paris'))
+                               'time_zone = CET-1CEST,M3.5.0,M10.5.0/3\ntime_zone_name = Europe/Paris\n'
+                               'apps = alarm, radar\n')
+        self.assertEqual((general.place_of(text), general.time_zone_of(text), general.apps_of(text)),
+                         (Place('Notre-Dame', 48.853, 2.3499), 'Europe/Paris', ['alarm', 'radar']))
         self.assertIsNone(general.time_zone_of('time_zone = EST5EDT,M3.2.0,M11.1.0\n'))
+
+    def test_no_apps_line_is_not_saying_and_an_empty_one_chooses_none(self):
+        self.assertIsNone(general.apps_of('time_zone = UTC0\n'))
+        self.assertEqual(general.apps_of('apps =\n'), [])
+        self.assertEqual(general.apps_of('apps = weather radar\n'), ['weather', 'radar'])
 
     def test_a_missing_or_unreadable_place_is_said(self):
         for text in ('place = Notre-Dame\n', 'latitude = north\nlongitude = 2.3\n'):

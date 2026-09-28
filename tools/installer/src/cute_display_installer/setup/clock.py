@@ -116,3 +116,9 @@ class UsbClock:
             with usb.open_link() as link:
                 card.write(link, files)
         return _step(write_card)
+
+    def restart(self):
+        def restart():
+            with device.connect() as esp:
+                device.restart(esp)
+        return _step(restart)

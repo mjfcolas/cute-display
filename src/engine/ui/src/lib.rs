@@ -14,5 +14,5 @@ pub mod shell;
 pub mod system;
 pub mod text;
 
-pub use app_screen::{AppScreen, Install, InstalledApp};
+pub use app_screen::{AppScreen, Install, Installable, InstalledApp};
 pub use shell::Shell;

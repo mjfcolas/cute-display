@@ -3,6 +3,7 @@ answer a screen per question and write the answers onto the card."""
 from textual.app import App
 
 from .screens.airports import AirportsScreen
+from .screens.apps import AppsScreen
 from .screens.backup import BackupScreen
 from .screens.done import DoneScreen
 from .screens.install import InstallScreen
@@ -13,7 +14,7 @@ from .screens.summary import SummaryScreen
 from .screens.time_zone import TimeZoneScreen
 from .screens.wifi import WifiScreen
 
-QUESTIONS = [WifiScreen, PlaceScreen, TimeZoneScreen, AirportsScreen, SummaryScreen]
+QUESTIONS = [WifiScreen, PlaceScreen, TimeZoneScreen, AppsScreen, AirportsScreen, SummaryScreen]
 
 
 class SetupApp(App):
@@ -55,7 +56,12 @@ class SetupApp(App):
         self.push_screen(QUESTIONS[0]())
 
     def advance(self, screen):
-        self.push_screen(QUESTIONS[QUESTIONS.index(type(screen)) + 1]())
+        following = QUESTIONS[QUESTIONS.index(type(screen)) + 1:]
+        self.push_screen(next(question for question in following if self._asks(question))())
+
+    def _asks(self, question):
+        """The radar's airports are asked only when the radar is chosen."""
+        return question is not AirportsScreen or 'radar' in self.answers.apps
 
     def finish(self, summary):
         self.push_screen(DoneScreen(summary))
