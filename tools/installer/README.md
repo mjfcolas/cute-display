@@ -12,7 +12,13 @@ registers.
 
 ## Commands
 
-The device's flash, whatever runs:
+The step-by-step installer
+
+```sh
+cute-display setup
+```
+
+Each step on its own, the device's flash whatever runs:
 
 ```sh
 cute-display check                # what each slot holds, which one boots, whether Cute Display can go in
@@ -24,7 +30,6 @@ cute-display boot <target>        # start habity (its newest firmware), factory,
 The SD card, Cute Display running and no serial monitor open:
 
 ```sh
-cute-display setup                                # an assistant: the Wi-Fi, the place, the time zone, the radar's airports
 cute-display card ls [directory]
 cute-display card get <path> [destination]        # to the terminal without a destination
 cute-display card put <file> <path>               # under cute-display/ only

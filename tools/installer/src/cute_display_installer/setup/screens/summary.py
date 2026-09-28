@@ -2,13 +2,11 @@ from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Static
 
-from ..card import Unreachable
+from ..clock import Failed
 from .message import Message, Tone
 
 
 class SummaryScreen(Screen):
-    written = False
-
     def compose(self):
         answers = self.app.answers
         labels = ', '.join(answers.labels) or 'none'
@@ -26,17 +24,14 @@ class SummaryScreen(Screen):
         yield Footer()
 
     def on_button_pressed(self, event):
-        if self.written:
-            self.app.exit()
-            return
         event.button.disabled = True
         self.query_one(Message).say('Writing...')
         self.run_worker(self._write, thread=True, exclusive=True)
 
     def _write(self):
         try:
-            self.app.write(self.app.answers.files(self.app.airports_found))
-        except Unreachable as error:
+            self.app.clock.write_card(self.app.answers.files(self.app.airports_found))
+        except Failed as error:
             self.app.call_from_thread(self._failed, error)
             return
         self.app.call_from_thread(self._written)
@@ -46,10 +41,6 @@ class SummaryScreen(Screen):
         self.query_one(Button).disabled = False
 
     def _written(self):
-        self.query_one(Message).say(
+        self.app.finish(
             'Written. The clock takes the time zone within a minute, the weather at its next update (a long '
-            'press in its app updates now), the radar its airports at its next start or when its place changes.',
-            Tone.DONE)
-        self.written = True
-        button = self.query_one(Button)
-        button.label, button.disabled = 'Quit', False
+            'press in its app updates now), the radar its airports at its next start or when its place changes.')

@@ -1,10 +1,6 @@
 """The setup's files on the card, through the maintenance console."""
 from ..card import console
 
-
-class Unreachable(Exception):
-    """The card could not be read or written: unplugged, busy, or not answering."""
-
 DIRECTORY = 'cute-display'
 
 

@@ -92,7 +92,7 @@ sd-put file path:
 sd-rm path:
     {{cute_display}} card rm {{path}}
 
-# set the device up: the Wi-Fi, the place, the time zone, the radar's airports (app image, monitor closed)
+# step by step: back up the device, install or update Cute Display, set it up (monitor closed)
 setup:
     {{cute_display}} setup
 

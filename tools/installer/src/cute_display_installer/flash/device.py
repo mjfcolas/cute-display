@@ -1,12 +1,14 @@
 """The device's flash through esptool: read what layout.py judges, write what it allows."""
 import os
+import time
 
 from esptool.cmds import attach_flash, detect_chip, read_flash, reset_chip, run_stub, verify_flash, write_flash
 from esptool.logger import log
 
 from .. import usb
 from .layout import (APP_HEADER_SIZE, FLASH_SIZE, OTADATA, OTADATA_SIZE, PARTITION_TABLE, PARTITION_TABLE_SIZE,
-                     Device, Security, Slot, app_image, booting_slot, otadata_booting, partitions)
+                     Device, Security, Slot, app_image, booting_slot, image_refusals, otadata_booting,
+                     partitions)
 
 
 def connect():
@@ -46,6 +48,33 @@ def save_flash(esp, path):
             os.remove(part)
         raise
     os.replace(part, path)
+
+
+def backup_path(folder):
+    return os.path.join(os.path.abspath(folder), f'habity-flash-{time.strftime("%Y%m%d-%H%M%S")}.bin')
+
+
+class Refused(Exception):
+    """Why an install did not happen; nothing was written."""
+
+    def __init__(self, refusals):
+        super().__init__(' '.join(refusals))
+        self.refusals = refusals
+
+
+def install_checked(esp, unit, contents, go_ahead):
+    """`contents` installed on `unit`, the device as just read, once the image and the
+    device pass their checks and `go_ahead(placement)` agrees; the placement. Raises
+    `Refused`, the device restarted, when not."""
+    refusals = image_refusals(contents) + unit.install_refusals()
+    placement = None if refusals else unit.placement()
+    if not refusals and not go_ahead(placement):
+        refusals = ['not confirmed; nothing was written.']
+    if refusals:
+        restart(esp)
+        raise Refused(refusals)
+    install(esp, placement, unit.habity(besides=placement.slot), contents)
+    return placement
 
 
 def install(esp, placement, way_back, contents):

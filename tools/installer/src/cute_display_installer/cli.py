@@ -14,23 +14,15 @@ from .card.copy import pull
 from .config import airports, places, radar
 from .flash import device
 from .flash.layout import APP_HEADER_SIZE, FLASH_SIZE, Slot, Target, app_image, image_refusals
-from .setup import card as setup_card
-from .setup.answers import CARD_FILES, Answers
+from .setup.clock import UsbClock
 from .setup.app import SetupApp
 
 RTC_LOG_TIMEOUT_S = 20
 
 
 def describe(unit):
-    for slot in Slot:
-        image = unit.slots[slot] or 'empty'
-        print(f'  {slot.label:<8} {image}{"   <- boots" if slot == unit.booting else ""}')
-
-
-def placement_said(placement):
-    if placement.erases:
-        return f'into {placement.slot}, erasing {placement.erases} there, the older of the two'
-    return f'into {placement.slot}'
+    for line in unit.slot_lines():
+        print(f'  {line}')
 
 
 def refuse(esp, doing, refusals):
@@ -49,12 +41,12 @@ def check():
         print(f'Cannot install: {refusal}')
     if refusals:
         sys.exit(1)
-    print(f'This device can take Cute Display, {placement_said(unit.placement())}.')
+    print(f'This device can take Cute Display, {unit.placement()}.')
 
 
 def backup(directory):
     os.makedirs(directory, exist_ok=True)
-    path = os.path.join(directory, f'habity-flash-{time.strftime("%Y%m%d-%H%M%S")}.bin')
+    path = device.backup_path(directory)
     print('Connecting to the device...')
     with device.connect() as esp:
         print(f'Reading its {FLASH_SIZE // 2**20} MB of flash; this takes a few minutes...')
@@ -78,20 +70,23 @@ def install(image, yes):
     if refusals:
         sys.exit('\n'.join(f'Cannot install {image}: {r}' for r in refusals))
     new = app_image(contents[:APP_HEADER_SIZE])
+
+    def go_ahead(placement):
+        if placement.erases and not (yes or confirmed(
+                f'Both slots hold Habity\'s firmware: {placement.erases} in {placement.slot} is erased for '
+                f'Cute Display, {unit.slots[unit.habity(besides=placement.slot)]} stays. Go on?')):
+            return False
+        print(f'Writing {new} {placement}; this takes a minute...')
+        return True
+
     print('Connecting to the device...')
     with device.connect() as esp:
         unit = device.read_device(esp)
         describe(unit)
-        refusals = unit.install_refusals()
-        if refusals:
-            refuse(esp, 'install', refusals)
-        placement = unit.placement()
-        if placement.erases and not (yes or confirmed(
-                f'Both slots hold Habity\'s firmware: {placement.erases} in {placement.slot} is erased for '
-                f'Cute Display, {unit.slots[unit.habity(besides=placement.slot)]} stays. Go on?')):
-            refuse(esp, 'install', ['not confirmed; nothing was written.'])
-        print(f'Writing {new} {placement_said(placement)}; this takes a minute...')
-        device.install(esp, placement, unit.habity(besides=placement.slot), contents)
+        try:
+            device.install_checked(esp, unit, contents, go_ahead)
+        except device.Refused as refused:
+            sys.exit('\n'.join(f'Cannot install: {r}' for r in refused.refusals))
     print(f"Installed. The device now starts {new}; `boot habity` takes it back to Habity's firmware.")
 
 
@@ -155,21 +150,10 @@ def radar_airports(at):
 
 
 def setup():
-    print('Reading what the card holds...')
-    with usb.open_link() as link:
-        answers = Answers.from_card(setup_card.read_texts(link, CARD_FILES))
-
     def airports_around(place):
         return airports.around(place.latitude, place.longitude, airports.ourairports(report=lambda _: None))
 
-    def write(files):
-        try:
-            with usb.open_link() as link:
-                setup_card.write(link, files)
-        except (usb.NoDevice, console.ConsoleError, SerialException) as error:
-            raise setup_card.Unreachable(explain(error) if isinstance(error, SerialException) else str(error)) from None
-
-    SetupApp(answers, lambda name: places.search(name, web.fetch), airports_around, write).run()
+    SetupApp(UsbClock(), lambda name: places.search(name, web.fetch), airports_around).run()
 
 
 def rtc_registers(destination):
@@ -193,17 +177,6 @@ def rtc_registers(destination):
                     print('\n'.join(rtc.describe(registers)))
                     return
     sys.exit('The registers never showed in the log; is the hardware test image running?')
-
-
-def explain(error):
-    """What to do about a port that would not open, or a device that stopped answering."""
-    text = str(error)
-    if 'busy' in text or 'Access is denied' in text:
-        return 'The port is in use: close any serial monitor on it (another terminal, an IDE) and try again.'
-    if 'Permission denied' in text:
-        return ('This user may not open the port: on Linux, join the group that owns it '
-                '(dialout or uucp), then log in again.')
-    return f'The device stopped answering ({text}). Unplug it, plug it back, and try again.'
 
 
 def parser():
@@ -242,7 +215,7 @@ def parser():
     pull_parser.add_argument('directory')
     pull_parser.add_argument('destination')
 
-    command(commands, 'setup', setup, 'the Wi-Fi, the place, the time zone and the radar\'s airports, onto the card, Cute Display running')
+    command(commands, 'setup', setup, 'step by step: back up the clock, install or update Cute Display, set it up')
     command(commands, 'radar-airports', radar_airports,
             "the airports around radar.conf's place onto the card") \
         .add_argument('--at', nargs=2, type=float, metavar=('LATITUDE', 'LONGITUDE'),
@@ -272,4 +245,4 @@ def main():
     except FileNotFoundError as error:
         sys.exit(f'{error.filename}: no such file.')
     except (FatalError, SerialException) as error:
-        sys.exit(explain(error))
+        sys.exit(usb.explain(error))

@@ -34,3 +34,14 @@ def open_link():
     link = serial.Serial(port(), 115200, timeout=0.2)
     link.reset_input_buffer()
     return link
+
+
+def explain(error):
+    """What to do about a port that would not open, or a device that stopped answering."""
+    text = str(error)
+    if 'busy' in text or 'Access is denied' in text:
+        return 'The port is in use: close any serial monitor on it (another terminal, an IDE) and try again.'
+    if 'Permission denied' in text:
+        return ('This user may not open the port: on Linux, join the group that owns it '
+                '(dialout or uucp), then log in again.')
+    return f'The device stopped answering ({text}). Unplug it, plug it back, and try again.'

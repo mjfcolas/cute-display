@@ -16,11 +16,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh                                 
 # 2. the installer: the line under "Installer" on the latest release, such as
 uv tool install https://github.com/mjfcolas/cute-display/releases/download/v2026.9.0/cute_display_installer-2026.9.0-py3-none-any.whl
 
-# 3. the clock plugged in
-cute-display backup    # its whole memory into a file: keep it, and to yourself
-cute-display check     # what it holds and where Cute Display would go; nothing is written
-cute-display install   # the latest Cute Display, then the clock restarts on it
-cute-display setup     # the Wi-Fi, the town, the time zone, the radar's airports
+# 3. the clock plugged in: back it up, install Cute Display, set it up, step by step
+cute-display setup
 ```
 
 The sections below say what each step does, and what to check first.
@@ -31,7 +28,7 @@ The sections below say what each step does, and what to check first.
 - A computer connected to the Internet: tried on Linux and Windows 10 or later; macOS is
   expected to work.
 - A terminal to type the commands in: on Windows, the **Command Prompt** (`cmd`), not
-  PowerShell, where the setup assistant does not show up.
+  PowerShell, where the setup does not show up.
 - [uv](https://docs.astral.sh/uv/getting-started/installation/), which runs the installer,
   installed with the first command [above](#in-short); a terminal opened before it does
   not know it yet.
@@ -50,45 +47,44 @@ uv tool install https://github.com/mjfcolas/cute-display/releases/download/v2026
 `cute-display` is then a command of its own. If the terminal does not know it, run
 `uv tool update-shell` and open a new one.
 
-## Before anything: back up the clock
+## Run the setup
 
 Plug the clock into the computer, then:
 
 ```sh
-cute-display backup
+cute-display setup
 ```
 
-> [!WARNING]
-> The backup holds your Wi-Fi password. Keep it somewhere safe and to yourself, and
-> never attach it to an issue.
+It goes step by step, asking before it writes anything:
 
-It copies the clock's whole memory, 16 MB, into a file in the current folder, in a few
-minutes; nothing on the clock changes. Should anything ever go wrong, that file is the
-clock exactly as it was, Habity's firmware and its settings included, and
-[writing it back](troubleshooting.md#putting-a-backup-back) restores it.
+1. **Back up the clock**: its whole memory, 16 MB, into a file in the current folder, in
+   a few minutes; nothing on the clock changes. Should anything ever go wrong, that file
+   is the clock exactly as it was, Habity's firmware and its settings included, and
+   [writing it back](troubleshooting.md#putting-a-backup-back) restores it.
 
-## Install
+   > [!WARNING]
+   > The backup holds your Wi-Fi password. Keep it somewhere safe and to yourself, and
+   > never attach it to an issue.
 
-1. `cute-display check`: what the clock holds, and where Cute Display would go. Nothing
-   is written.
-2. `cute-display install`: the latest Cute Display, checked, then the clock restarts on
-   it. It goes into a slot Habity's firmware does not use; when both hold one, it asks
-   before erasing the older of the two. The one the clock was shipped with is never
+2. **What the clock holds**, and where Cute Display would go; a clock it cannot go on
+   stops there, with nothing written.
+3. **Install Cute Display**: the latest release, checked, then the clock restarts on it.
+   It goes into a slot Habity's firmware does not use; when both hold one, the question
+   says which older one would be erased. The one the clock was shipped with is never
    touched.
-3. `cute-display setup`: an assistant asks for your Wi-Fi, your town, your time zone and
-   the airports on the radar, then writes them onto the clock. Run it again to change
-   any of them.
+4. **Set it up**: your Wi-Fi, your town, your time zone and the airports on the radar,
+   what the clock already holds filled in; written onto the clock at the end.
 
 The clock is then an [alarm clock](apps/alarm/README.md) with the
 [weather](apps/weather/README.md), a [radar](apps/radar/README.md), and a
 [system app](apps/system/README.md) a click of the wheel away.
 
-## Update
+## Update, or change the settings
 
 1. Each release comes with its installer: run the release's line from
    [get the installer](#get-the-installer) again.
-2. `cute-display install`: the latest release, in place of the one before. The settings
-   stay.
+2. `cute-display setup`: it offers the update when a newer release is out, then the
+   settings, which you may leave as they are.
 
 `uv tool uninstall cute-display-installer` removes the installer.
 
@@ -99,5 +95,8 @@ does not start, `cute-display boot factory` starts the one the clock was shipped
 
 Cute Display stays on the clock: `cute-display boot cute-display` comes back to it,
 until Habity's firmware updates itself over it.
+
+Each step also exists on its own, `cute-display backup`, `check`, `install` and `boot`,
+for those who prefer them: [the installer's commands](../tools/installer/README.md#commands).
 
 Something else? [Troubleshooting](troubleshooting.md).

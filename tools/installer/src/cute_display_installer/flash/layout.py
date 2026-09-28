@@ -196,6 +196,11 @@ class Placement:
     slot: Slot
     erases: AppImage | None = None
 
+    def __str__(self):
+        if self.erases:
+            return f'into {self.slot}, erasing {self.erases} there, the older of the two'
+        return f'into {self.slot}'
+
 
 @dataclass(frozen=True)
 class Device:
@@ -207,6 +212,11 @@ class Device:
 
     def _holding(self, found, among=OTA_SLOTS_BY_SEQUENCE):
         return [slot for slot in among if self.slots.get(slot) and found(self.slots[slot])]
+
+    def slot_lines(self):
+        """Each slot, what it holds, and which one boots, a line each."""
+        return [f'{slot.label:<8} {self.slots[slot] or "empty"}{"   <- boots" if slot == self.booting else ""}'
+                for slot in Slot]
 
     def ours(self):
         """The OTA slot Cute Display is in; the booting one if both hold it."""

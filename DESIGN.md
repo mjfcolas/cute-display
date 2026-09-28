@@ -104,8 +104,8 @@ src/            the sources, one crate per directory
 docs/           installing and troubleshooting, development and releasing, the board, and a
                 README per app, console and test image
 tools/          host tools: the [installer](tools/installer/README.md) (the device's flash
-                and SD card, the setup assistant, radar airports, RTC registers), whole-flash test
-                images for it, frame dump to PNG
+                and SD card, the step-by-step setup, radar airports, RTC registers), whole-flash
+                test images for it, frame dump to PNG
 ```
 
 ## Applications
