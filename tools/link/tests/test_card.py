@@ -1,10 +1,11 @@
 import unittest
 
-from cute_display_installer.card.console import ConsoleError, Entry, copy, entries, read_file, remove, write_file
-from fake_card import Card
+from cute_display_link.card import Entry, copy, entries, read_file, remove, write_file
+from cute_display_link.console import ConsoleError
+from cute_display_link_testing.fake_card import Card
 
 
-class Console(unittest.TestCase):
+class CardFiles(unittest.TestCase):
     def test_a_directory_lists_its_entries(self):
         card = Card({'cute-display/wifi.conf': b'ssid = Home\n', 'sounds/alarm.wav': b''})
         self.assertEqual(entries(card), [Entry('cute-display', True, 0), Entry('sounds', True, 0)])

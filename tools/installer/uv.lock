@@ -271,6 +271,11 @@ dependencies = [
     { name = "tzlocal" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "cute-display-link" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "esptool", specifier = ">=5.1,<6" },
@@ -279,6 +284,19 @@ requires-dist = [
     { name = "tzdata", specifier = ">=2025.1" },
     { name = "tzlocal", specifier = ">=5,<6" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "cute-display-link", editable = "../link" }]
+
+[[package]]
+name = "cute-display-link"
+source = { editable = "../link" }
+dependencies = [
+    { name = "pyserial" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pyserial", specifier = ">=3.5,<4" }]
 
 [[package]]
 name = "esp-pylib"

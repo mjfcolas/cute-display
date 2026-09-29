@@ -7,8 +7,7 @@ registers.
 - People get it from a release: [installing](../../docs/install.md#in-short).
 - From the repository, with [uv](https://docs.astral.sh/uv/): `uv run --project
   tools/installer cute-display …`, which is what the `justfile` does.
-- The device is found by its USB IDs (the ESP32-S3's own USB port); `CUTE_DISPLAY_PORT`
-  overrides it.
+- It finds the device on USB through its [link](../link/README.md).
 
 ## Commands
 

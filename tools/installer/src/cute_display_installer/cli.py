@@ -8,8 +8,10 @@ from urllib.error import HTTPError, URLError
 from esptool.cmds import FatalError
 from serial import SerialException
 
-from . import releases, rtc, usb, web
-from .card import console
+from cute_display_link import card, usb
+from cute_display_link.console import ConsoleError
+
+from . import releases, rtc, web
 from .card.copy import pull
 from .config import airports, general, places, radar
 from .flash import device
@@ -105,13 +107,13 @@ def boot(target):
 
 def card_ls(directory):
     with usb.open_link() as link:
-        for entry in console.entries(link, directory):
+        for entry in card.entries(link, directory):
             print(f'{"d" if entry.is_directory else "-"} {entry.size:>10} {entry.name}')
 
 
 def card_get(path, destination):
     with usb.open_link() as link:
-        contents = console.read_file(link, path)
+        contents = card.read_file(link, path)
     if destination:
         with open(destination, 'wb') as f:
             f.write(contents)
@@ -124,13 +126,13 @@ def card_put(source, path):
     with open(source, 'rb') as f:
         contents = f.read()
     with usb.open_link() as link:
-        console.write_file(link, path, contents)
+        card.write_file(link, path, contents)
     print(f'{source} -> {path} ({len(contents)} bytes)')
 
 
 def card_rm(path):
     with usb.open_link() as link:
-        console.remove(link, path)
+        card.remove(link, path)
     print(f'removed {path}')
 
 
@@ -201,17 +203,17 @@ def parser():
     command(commands, 'boot', boot, "start Habity's newest firmware, the factory one, Cute Display, or a slot") \
         .add_argument('target', type=Target, choices=list(Target))
 
-    card = commands.add_parser('card', help="the device's SD card, Cute Display running") \
+    card_commands = commands.add_parser('card', help="the device's SD card, Cute Display running") \
         .add_subparsers(required=True, metavar='action')
-    command(card, 'ls', card_ls, 'list a directory').add_argument('directory', nargs='?', default='')
-    get_parser = command(card, 'get', card_get, 'copy a file off the card (to the terminal without a destination)')
+    command(card_commands, 'ls', card_ls, 'list a directory').add_argument('directory', nargs='?', default='')
+    get_parser = command(card_commands, 'get', card_get, 'copy a file off the card (to the terminal without a destination)')
     get_parser.add_argument('path')
     get_parser.add_argument('destination', nargs='?')
-    put_parser = command(card, 'put', card_put, 'copy a file onto the card, under cute-display/')
+    put_parser = command(card_commands, 'put', card_put, 'copy a file onto the card, under cute-display/')
     put_parser.add_argument('source')
     put_parser.add_argument('path')
-    command(card, 'rm', card_rm, 'remove a file under cute-display/').add_argument('path')
-    pull_parser = command(card, 'pull', card_pull, 'copy a directory of the card, resuming where it stopped')
+    command(card_commands, 'rm', card_rm, 'remove a file under cute-display/').add_argument('path')
+    pull_parser = command(card_commands, 'pull', card_pull, 'copy a directory of the card, resuming where it stopped')
     pull_parser.add_argument('directory')
     pull_parser.add_argument('destination')
 
@@ -232,7 +234,7 @@ def main():
         run(**arguments)
     except usb.NoDevice as error:
         sys.exit(str(error))
-    except (console.ConsoleError, general.NoPlace) as error:
+    except (ConsoleError, general.NoPlace) as error:
         sys.exit(f'SD card: {error}')
     except rtc.NoRegisters as error:
         sys.exit(str(error))

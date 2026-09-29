@@ -12,6 +12,5 @@ just backup-sd                                 # the whole card into backup/sd/
 
 - Close the serial monitor first: both use the same port.
 - Everything can be read; only `cute-display/` can be written or removed.
-- Tests press the buttons and turn the wheel through the same console
-  ([`protocol.rs`](../../src/maintenance/src/protocol.rs)); the buttons and the wheel
-  keep working meanwhile.
+- Tests press the buttons and turn the wheel through the same console, the buttons and
+  the wheel working meanwhile: `just remote --help`.

@@ -5,8 +5,10 @@ from urllib.error import URLError
 
 from esptool.cmds import FatalError
 
-from cute_display_installer import releases, usb
-from cute_display_installer.card.console import ConsoleError
+from cute_display_link import usb
+from cute_display_link.console import ConsoleError
+
+from cute_display_installer import releases
 from cute_display_installer.flash.layout import Placement, Security, Slot
 from cute_display_installer.setup import clock
 from cute_display_installer.setup.clock import Failed, UsbClock
@@ -94,7 +96,7 @@ class Waiting(unittest.TestCase):
             return nullcontext('link')
 
         with mock.patch.object(clock.usb, 'open_link', open_link), \
-                mock.patch.object(clock.console, 'entries') as entries, mock.patch.object(clock.time, 'sleep'):
+                mock.patch.object(clock, 'entries') as entries, mock.patch.object(clock.time, 'sleep'):
             UsbClock().wait_for_cute_display()
         entries.assert_called_once_with('link')
 

@@ -44,6 +44,7 @@ just fw-check        # which app boots, and where Cute Display would go
 just backup          # dump the whole flash to backup/ (gitignored)
 just setup           # step by step: back up, install or update, set up (monitor closed)
 just sd-ls           # list the SD card; also sd-get, sd-put, sd-rm (monitor closed)
+just remote tap yellow  # the device's controls: tap, hold, turn (monitor closed)
 just release         # the app image of a release, in release/ (releasing.md)
 just                 # every recipe
 ```

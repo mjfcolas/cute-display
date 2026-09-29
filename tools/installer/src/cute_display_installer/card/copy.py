@@ -2,7 +2,7 @@
 import os
 import time
 
-from .console import entries, read_file
+from cute_display_link.card import entries, read_file
 
 
 def pull(link, directory, destination, report=print):

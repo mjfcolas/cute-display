@@ -1,5 +1,5 @@
 """The setup's files on the card, through the maintenance console."""
-from ..card import console
+from cute_display_link import card
 from ..config import ringtones
 
 
@@ -14,7 +14,7 @@ class _Listings:
         if directory not in self.listed:
             parent, _, name = directory.rpartition('/')
             there = not directory or any(e.is_directory and e.name == name for e in self(parent))
-            self.listed[directory] = console.entries(self.link, directory) if there else []
+            self.listed[directory] = card.entries(self.link, directory) if there else []
         return self.listed[directory]
 
 
@@ -26,7 +26,7 @@ def read_texts(link, paths):
         directory, _, name = path.rpartition('/')
         return any(not e.is_directory and e.name == name for e in entries(directory))
 
-    return {path: console.read_file(link, path).decode(errors='replace') if present(path) else None for path in paths}
+    return {path: card.read_file(link, path).decode(errors='replace') if present(path) else None for path in paths}
 
 
 def habity_ringtones_missing(link):
@@ -40,6 +40,6 @@ def habity_ringtones_missing(link):
 def write(link, files, copies):
     """`files` as {path: text}, then `copies` as {source: destination}, made on the device."""
     for path, text in files.items():
-        console.write_file(link, path, text.encode())
+        card.write_file(link, path, text.encode())
     for source, destination in copies.items():
-        console.copy(link, source, destination)
+        card.copy(link, source, destination)

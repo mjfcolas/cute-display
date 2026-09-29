@@ -130,7 +130,8 @@ docs/           installing and troubleshooting, development and releasing, the b
                 README per app, console and test image
 tools/          host tools: the [installer](tools/installer/README.md) (the device's flash
                 and SD card, the step-by-step setup, radar airports, RTC registers), whole-flash
-                test images for it, frame dump to PNG
+                test images for it, the [link](tools/link/README.md) to the device's console it
+                shares with tests, frame dump to PNG
 ```
 
 ## Applications

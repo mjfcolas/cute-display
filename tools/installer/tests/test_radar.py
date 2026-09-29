@@ -4,7 +4,7 @@ from cute_display_installer.config import general
 from cute_display_installer.config.airports import FILE as AIRPORTS_FILE
 from cute_display_installer.config.place import Place
 from cute_display_installer.config.radar import labels, put_airports, render
-from fake_card import Card
+from cute_display_link_testing.fake_card import Card
 
 ORLY = {'ident': 'LFPO', 'type': 'large_airport', 'latitude_deg': '48.7233', 'longitude_deg': '2.3794',
         'name': 'Paris-Orly Airport', 'icao_code': 'LFPO', 'gps_code': ''}

@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
-from cute_display_installer.usb import PORT_VARIABLE, NoDevice, explain, port
+from cute_display_link.usb import PORT_VARIABLE, NoDevice, explain, port
 
 HABITY = SimpleNamespace(device='/dev/ttyACM0', vid=0x303a, pid=0x1001)
 OTHER = SimpleNamespace(device='/dev/ttyUSB0', vid=0x10c4, pid=0xea60)

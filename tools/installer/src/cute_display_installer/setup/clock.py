@@ -6,8 +6,11 @@ from urllib.error import URLError
 from esptool.cmds import FatalError
 from serial import SerialException
 
-from .. import releases, usb
-from ..card import console
+from cute_display_link import usb
+from cute_display_link.card import entries
+from cute_display_link.console import ConsoleError
+
+from .. import releases
 from ..flash import device
 from ..flash.layout import image_refusals
 from . import card
@@ -30,7 +33,7 @@ def _said(error):
         return f'Cannot install: {error}'
     if isinstance(error, (FatalError, SerialException)):
         return usb.explain(error)
-    if isinstance(error, console.ConsoleError):
+    if isinstance(error, ConsoleError):
         return f'SD card: {error}'
     if isinstance(error, releases.ReleaseError):
         return f'GitHub: {error}.'
@@ -98,9 +101,9 @@ class UsbClock:
         while True:
             try:
                 with usb.open_link() as link:
-                    console.entries(link)
+                    entries(link)
                 return
-            except (usb.NoDevice, SerialException, console.ConsoleError) as error:
+            except (usb.NoDevice, SerialException, ConsoleError) as error:
                 if time.monotonic() > deadline:
                     raise Failed(_said(error)) from None
                 time.sleep(1)

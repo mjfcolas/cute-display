@@ -1,0 +1,26 @@
+[project]
+name = "cute-display-link"
+dynamic = ["version"]
+description = "A computer's end of Cute Display's console: the USB port, requests, the SD card, the controls."
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+requires-python = ">=3.11"
+dependencies = [
+    "pyserial>=3.5,<4",
+]
+
+[project.scripts]
+remote = "cute_display_link.remote:main"
+
+[build-system]
+requires = ["hatchling>=1.27,<2", "hatch-vcs>=0.4,<1"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+root = "../.."
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cute_display_link", "src/cute_display_link_testing"]

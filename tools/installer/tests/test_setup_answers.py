@@ -5,7 +5,7 @@ from cute_display_installer.config.place import Place
 from cute_display_installer.config.wifi import Wifi
 from cute_display_installer.setup import card
 from cute_display_installer.setup.answers import CARD_FILES, Answers, wifi_problem
-from fake_card import Card
+from cute_display_link_testing.fake_card import Card
 
 NOTRE_DAME = Place('Notre-Dame', 48.853, 2.3499)
 ORLY = Airport('LFPO', 48.7233, 2.3794, 'Paris-Orly Airport', True, 14.6)

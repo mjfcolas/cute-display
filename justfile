@@ -14,10 +14,11 @@ cute_display := "uv run --quiet --project " + justfile_directory() / "tools/inst
 default:
     @just --list
 
-# run the host tests: the crates, the installer, the test images' maker, the release's version
+# run the host tests: the crates, the installer and its link, the test images' maker, the release's version
 test:
     cargo test --workspace
     uv run --quiet --project tools/installer python -m unittest discover --start-directory tools/installer/tests --quiet
+    uv run --quiet --project tools/link python -m unittest discover --start-directory tools/link/tests --quiet
     uv run --quiet --project tools/installer python -m unittest discover --start-directory tools/test_flashes/tests --quiet
     python3 -m unittest discover --start-directory tools/release/tests --quiet
 
@@ -113,6 +114,10 @@ sd-put file path:
 # remove a file from the SD card, somewhere under cute-display/
 sd-rm path:
     {{cute_display}} card rm {{path}}
+
+# tap, hold or turn the device's controls: tap yellow, hold 1500 yellow long, turn -2 (monitor closed)
+remote *args:
+    uv run --quiet --project {{justfile_directory()}}/tools/link remote {{args}}
 
 # step by step: back up the device, install or update Cute Display, set it up (monitor closed)
 setup:

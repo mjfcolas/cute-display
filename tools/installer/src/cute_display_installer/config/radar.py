@@ -2,7 +2,7 @@
 themselves go beside it, in airports.conf."""
 import re
 
-from ..card import console
+from cute_display_link import card
 from . import airports, conf_text, general
 
 FILE = 'cute-display/apps/radar/radar.conf'
@@ -20,7 +20,7 @@ def render(labelled):
 
 def put_airports(link, rows):
     """Writes airports.conf for the place in general.conf; the airports written, and the place."""
-    at = general.place_of(console.read_file(link, general.FILE).decode(errors='replace'))
+    at = general.place_of(card.read_file(link, general.FILE).decode(errors='replace'))
     found = airports.around(at.latitude, at.longitude, rows)
-    console.write_file(link, airports.FILE, airports.render(found).encode())
+    card.write_file(link, airports.FILE, airports.render(found).encode())
     return found, at

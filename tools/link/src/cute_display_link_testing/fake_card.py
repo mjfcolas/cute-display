@@ -1,9 +1,10 @@
-"""The device's side of the maintenance console, on files in memory, with its log
-between the replies."""
+"""The device's side of the console, on files in memory, with its log between the
+replies: for tests of what talks to it. The controls it is sent, it keeps."""
 import base64
 import zlib
 
 RANGE_BYTES = 100
+HOLD_MS_AT_MOST = 10_000
 
 
 class Card:
@@ -12,6 +13,7 @@ class Card:
         self.damaged_ranges = damaged_ranges
         self.replies = []
         self.receiving = None
+        self.controls = []
 
     def write(self, data):
         prefix, request_id, words = data.decode().rstrip('\n').split(' ', 2)
@@ -75,4 +77,9 @@ class Card:
             self._reply(request_id, 'ok')
         elif verb == 'rm':
             del self.files[rest]
+            self._reply(request_id, 'ok')
+        elif verb == 'hold' and int(rest.split(' ', 1)[0]) > HOLD_MS_AT_MOST:
+            self._reply(request_id, f'error hold: {HOLD_MS_AT_MOST} ms at most')
+        elif verb in ('tap', 'hold', 'turn'):
+            self.controls.append(f'{verb} {rest}')
             self._reply(request_id, 'ok')

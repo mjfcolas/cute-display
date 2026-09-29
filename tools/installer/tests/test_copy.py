@@ -3,7 +3,7 @@ import tempfile
 import unittest
 
 from cute_display_installer.card.copy import pull
-from fake_card import Card
+from cute_display_link_testing.fake_card import Card
 
 
 class Pull(unittest.TestCase):

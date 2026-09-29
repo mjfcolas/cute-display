@@ -5,7 +5,7 @@ import time
 from esptool.cmds import attach_flash, detect_chip, read_flash, reset_chip, run_stub, verify_flash, write_flash
 from esptool.logger import log
 
-from .. import usb
+from cute_display_link import usb
 from .layout import (APP_HEADER_SIZE, FLASH_SIZE, OTADATA, OTADATA_SIZE, PARTITION_TABLE, PARTITION_TABLE_SIZE,
                      Device, Security, Slot, app_image, booting_slot, image_refusals, otadata_booting,
                      partitions)
