@@ -8,7 +8,8 @@ How the project is written is [AGENTS.md](../AGENTS.md); its architecture,
 Both are flashed into an OTA slot, `app0` or `app1`, beside Habity's firmware.
 
 - **App**: the [apps](../README.md#apps) people use, and the
-  [maintenance console](maintenance/README.md) that serves the SD card on the USB cable.
+  [maintenance console](maintenance/README.md) on the USB cable: the SD card, and a remote
+  for tests.
 - **[Hardware test](hwtest/README.md)**: exercises every part of the board.
 
 The [simulator](simulator/README.md) runs the app image on a computer, and the

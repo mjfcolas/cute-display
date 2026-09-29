@@ -38,12 +38,12 @@ The apps, on it, listed by `catalog`, which the composition roots share:
 | Layer            | Holds                                                                                          | Depends on       |
 | ---------------- | ---------------------------------------------------------------------------------------------- | ---------------- |
 | `domain`         | The concepts every app relies on (the app in front, settings, lighting, the time, where the device is, sound…), the contracts the engine lends apps, and the contracts it needs from the outside world. Speaks in intents (`request_refresh`, `choose_next_backlight`), never in controls ("yellow pressed") | nothing          |
-| `infrastructure` | Implementations of the domain's contracts on the HAL | `domain`, `hal`, `conf_text` |
+| `infrastructure` | Implementations of the domain's contracts on the HAL, and HAL contracts made of two implementations: a button, a wheel | `domain`, `hal`, `conf_text` |
 | `conf_text`      | The device's conf files as `key = value` lines: the engine's own, and any app's that takes up the format | nothing |
 | `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, thermometer, storage, radio, HTTP, UDP, I2C bus, power, system, and the steady clock the app image runs on | nothing          |
 | `drivers`        | Implementations of `hal` on the board's chips                                                  | `hal`            |
 | `ui`             | The shell that hosts the app in front, the system app's screen, and the toolkit apps draw with: reads the controls, turns them into domain intents, renders domain state. Runs on its own thread | `domain`         |
-| `maintenance`    | The console that serves the SD card on the USB cable                                           | `hal`            |
+| `maintenance`    | The console on the USB cable: the SD card, and a remote for the buttons and the wheel that tests use | `hal`            |
 | `hwtest`         | The hardware test bench                                                                        | `hal`            |
 | `libs`           | What several apps share, as code: each app has its own instance of it | `domain`, `ui`, `conf_text`, other `libs` |
 | `apps`           | One crate per app, layered as the engine is: `domain`, its concepts and the contracts they need; `infrastructure`, those contracts on what the engine lends; `ui`, its screen. Its root installs it | `domain`, `ui`, `conf_text`, `libs` |
@@ -110,7 +110,7 @@ src/            the sources, one crate per directory
                     an app, settings, lighting, the time and time zones, where the
                     device is, sound
     infrastructure/ the domain's contracts on the HAL: conf files, lights, the RTC, the
-                    speaker, Internet on demand, NTP
+                    speaker, Internet on demand, NTP; and controls made of two
     ui/             the shell, gestures, the system app, and the toolkit apps draw
                     with; host-tested with hal's Frame as a dev-dependency
     conf_text/      the `key = value` format of the device's conf files
@@ -120,7 +120,7 @@ src/            the sources, one crate per directory
   libs/           what apps share: forecasts
   apps/           one crate per app: the alarm clock, the weather, the radar
   catalog/        the apps an image can hold, the same for the board and the computer
-  maintenance/    the console that serves the SD card on the USB cable
+  maintenance/    the console on the USB cable: the SD card, and the remote for tests
   hwtest/         the hardware test bench
   app/            the app image's threads and wiring, generic over the HAL
   firmware/       board pin map + one binary per image (`app`, `hwtest`); the only crate

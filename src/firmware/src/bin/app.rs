@@ -19,6 +19,8 @@ use drivers::usb_console;
 use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::hal::task::thread::{MallocCap, ThreadSpawnConfiguration};
 use hal::Fault;
+use infrastructure::composite_input::{CompositeButton, CompositeWheel};
+use maintenance::remote::{ButtonName, Remote, RemoteButton, RemoteWheel};
 use maintenance::MaintenanceConsole;
 
 use firmware::board::Board;
@@ -35,8 +37,8 @@ enum Habity {}
 
 impl Hardware for Habity {
     type Panel = Uc8253;
-    type Wheel = PcntEncoder;
-    type Button = Button;
+    type Wheel = CompositeWheel<PcntEncoder, RemoteWheel>;
+    type Button = CompositeButton<Button, RemoteButton>;
     type Light = LedcLight;
     type Rtc = Ds3231Clock;
     type Speaker = I2sSpeaker;
@@ -70,15 +72,14 @@ fn main() -> Result<(), Fault> {
     log::info!("Cute Display {}, {BUILD}", app::image::VERSION);
 
     let board = Board::bring_up()?;
-    if let Ok(card) = &board.sd_card {
-        start_maintenance(card.clone())?;
-    }
+    let remote = Remote::new(StdSteadyClock);
+    start_maintenance(board.sd_card.clone(), remote.clone())?;
     let devices = Devices::<Habity> {
         panel: board.panel,
-        wheel: board.wheel,
-        wheel_button: board.wheel_button,
-        yellow_button: board.yellow_button,
-        long_button: board.long_button,
+        wheel: CompositeWheel::new(board.wheel, remote.wheel()),
+        wheel_button: CompositeButton::new(board.wheel_button, remote.button(ButtonName::WheelButton)),
+        yellow_button: CompositeButton::new(board.yellow_button, remote.button(ButtonName::Yellow)),
+        long_button: CompositeButton::new(board.long_button, remote.button(ButtonName::Long)),
         front_light: board.front_light,
         reading_lamp: board.reading_lamp,
         rtc: board.clock,
@@ -93,13 +94,13 @@ fn main() -> Result<(), Fault> {
     match app::run(devices, catalog::APPS)? {}
 }
 
-fn start_maintenance(card: SdmmcCard) -> Result<(), Fault> {
+fn start_maintenance(card: Result<SdmmcCard, Fault>, remote: Remote) -> Result<(), Fault> {
     usb_console::listen()?;
     thread::Builder::new()
         .name("maintenance".into())
         .stack_size(16 * 1024)
         .spawn(move || {
-            let mut console = MaintenanceConsole::new(card);
+            let mut console = MaintenanceConsole::new(card, remote);
             let mut line = String::new();
             loop {
                 line.clear();

@@ -1,9 +1,11 @@
 use std::io::{self, Write};
 
 use hal::storage::{CopyOutcome, FileStorage};
+use hal::Fault;
 
 use crate::path::SdPath;
-use crate::protocol::{self, Request};
+use crate::protocol::{self, CardRequest, RemoteRequest, Request};
+use crate::remote::Remote;
 
 /// A put is for configuration, not for media.
 pub const MAX_PUT_BYTES: usize = 64 * 1024;
@@ -22,13 +24,14 @@ struct PendingPut {
 }
 
 pub struct MaintenanceConsole<S> {
-    storage: S,
+    storage: Result<S, Fault>,
+    remote: Remote,
     put: Option<PendingPut>,
 }
 
 impl<S: FileStorage> MaintenanceConsole<S> {
-    pub fn new(storage: S) -> Self {
-        Self { storage, put: None }
+    pub fn new(storage: Result<S, Fault>, remote: Remote) -> Self {
+        Self { storage, remote, put: None }
     }
 
     /// One line from the computer. Lines that are not the protocol's are ignored; a new
@@ -39,11 +42,14 @@ impl<S: FileStorage> MaintenanceConsole<S> {
         };
         let replies = match request {
             Err(reason) => vec![protocol::error(&id, &reason)],
-            Ok(Request::Data(bytes)) => self.receive(&id, &bytes),
-            Ok(Request::End) => self.finish_put(&id),
+            Ok(Request::Card(CardRequest::Data(bytes))) => self.receive(&id, &bytes),
+            Ok(Request::Card(CardRequest::End)) => self.finish_put(&id),
             Ok(request) => {
                 self.put = None;
-                self.serve(&id, request)
+                match request {
+                    Request::Card(request) => self.serve_card(&id, request),
+                    Request::Remote(request) => self.serve_remote(&id, request),
+                }
             }
         };
         for reply in replies {
@@ -52,9 +58,22 @@ impl<S: FileStorage> MaintenanceConsole<S> {
         out.flush()
     }
 
-    fn serve(&mut self, id: &str, request: Request) -> Vec<String> {
+    fn serve_remote(&self, id: &str, request: RemoteRequest) -> Vec<String> {
         match request {
-            Request::List(dir) => match self.storage.entries(dir.as_str()) {
+            RemoteRequest::Tap(button) => self.remote.tap(button),
+            RemoteRequest::Hold { buttons, duration } => self.remote.hold(&buttons, duration),
+            RemoteRequest::Turn(clockwise_detents) => self.remote.turn(clockwise_detents),
+        }
+        vec![protocol::ok(id, "")]
+    }
+
+    fn serve_card(&mut self, id: &str, request: CardRequest) -> Vec<String> {
+        let storage = match inserted_card(&self.storage, id) {
+            Ok(storage) => storage,
+            Err(replies) => return replies,
+        };
+        match request {
+            CardRequest::List(dir) => match storage.entries(dir.as_str()) {
                 Ok(Some(entries)) => entries
                     .iter()
                     .map(|e| protocol::entry(id, e))
@@ -63,7 +82,7 @@ impl<S: FileStorage> MaintenanceConsole<S> {
                 Ok(None) => vec![protocol::error(id, "no such directory")],
                 Err(fault) => vec![protocol::error(id, fault.reason())],
             },
-            Request::Get { path, offset } => match self.storage.read_range(path.as_str(), offset, GET_RANGE_BYTES) {
+            CardRequest::Get { path, offset } => match storage.read_range(path.as_str(), offset, GET_RANGE_BYTES) {
                 Ok(Some(contents)) => contents
                     .chunks(DATA_CHUNK_BYTES)
                     .map(|chunk| protocol::data(id, chunk))
@@ -72,7 +91,7 @@ impl<S: FileStorage> MaintenanceConsole<S> {
                 Ok(None) => vec![protocol::error(id, "no such file")],
                 Err(fault) => vec![protocol::error(id, fault.reason())],
             },
-            Request::Put { path, size_bytes, crc32 } => {
+            CardRequest::Put { path, size_bytes, crc32 } => {
                 if !path.is_writable() {
                     return vec![protocol::error(id, "only cute-display/ may be written")];
                 }
@@ -82,26 +101,26 @@ impl<S: FileStorage> MaintenanceConsole<S> {
                 self.put = Some(PendingPut { id: id.to_owned(), path, size_bytes, crc32, received: Vec::new() });
                 vec![protocol::ready(id)]
             }
-            Request::Remove(path) => {
+            CardRequest::Remove(path) => {
                 if !path.is_writable() {
                     return vec![protocol::error(id, "only cute-display/ may be written")];
                 }
-                match self.storage.remove(path.as_str()) {
+                match storage.remove(path.as_str()) {
                     Ok(()) => vec![protocol::ok(id, "")],
                     Err(fault) => vec![protocol::error(id, fault.reason())],
                 }
             }
-            Request::Copy { from, to } => {
+            CardRequest::Copy { from, to } => {
                 if !to.is_writable() {
                     return vec![protocol::error(id, "only cute-display/ may be written")];
                 }
-                match self.storage.copy(from.as_str(), to.as_str()) {
+                match storage.copy(from.as_str(), to.as_str()) {
                     Ok(CopyOutcome::Copied) => vec![protocol::ok(id, "")],
                     Ok(CopyOutcome::NoSource) => vec![protocol::error(id, "no such file")],
                     Err(fault) => vec![protocol::error(id, fault.reason())],
                 }
             }
-            Request::Data(_) | Request::End => vec![protocol::error(id, "no put in progress")],
+            CardRequest::Data(_) | CardRequest::End => vec![protocol::error(id, "no put in progress")],
         }
     }
 
@@ -127,11 +146,19 @@ impl<S: FileStorage> MaintenanceConsole<S> {
         if crc32fast::hash(&put.received) != put.crc32 {
             return vec![protocol::error(id, "the CRC does not match; nothing was written")];
         }
-        match self.storage.write(put.path.as_str(), &put.received) {
+        let storage = match inserted_card(&self.storage, id) {
+            Ok(storage) => storage,
+            Err(replies) => return replies,
+        };
+        match storage.write(put.path.as_str(), &put.received) {
             Ok(()) => vec![protocol::ok(id, "")],
             Err(fault) => vec![protocol::error(id, fault.reason())],
         }
     }
+}
+
+fn inserted_card<'a, S>(storage: &'a Result<S, Fault>, id: &str) -> Result<&'a S, Vec<String>> {
+    storage.as_ref().map_err(|fault| vec![protocol::error(id, &format!("no SD card: {fault}"))])
 }
 
 #[cfg(test)]
@@ -141,10 +168,16 @@ mod tests {
 
     use base64::engine::general_purpose::STANDARD;
     use base64::Engine;
+    use core::time::Duration;
+    use std::time::Instant;
+
+    use hal::input::{PushButton, RotaryEncoder};
+    use hal::steady::SteadyClock;
     use hal::storage::Entry;
     use hal::Fault;
 
     use super::*;
+    use crate::remote::ButtonName;
 
     #[derive(Clone, Default)]
     struct FakeCard(Arc<Mutex<BTreeMap<String, Vec<u8>>>>);
@@ -192,6 +225,18 @@ mod tests {
         }
     }
 
+    struct NoWait;
+    impl SteadyClock for NoWait {
+        fn now(&self) -> Instant {
+            Instant::now()
+        }
+        fn sleep(&self, _: Duration) {}
+    }
+
+    fn console(card: FakeCard) -> MaintenanceConsole<FakeCard> {
+        MaintenanceConsole::new(Ok(card), Remote::new(NoWait))
+    }
+
     fn talk(console: &mut MaintenanceConsole<FakeCard>, lines: &[String]) -> Vec<String> {
         let mut out = Vec::new();
         for line in lines {
@@ -220,7 +265,7 @@ mod tests {
     #[test]
     fn a_file_put_comes_back_byte_for_byte() {
         let card = FakeCard::default();
-        let mut console = MaintenanceConsole::new(card.clone());
+        let mut console = console(card.clone());
         let contents: Vec<u8> = (0..=255u8).cycle().take(1000).collect();
 
         let replies = talk(&mut console, &put_lines("1", "cute-display/wifi.conf", &contents, crc32fast::hash(&contents)));
@@ -234,7 +279,7 @@ mod tests {
 
     #[test]
     fn a_put_is_answered_line_by_line_so_the_computer_never_outruns_the_console() {
-        let mut console = MaintenanceConsole::new(FakeCard::default());
+        let mut console = console(FakeCard::default());
         let lines = put_lines("5", "cute-display/a.conf", b"0123456789abcdefghij", crc32fast::hash(b"0123456789abcdefghij"));
         let mut replies = Vec::new();
         for line in &lines {
@@ -248,7 +293,7 @@ mod tests {
     #[test]
     fn a_put_with_the_wrong_crc_writes_nothing() {
         let card = FakeCard::default();
-        let mut console = MaintenanceConsole::new(card.clone());
+        let mut console = console(card.clone());
         let replies = talk(&mut console, &put_lines("1", "cute-display/a.conf", b"hello", 42));
         assert!(replies[0].starts_with("@@ 1 error"));
         assert_eq!(card.file("cute-display/a.conf"), None);
@@ -257,7 +302,7 @@ mod tests {
     #[test]
     fn nothing_outside_the_devices_directory_is_written_or_removed() {
         let card = FakeCard::with("sounds/alarm.wav", b"RIFF");
-        let mut console = MaintenanceConsole::new(card.clone());
+        let mut console = console(card.clone());
         let replies = talk(&mut console, &put_lines("1", "sounds/alarm.wav", b"oops", crc32fast::hash(b"oops")));
         assert!(replies[0].starts_with("@@ 1 error"));
         let replies = talk(&mut console, &["@@ 2 rm sounds/alarm.wav".into()]);
@@ -268,7 +313,7 @@ mod tests {
     #[test]
     fn anything_may_be_listed_and_read() {
         let card = FakeCard::with("sounds/alarm.wav", b"RIFF");
-        let mut console = MaintenanceConsole::new(card);
+        let mut console = console(card);
         let replies = talk(&mut console, &["@@ 1 ls sounds".into(), "@@ 2 get 0 sounds/alarm.wav".into()]);
         assert_eq!(replies[0], "@@ 1 entry f 4 alarm.wav");
         assert_eq!(replies[1], "@@ 1 ok");
@@ -277,14 +322,14 @@ mod tests {
 
     #[test]
     fn a_directory_that_is_not_there_is_an_error() {
-        let mut console = MaintenanceConsole::new(FakeCard::default());
+        let mut console = console(FakeCard::default());
         assert_eq!(talk(&mut console, &["@@ 1 ls sounds".into()]), ["@@ 1 error no such directory"]);
     }
 
     #[test]
     fn a_file_is_copied_on_the_card_into_the_devices_directory_only() {
         let card = FakeCard::with("sounds/alarm/Zen.mp3", b"ID3");
-        let mut console = MaintenanceConsole::new(card.clone());
+        let mut console = console(card.clone());
         let replies = talk(
             &mut console,
             &[
@@ -303,7 +348,7 @@ mod tests {
     #[test]
     fn a_large_file_is_read_a_range_at_a_time() {
         let contents: Vec<u8> = (0..=255u8).cycle().take(GET_RANGE_BYTES * 2 + 100).collect();
-        let mut console = MaintenanceConsole::new(FakeCard::with("sounds/Snow storm_loop.wav", &contents));
+        let mut console = console(FakeCard::with("sounds/Snow storm_loop.wav", &contents));
         let mut read = Vec::new();
         loop {
             let replies = talk(&mut console, &[format!("@@ 1 get {} sounds/Snow storm_loop.wav", read.len())]);
@@ -320,14 +365,14 @@ mod tests {
     #[test]
     fn a_file_is_removed() {
         let card = FakeCard::with("cute-display/wifi.conf", b"x");
-        let mut console = MaintenanceConsole::new(card.clone());
+        let mut console = console(card.clone());
         assert_eq!(talk(&mut console, &["@@ 1 rm cute-display/wifi.conf".into()]), ["@@ 1 ok"]);
         assert_eq!(card.file("cute-display/wifi.conf"), None);
     }
 
     #[test]
     fn a_put_too_large_is_refused_before_any_data() {
-        let mut console = MaintenanceConsole::new(FakeCard::default());
+        let mut console = console(FakeCard::default());
         let replies = talk(&mut console, &[format!("@@ 1 put {} 0 cute-display/big", MAX_PUT_BYTES + 1)]);
         assert!(replies[0].starts_with("@@ 1 error"));
     }
@@ -335,7 +380,7 @@ mod tests {
     #[test]
     fn the_log_between_the_lines_is_ignored() {
         let card = FakeCard::default();
-        let mut console = MaintenanceConsole::new(card.clone());
+        let mut console = console(card.clone());
         let mut lines = put_lines("1", "cute-display/a.conf", b"hello world", crc32fast::hash(b"hello world"));
         lines.insert(2, "I (1787) app: Cute Display 2026.9.0, build 09-25".into());
         assert_eq!(talk(&mut console, &lines), ["@@ 1 ok"]);
@@ -344,11 +389,31 @@ mod tests {
     #[test]
     fn a_new_request_abandons_a_put_in_progress() {
         let card = FakeCard::default();
-        let mut console = MaintenanceConsole::new(card.clone());
+        let mut console = console(card.clone());
         let mut lines = put_lines("1", "cute-display/a.conf", b"hello", crc32fast::hash(b"hello"));
         lines.insert(1, "@@ 2 ls".into());
         let replies = talk(&mut console, &lines);
         assert_eq!(replies.last().unwrap(), "@@ 1 error no put in progress");
         assert_eq!(card.file("cute-display/a.conf"), None);
+    }
+
+    #[test]
+    fn the_remote_taps_holds_and_turns() {
+        let remote = Remote::new(NoWait);
+        let mut console = MaintenanceConsole::new(Ok(FakeCard::default()), remote.clone());
+        let mut yellow = remote.button(ButtonName::Yellow);
+        let mut long = remote.button(ButtonName::Long);
+        let mut wheel = remote.wheel();
+        let lines = ["@@ 1 tap yellow", "@@ 2 hold 1500 yellow long", "@@ 3 turn -2"].map(String::from);
+        assert_eq!(talk(&mut console, &lines), ["@@ 1 ok", "@@ 2 ok", "@@ 3 ok"]);
+        assert_eq!((yellow.take_presses(), long.take_presses(), wheel.take_detents()), (2, 1, -2));
+        assert!(!yellow.is_held() && !long.is_held(), "released once the hold is over");
+    }
+
+    #[test]
+    fn without_a_card_the_remote_still_answers() {
+        let mut console = MaintenanceConsole::<FakeCard>::new(Err(Fault::new("not inserted")), Remote::new(NoWait));
+        let replies = talk(&mut console, &["@@ 1 ls".into(), "@@ 2 turn 2".into()]);
+        assert_eq!(replies, ["@@ 1 error no SD card: not inserted", "@@ 2 ok"]);
     }
 }

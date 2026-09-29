@@ -728,6 +728,7 @@ dependencies = [
  "esp-idf-svc",
  "hal",
  "hwtest",
+ "infrastructure",
  "log",
  "maintenance",
 ]

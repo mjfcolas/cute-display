@@ -1,4 +1,5 @@
 pub mod card_files;
+pub mod composite_input;
 mod conf_file;
 pub mod general_file;
 pub mod hal_light;

@@ -40,6 +40,7 @@ log = "0.4"
 esp-idf-svc = "0.52.1"
 app = { path = "../app" }
 hal = { path = "../engine/hal" }
+infrastructure = { path = "../engine/infrastructure" }
 drivers = { path = "../engine/drivers" }
 catalog = { path = "../catalog", default-features = false }
 hwtest = { path = "../hwtest" }
