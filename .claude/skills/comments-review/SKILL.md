@@ -20,13 +20,18 @@ in this order; the first "yes" is the finding.
    Remove it.
 4. **Explains *what* the code does?** Propose the rename, the type or the extraction that
    makes it unnecessary, with the new name.
-5. **An invariant a type could carry?** "must be ≤ 100", "never empty", "true means…":
+5. **Describes a function, a method or a type?** A `///` that says what it does or what
+   it returns means the name, the parameters or the return type say too little: propose
+   the better names and types, with the new signature, and the comment goes.
+6. **An invariant a type could carry?** "must be ≤ 100", "never empty", "true means…":
    propose the type.
-6. **Stale?** It no longer matches the code. Quote both.
-7. **Duplicated?** The same fact in a module comment and in `docs/` or `DESIGN.md`: the
+7. **Stale?** It no longer matches the code. Quote both.
+8. **Duplicated?** The same fact in a module comment and in `docs/` or `DESIGN.md`: the
    code is the reference, the doc goes (rule 5).
+9. **Context that adds nothing?** Who calls it, where it is wired, what a neighbour does,
+   a recap before the reason: keep the reason alone, in as few words as it takes.
 
-A comment that survives all seven is what the rule asks for: a measured hardware
+A comment that survives all nine is what the rule asks for: a measured hardware
 behaviour, a non-obvious constraint, the reason something surprising is correct. Do not
 report it, and do not ask for comments on code that reads well without one. When unsure
 whether a comment holds a real hardware constraint, check `docs/hardware.md`; still
@@ -63,7 +68,8 @@ mentions.
 ## Tags
 
 `comment: dead code`, `comment: history`, `comment: restates`,
-`comment: what → rename`, `comment: invariant → type`, `comment: stale`,
-`comment: duplicated`, `comment: missing why`, `doc: stale`, `doc: history`,
+`comment: what → rename`, `comment: description → name`, `comment: invariant → type`,
+`comment: stale`, `comment: duplicated`, `comment: needless context`,
+`comment: missing why`, `doc: stale`, `doc: history`,
 `doc: repeats code`, `doc: duplicated`, `doc: wrong file`, `doc: too big`, `doc: wordy`,
 `doc: missing`.
