@@ -12,6 +12,7 @@ use drivers::i2s_speaker::I2sSpeaker;
 use drivers::ledc_light::LedcLight;
 use drivers::pcnt_encoder::PcntEncoder;
 use drivers::sdmmc_card::SdmmcCard;
+use drivers::std_steady::StdSteadyClock;
 use drivers::uc8253::Uc8253;
 use drivers::udp_socket::StdUdpClient;
 use drivers::usb_console;
@@ -44,6 +45,7 @@ impl Hardware for Habity {
     type Http = EspHttpsClient;
     type Udp = StdUdpClient;
     type System = EspSystem;
+    type Steady = StdSteadyClock;
 
     const NETWORK_STACK_BYTES: usize = 24 * 1024;
 
@@ -86,6 +88,7 @@ fn main() -> Result<(), Fault> {
         https: board.https,
         udp: StdUdpClient,
         system: board.system,
+        steady: StdSteadyClock,
     };
     match app::run(devices, catalog::APPS)? {}
 }

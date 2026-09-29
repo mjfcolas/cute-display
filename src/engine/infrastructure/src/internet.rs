@@ -5,6 +5,7 @@ use domain::fetch::Unavailable;
 use domain::internet::{BodyReader, Internet};
 use hal::http::HttpClient;
 use hal::radio::WifiStation;
+use hal::steady::SteadyClock;
 use hal::storage::FileStorage;
 use hal::udp::UdpClient;
 use hal::Fault;
@@ -26,6 +27,7 @@ pub struct OnDemandInternet<W, H, U, S> {
     http: H,
     udp: U,
     storage: S,
+    steady: Box<dyn SteadyClock + Send>,
     link: Link,
 }
 
@@ -35,11 +37,16 @@ enum Link {
 }
 
 impl<W: WifiStation, H: HttpClient, U: UdpClient, S: FileStorage> OnDemandInternet<W, H, U, S> {
-    pub fn new(wifi: W, http: H, udp: U, storage: S) -> Self {
-        Self { wifi, http, udp, storage, link: Link::Left }
+    pub fn new(wifi: W, http: H, udp: U, storage: S, steady: impl SteadyClock + Send + 'static) -> Self {
+        Self { wifi, http, udp, storage, steady: Box::new(steady), link: Link::Left }
     }
 
-    pub fn release_if_idle(&mut self, now: Instant) {
+    fn used(&mut self) {
+        self.link = Link::Joined { last_used: self.steady.now() };
+    }
+
+    pub fn release_if_idle(&mut self) {
+        let now = self.steady.now();
         if matches!(self.link, Link::Joined { last_used } if now.saturating_duration_since(last_used) >= LINGER) {
             self.leave();
         }
@@ -54,7 +61,7 @@ impl<W: WifiStation, H: HttpClient, U: UdpClient, S: FileStorage> OnDemandIntern
             self.leave();
             return Err(Unavailable(fault.to_string()));
         }
-        self.link = Link::Joined { last_used: Instant::now() };
+        self.used();
         Ok(())
     }
 
@@ -92,12 +99,12 @@ where
         });
         match (fetched, refused) {
             (Ok(()), _) => {
-                self.link = Link::Joined { last_used: Instant::now() };
+                self.used();
                 Ok(())
             }
             // The body arrived but was not what the reader wanted: the network is fine.
             (Err(_), Some(unavailable)) => {
-                self.link = Link::Joined { last_used: Instant::now() };
+                self.used();
                 Err(unavailable)
             }
             // The network may be what failed: start again from scratch next time.
@@ -120,7 +127,7 @@ where
         self.join()?;
         match self.udp.exchange(host, port, request, answer, DATAGRAM_TIMEOUT) {
             Ok(length) => {
-                self.link = Link::Joined { last_used: Instant::now() };
+                self.used();
                 Ok(length)
             }
             Err(fault) => {
@@ -145,9 +152,9 @@ impl<W: WifiStation, H: HttpClient, U: UdpClient, S: FileStorage> SharedInternet
     }
 
     /// Does nothing while a request is under way: that request is the opposite of idle.
-    pub fn release_if_idle(&self, now: Instant) {
+    pub fn release_if_idle(&self) {
         if let Ok(mut internet) = self.0.try_lock() {
-            internet.release_if_idle(now);
+            internet.release_if_idle();
         }
     }
 }
@@ -245,13 +252,42 @@ mod tests {
         }
     }
 
+    /// Moves on only when a test says so.
+    #[derive(Clone)]
+    struct Manual(Arc<Mutex<Instant>>);
+
+    impl Default for Manual {
+        fn default() -> Self {
+            Self(Arc::new(Mutex::new(Instant::now())))
+        }
+    }
+
+    impl Manual {
+        fn advance(&self, by: Duration) {
+            *self.0.lock().unwrap() += by;
+        }
+    }
+
+    impl SteadyClock for Manual {
+        fn now(&self) -> Instant {
+            *self.0.lock().unwrap()
+        }
+        fn sleep(&self, by: Duration) {
+            self.advance(by);
+        }
+    }
+
     type TestInternet = OnDemandInternet<FakeWifi, FakeHttp, FakeUdp, MemoryStorage>;
 
     fn internet(joins: bool, answer: Result<Vec<u8>, Fault>) -> (TestInternet, Journal) {
+        internet_on(Manual::default(), joins, answer)
+    }
+
+    fn internet_on(clock: Manual, joins: bool, answer: Result<Vec<u8>, Fault>) -> (TestInternet, Journal) {
         let journal = Journal::default();
         let storage = MemoryStorage::with(WIFI_FILE, "ssid = Home\npassword = s3cret\n");
         let (http, udp) = (FakeHttp(journal.clone(), answer.clone()), FakeUdp(journal.clone(), answer));
-        (OnDemandInternet::new(FakeWifi(journal.clone(), joins), http, udp, storage), journal)
+        (OnDemandInternet::new(FakeWifi(journal.clone(), joins), http, udp, storage, clock), journal)
     }
 
     #[test]
@@ -264,12 +300,14 @@ mod tests {
 
     #[test]
     fn the_network_is_left_a_minute_after_the_last_request() {
-        let (mut internet, journal) = internet(true, Ok(vec![]));
+        let clock = Manual::default();
+        let (mut internet, journal) = internet_on(clock.clone(), true, Ok(vec![]));
         internet.get("https://a").unwrap();
-        let used = Instant::now();
-        internet.release_if_idle(used + LINGER - Duration::from_secs(2));
+        clock.advance(LINGER - Duration::from_secs(2));
+        internet.release_if_idle();
         assert_eq!(journal.entries().last().map(String::as_str), Some("get https://a"));
-        internet.release_if_idle(used + LINGER + Duration::from_secs(1));
+        clock.advance(Duration::from_secs(3));
+        internet.release_if_idle();
         assert_eq!(journal.entries().last().map(String::as_str), Some("disconnect"));
     }
 
@@ -303,6 +341,7 @@ mod tests {
             FakeHttp(journal.clone(), Ok(vec![])),
             FakeUdp(journal.clone(), Ok(vec![])),
             MemoryStorage::default(),
+            Manual::default(),
         );
         assert_eq!(internet.get("https://x"), Err(Unavailable(format!("no Wi-Fi: put {WIFI_FILE}"))));
         assert!(journal.entries().is_empty());
@@ -335,14 +374,16 @@ mod tests {
 
     #[test]
     fn clones_of_a_shared_internet_use_the_same_connection() {
-        let (internet, journal) = internet(true, Ok(vec![]));
+        let clock = Manual::default();
+        let (internet, journal) = internet_on(clock.clone(), true, Ok(vec![]));
         let shared = SharedInternet::new(internet);
         let mut weather = shared.clone();
         let mut radar = shared.clone();
         weather.get("https://weather").unwrap();
         radar.get("https://radar").unwrap();
         assert_eq!(journal.entries(), ["connect Home s3cret", "get https://weather", "get https://radar"]);
-        shared.release_if_idle(Instant::now() + LINGER + Duration::from_secs(1));
+        clock.advance(LINGER);
+        shared.release_if_idle();
         assert_eq!(journal.entries().last().map(String::as_str), Some("disconnect"));
     }
 }

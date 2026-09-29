@@ -1,9 +1,10 @@
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use domain::clock::Clock;
 use hal::http::HttpClient;
 use hal::radio::WifiStation;
+use hal::steady::SteadyClock;
 use hal::storage::FileStorage;
 use hal::system::SystemMonitor;
 use hal::udp::UdpClient;
@@ -16,11 +17,12 @@ const NETWORK_PERIOD: Duration = Duration::from_secs(1);
 
 /// One thread for everything that fetches: the requests share one Wi-Fi and take turns
 /// anyway, and each thread's stack is internal RAM.
-pub(crate) fn start<W, H, U, S, M>(
+pub(crate) fn start<W, H, U, S, M, T>(
     clock: Clock,
     services: Vec<Service>,
     internet: Option<SharedInternet<W, H, U, S>>,
     system: M,
+    steady: T,
     stack_bytes: usize,
 ) -> Result<(), Fault>
 where
@@ -29,6 +31,7 @@ where
     U: UdpClient + Send + 'static,
     S: FileStorage + Send + 'static,
     M: SystemMonitor + Send + 'static,
+    T: SteadyClock + Send + 'static,
 {
     let log_heap = move |what: &str| {
         let psram = system.free_psram_bytes().map(|bytes| format!(", PSRAM {} KiB free", bytes / 1024)).unwrap_or_default();
@@ -42,7 +45,7 @@ where
         .name("network".into())
         .stack_size(stack_bytes)
         .spawn(move || loop {
-            let now = Instant::now();
+            let now = steady.now();
             if let Err(unavailable) = clock.sync_if_due(now) {
                 log::warn!("clock: not set from the network: {unavailable}");
             }
@@ -53,9 +56,9 @@ where
                 }
             }
             if let Some(internet) = &internet {
-                internet.release_if_idle(Instant::now());
+                internet.release_if_idle();
             }
-            thread::sleep(NETWORK_PERIOD);
+            steady.sleep(NETWORK_PERIOD);
         })
         .map_err(Fault::new)?;
     Ok(())

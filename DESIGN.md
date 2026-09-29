@@ -40,7 +40,7 @@ The apps, on it, listed by `catalog`, which the composition roots share:
 | `domain`         | The concepts every app relies on (the app in front, settings, lighting, the time, where the device is, sound…), the contracts the engine lends apps, and the contracts it needs from the outside world. Speaks in intents (`request_refresh`, `choose_next_backlight`), never in controls ("yellow pressed") | nothing          |
 | `infrastructure` | Implementations of the domain's contracts on the HAL | `domain`, `hal`, `conf_text` |
 | `conf_text`      | The device's conf files as `key = value` lines: the engine's own, and any app's that takes up the format | nothing |
-| `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, thermometer, storage, radio, HTTP, UDP, I2C bus, power, system | nothing          |
+| `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, thermometer, storage, radio, HTTP, UDP, I2C bus, power, system, and the steady clock the app image runs on | nothing          |
 | `drivers`        | Implementations of `hal` on the board's chips                                                  | `hal`            |
 | `ui`             | The shell that hosts the app in front, the system app's screen, and the toolkit apps draw with: reads the controls, turns them into domain intents, renders domain state. Runs on its own thread | `domain`         |
 | `maintenance`    | The console that serves the SD card on the USB cable                                           | `hal`            |
@@ -50,7 +50,7 @@ The apps, on it, listed by `catalog`, which the composition roots share:
 | `app`            | The app image on any hardware that keeps the HAL's contracts: wires the layers, runs the threads, runs the apps it is given | `domain`, `infrastructure`, `ui`, `hal` |
 | `catalog`        | The apps an image can hold, picked by its Cargo features; the same list for the board and the computer | `apps`, `ui`, `hal` |
 | `firmware`       | Composition roots on the board: builds the drivers from the pin map (`board`), hands them and the catalog's apps to `app`, or hands them to `hwtest` | everything but `simulator` |
-| `simulator`      | Composition root on a computer: the HAL in a window, on the keyboard, in a directory, on the computer's Internet; hands it and the catalog's apps to `app`; the panel refreshes by the UC8253 driver's policy | `app`, `catalog`, `hal`, `infrastructure`, `drivers` (its host half); `domain`, `ui`, `libs` and `apps` for its screen preview |
+| `simulator`      | Composition root on a computer: the HAL in a window, on the keyboard, in a directory, on the computer's Internet, on a clock that may run faster; hands it and the catalog's apps to `app`; the panel refreshes by the UC8253 driver's policy | `app`, `catalog`, `hal`, `infrastructure`, `drivers` (its host half); `domain`, `ui`, `libs` and `apps` for its screen preview |
 
 The arrows are the only allowed dependencies. In particular the domain never sees a HAL
 type, the UI never sees hardware, `app` never sees a chip, and nothing but `firmware`
@@ -89,7 +89,8 @@ The UI meets the hardware through two exchange surfaces, which `app` connects:
 ## Threads
 
 A slow device gets a thread of its own, and talks to the rest through a channel in and
-a "latest value" out:
+a "latest value" out. Their periods are on `hal::steady`, which the simulator may run
+faster than the wall:
 
 | Thread   | Owns                   | Why                                               |
 | -------- | ---------------------- | ------------------------------------------------- |

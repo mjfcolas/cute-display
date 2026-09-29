@@ -13,6 +13,7 @@ use minifb::{Key, KeyRepeat, MouseButton, Scale, Window, WindowOptions};
 use crate::controls::{KeyButton, ScrollWheel};
 use crate::lights::SimulatedLight;
 use crate::panel::SimulatedPanel;
+use crate::steady::ScaledClock;
 
 const INK: u32 = 0x20_20_20;
 const PAPER: u32 = 0xd8_d4_c8;
@@ -27,7 +28,6 @@ const COLUMNS: usize = VISIBLE_WIDTH as usize;
 const ROWS: usize = HEIGHT as usize;
 const STRIP_ROWS: usize = 26;
 
-#[derive(Default)]
 pub struct Case {
     pub panel: SimulatedPanel,
     pub wheel: ScrollWheel,
@@ -36,6 +36,20 @@ pub struct Case {
     pub long_button: KeyButton,
     pub front_light: SimulatedLight,
     pub reading_lamp: SimulatedLight,
+}
+
+impl Case {
+    pub fn new(steady: ScaledClock) -> Self {
+        Self {
+            panel: SimulatedPanel::new(steady),
+            wheel: ScrollWheel::default(),
+            wheel_button: KeyButton::default(),
+            yellow_button: KeyButton::default(),
+            long_button: KeyButton::default(),
+            front_light: SimulatedLight::default(),
+            reading_lamp: SimulatedLight::default(),
+        }
+    }
 }
 
 pub fn show(case: &Case) -> Result<(), Fault> {

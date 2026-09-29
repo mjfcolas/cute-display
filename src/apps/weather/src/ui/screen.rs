@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use domain::clock::Clock;
 use domain::fetch::FetchStatus;
 use domain::time::TimeOfDay;
@@ -68,7 +66,7 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for WeatherScreen {
     /// has to move on by itself, and so do the hours.
     fn version(&self) -> u64 {
         let report = self.weather.report();
-        (report.revision << 16) | (minutes_since(&report).unwrap_or(0) & 0xffff)
+        (report.revision << 16) | (minutes_since(&report, &self.clock).unwrap_or(0) & 0xffff)
     }
 
     fn on_input(&mut self, input: Input) {
@@ -94,7 +92,7 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for WeatherScreen {
             (Some(forecast), Page::Week) => draw_week(target, body, forecast),
             (None, _) => text::write(target, "No forecast yet", body.top_left, body.size.width, &BODY),
         }
-        text::write(target, &status_line(&report), Point::new(left, status_top), area.size.width, &HINT);
+        text::write(target, &status_line(&report, &self.clock), Point::new(left, status_top), area.size.width, &HINT);
     }
 }
 
@@ -242,15 +240,16 @@ fn clock_time(time: TimeOfDay) -> String {
     format!("{:02}:{:02}", time.hour(), time.minute())
 }
 
-fn minutes_since(report: &WeatherReport) -> Option<u64> {
-    report.fetched_at.map(|at| Instant::now().saturating_duration_since(at).as_secs() / 60)
+fn minutes_since(report: &WeatherReport, clock: &Clock) -> Option<u64> {
+    let (fetched, now) = (report.fetched_at?, clock.ticked_at()?);
+    Some(now.saturating_duration_since(fetched).as_secs() / 60)
 }
 
-fn status_line(report: &WeatherReport) -> String {
+fn status_line(report: &WeatherReport, clock: &Clock) -> String {
     match &report.status {
         FetchStatus::NeverFetched => "waiting for the first update".into(),
         FetchStatus::Updating => "updating...".into(),
-        FetchStatus::UpToDate => match minutes_since(report) {
+        FetchStatus::UpToDate => match minutes_since(report, clock) {
             Some(0) | None => "updated just now   long: update   wheel: today/week".into(),
             Some(minutes) => format!("updated {minutes} min ago   long: update   wheel: today/week"),
         },
@@ -274,6 +273,7 @@ fn sky_name(sky: Sky) -> &'static str {
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
+    use std::time::{Duration, Instant};
 
     use domain::calendar::Date;
     use domain::clock::{TimeKeeper, TimeSource, TimeZoneSource};
@@ -373,6 +373,18 @@ mod tests {
 
     fn weather(answers: Vec<Result<Forecast, Unavailable>>) -> Weather {
         Weather::new(Box::new(Paris), Box::new(Answers(Arc::new(Mutex::new(answers)))))
+    }
+
+    #[test]
+    fn the_minutes_since_the_update_count_on_the_clocks_ticks() {
+        let weather = weather(vec![Ok(sample())]);
+        let fetched_at = Instant::now();
+        weather.refresh_if_due(fetched_at);
+        let clock = clock_at(Some(17));
+        clock.tick(fetched_at + Duration::from_secs(12 * 60 + 30));
+        assert!(status_line(&weather.report(), &clock).starts_with("updated 12 min ago"));
+        let untold = Clock::new(Box::new(StoppedAt(None)), Box::new(StoppedAt(None)), Box::new(StoppedAt(None)));
+        assert!(status_line(&weather.report(), &untold).starts_with("updated just now"));
     }
 
     fn fetched() -> Weather {
@@ -487,6 +499,6 @@ mod tests {
                 }
             }
         }
-        assert_eq!(status_line(&fetched.report()), "offline: no Wi-Fi: put cute-display/wifi.conf");
+        assert_eq!(status_line(&fetched.report(), &clock_at(Some(17))), "offline: no Wi-Fi: put cute-display/wifi.conf");
     }
 }

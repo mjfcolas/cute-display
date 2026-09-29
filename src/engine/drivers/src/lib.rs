@@ -2,6 +2,7 @@ pub mod button;
 pub mod chunked_copy;
 pub mod detents;
 pub mod ds3231;
+pub mod std_steady;
 pub mod udp_socket;
 pub mod uc8253;
 

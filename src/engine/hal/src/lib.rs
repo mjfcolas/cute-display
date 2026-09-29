@@ -12,6 +12,7 @@ pub mod input;
 pub mod light;
 pub mod power;
 pub mod radio;
+pub mod steady;
 pub mod storage;
 pub mod system;
 pub mod thermometer;

@@ -1,5 +1,4 @@
 use std::sync::{Arc, Mutex};
-use std::thread;
 use std::time::Duration;
 
 use embedded_graphics::pixelcolor::BinaryColor;
@@ -8,17 +7,21 @@ use embedded_graphics::prelude::*;
 use drivers::uc8253::memory::{self, Image};
 use drivers::uc8253::refresh::{fast_windows, Plan, RefreshPolicy};
 use hal::display::{EpaperDisplay, Frame, Redraw, Refreshed, HEIGHT, WIDTH};
+use hal::steady::SteadyClock;
 use hal::Fault;
+
+use crate::steady::ScaledClock;
 
 /// Measured on the device: docs/hardware.md.
 const WHOLE_REFRESH: Duration = Duration::from_millis(2600);
 const FAST_REFRESH: Duration = Duration::from_millis(350);
 
 /// Every clone shows the same glass; only the one the app draws with refreshes it.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct SimulatedPanel {
     glass: Arc<Mutex<Frame>>,
     controller: Arc<Mutex<Controller>>,
+    steady: ScaledClock,
 }
 
 struct Controller {
@@ -51,6 +54,10 @@ impl Controller {
 }
 
 impl SimulatedPanel {
+    pub fn new(steady: ScaledClock) -> Self {
+        Self { glass: Arc::default(), controller: Arc::default(), steady }
+    }
+
     pub fn glass(&self) -> Frame {
         self.glass.lock().map(|glass| glass.clone()).unwrap_or_default()
     }
@@ -71,10 +78,10 @@ impl EpaperDisplay for SimulatedPanel {
                 let each = took / u32::try_from(flashes.len()).unwrap_or(1);
                 for flash in flashes {
                     self.put_on_glass(flash)?;
-                    thread::sleep(each);
+                    self.steady.sleep(each);
                 }
             }
-            Refreshed::Columns { took, .. } => thread::sleep(took),
+            Refreshed::Columns { took, .. } => self.steady.sleep(took),
             Refreshed::Nothing => {}
         }
         self.put_on_glass(frame.clone())?;

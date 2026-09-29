@@ -1,13 +1,15 @@
-use std::thread;
 use std::time::Duration;
 
 use hal::audio::Speaker;
+use hal::steady::SteadyClock;
 use hal::Fault;
+
+use crate::steady::ScaledClock;
 
 const SAMPLE_RATE_HZ: u32 = 44_100;
 const SLICE: Duration = Duration::from_millis(100);
 
-pub struct LoggedSpeaker;
+pub struct LoggedSpeaker(pub ScaledClock);
 
 impl Speaker for LoggedSpeaker {
     fn sample_rate_hz(&self) -> u32 {
@@ -24,7 +26,7 @@ impl Speaker for LoggedSpeaker {
             if slice.len() < per_slice {
                 break;
             }
-            thread::sleep(SLICE);
+            self.0.sleep(SLICE);
         }
         log::info!("speaker: silent; loudest sample {loudest} of {}", i16::MAX);
         Ok(())

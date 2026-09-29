@@ -7,7 +7,7 @@ mod presentation;
 use std::convert::Infallible;
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use domain::apps::{self, AppId, AppService, Foreground};
 use domain::clock::Clock;
@@ -20,6 +20,7 @@ use hal::http::HttpClient;
 use hal::input::{PushButton, RotaryEncoder};
 use hal::light::DimmableLight;
 use hal::radio::WifiStation;
+use hal::steady::SteadyClock;
 use hal::storage::FileStorage;
 use hal::system::SystemMonitor;
 use hal::udp::UdpClient;
@@ -52,6 +53,7 @@ pub trait Hardware {
     type Http: HttpClient + Send + 'static;
     type Udp: UdpClient + Send + 'static;
     type System: SystemMonitor + Send + 'static;
+    type Steady: SteadyClock + Clone + Send + 'static;
 
     /// The network thread's stack, most of it for what `Http`'s TLS needs.
     const NETWORK_STACK_BYTES: usize;
@@ -76,6 +78,7 @@ pub struct Devices<H: Hardware> {
     pub https: H::Http,
     pub udp: H::Udp,
     pub system: H::System,
+    pub steady: H::Steady,
 }
 
 type Service = (AppId, Arc<dyn AppService>);
@@ -94,21 +97,22 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>]) -> Res
         Box::new(HalLight::new(devices.reading_lamp)),
         settings.clone(),
     );
-    lighting.touched(Instant::now());
+    let steady = devices.steady;
+    lighting.touched(steady.now());
 
     let (sound, player) = speaker_sound::sound(devices.speaker);
     H::spawn_speaker(move || player.run())?;
 
     let keeper = Box::new(RtcKeeper::new(devices.rtc));
     let card = devices.sd_card;
-    let internet = card.clone().ok().map(|card| SharedInternet::new(OnDemandInternet::new(devices.wifi, devices.https, devices.udp, card)));
+    let internet = card.clone().ok().map(|card| SharedInternet::new(OnDemandInternet::new(devices.wifi, devices.https, devices.udp, card, steady.clone())));
     let clock = match (&card, &internet) {
         (Ok(card), Some(internet)) => {
             Clock::new(keeper, Box::new(NtpServer::new(internet.clone())), Box::new(GeneralFile::new(card.clone())))
         }
         _ => Clock::new(keeper, Box::new(NtpServer::new(NoInternet("no SD card"))), Box::new(NoGeneralFile)),
     };
-    clock.tick(Instant::now());
+    clock.tick(steady.now());
 
     let foreground = Foreground::new(AppId::SYSTEM);
     let engine_services = EngineServices { foreground: foreground.clone(), clock: clock.clone(), card, internet: internet.clone(), sound };
@@ -122,7 +126,7 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>]) -> Res
     }
     foreground.bring_to_front(front_at_start(&services));
 
-    network::start(clock.clone(), services.clone(), internet, devices.system, H::NETWORK_STACK_BYTES)?;
+    network::start(clock.clone(), services.clone(), internet, devices.system, steady.clone(), H::NETWORK_STACK_BYTES)?;
 
     let controls = Controls {
         wheel: devices.wheel,
@@ -130,7 +134,7 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>]) -> Res
         yellow_button: devices.yellow_button,
         long_button: devices.long_button,
     };
-    let presentation = Presentation { controls, panel: devices.panel };
+    let presentation = Presentation { controls, panel: devices.panel, steady: steady.clone(), started: steady.now() };
     let shown_lighting = lighting.clone();
     thread::Builder::new()
         .name("ui".into())
@@ -139,7 +143,7 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>]) -> Res
         .map_err(Fault::new)?;
 
     loop {
-        let now = Instant::now();
+        let now = steady.now();
         clock.tick(now);
         let local = clock.now();
         for (_, service) in &services {
@@ -147,7 +151,7 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>]) -> Res
         }
         lighting.shine_at_least(light_wanted(&services));
         lighting.refresh(now);
-        thread::sleep(MAIN_PERIOD);
+        steady.sleep(MAIN_PERIOD);
     }
 }
 

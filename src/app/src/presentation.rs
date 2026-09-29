@@ -1,4 +1,3 @@
-use std::thread;
 use std::time::{Duration, Instant};
 
 use domain::apps::{AppId, Foreground};
@@ -9,6 +8,7 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 use hal::display::{EpaperDisplay, Frame, Redraw, HEIGHT, VISIBLE_WIDTH};
 use hal::input::{PushButton, RotaryEncoder};
+use hal::steady::SteadyClock;
 use ui::system::{OfferedApp, SystemScreen};
 use ui::{AppScreen, Hosted, Shell};
 
@@ -21,12 +21,15 @@ pub(crate) struct AppOnScreen {
     pub screen: Box<dyn AppScreen<Frame> + Send>,
 }
 
-pub(crate) struct Presentation<E, B, P> {
+pub(crate) struct Presentation<E, B, P, T> {
     pub controls: Controls<E, B>,
     pub panel: P,
+    pub steady: T,
+    /// Where the gestures count their time from.
+    pub started: Instant,
 }
 
-impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay> Presentation<E, B, P> {
+impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay, T: SteadyClock> Presentation<E, B, P, T> {
     pub fn run(mut self, foreground: Foreground, settings: Settings, lighting: Lighting, apps: Vec<AppOnScreen>) {
         let offered = apps.iter().map(|app| app.offered).collect();
         let mut screens: Vec<Hosted<Frame>> = apps.into_iter().map(|app| Hosted { app: app.offered.app, screen: app.screen }).collect();
@@ -37,19 +40,19 @@ impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay> Presentation<E, B, P> {
             return;
         };
         let mut frame = Frame::blank();
-        let started = Instant::now();
         loop {
-            self.tick(&mut shell, &lighting, &mut frame, started.elapsed());
-            thread::sleep(CONTROLS_PERIOD);
+            let now = self.steady.now();
+            self.tick(&mut shell, &lighting, &mut frame, now);
+            self.steady.sleep(CONTROLS_PERIOD);
         }
     }
 
-    fn tick(&mut self, shell: &mut Shell<Frame>, lighting: &Lighting, frame: &mut Frame, now: Duration) {
+    fn tick(&mut self, shell: &mut Shell<Frame>, lighting: &Lighting, frame: &mut Frame, now: Instant) {
         let sample = self.controls.sample();
         if sample.is_touch() {
-            lighting.touched(Instant::now());
+            lighting.touched(now);
         }
-        let changed = shell.on_sample(&sample, now);
+        let changed = shell.on_sample(&sample, now.saturating_duration_since(self.started));
         if !changed && !shell.is_outdated() {
             return;
         }
@@ -114,6 +117,15 @@ mod tests {
         }
     }
 
+    /// A tick is given its time: the presentation's clock only paces its loop.
+    struct Unused;
+    impl SteadyClock for Unused {
+        fn now(&self) -> Instant {
+            Instant::now()
+        }
+        fn sleep(&self, _: Duration) {}
+    }
+
     struct Weather;
     impl AppScreen<Frame> for Weather {
         fn on_input(&mut self, _: Input) {}
@@ -146,6 +158,8 @@ mod tests {
                 long_button: FakeButton::default(),
             },
             panel: panel.clone(),
+            steady: Unused,
+            started: Instant::now(),
         };
         let foreground = Foreground::new(AppId::new("weather"));
         let settings = Settings::load(Box::new(Nowhere));
@@ -159,7 +173,8 @@ mod tests {
         let backlight = Arc::new(Mutex::new(Level::OFF));
         let lighting = Lighting::new(Box::new(FakeLight(backlight.clone())), Box::new(FakeLight(Arc::default())), settings);
         let mut frame = Frame::blank();
-        let mut tick = |at: u64| presentation.tick(&mut shell, &lighting, &mut frame, Duration::from_secs(at));
+        let started = presentation.started;
+        let mut tick = |at: u64| presentation.tick(&mut shell, &lighting, &mut frame, started + Duration::from_secs(at));
 
         tick(0);
         assert_eq!(panel.take(), [Redraw::Changes]);

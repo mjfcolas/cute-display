@@ -32,6 +32,7 @@ enum SyncAttempt {
 #[derive(Clone, Copy)]
 struct State {
     time: Option<UtcTime>,
+    ticked_at: Option<Instant>,
     zone: TimeZone,
     zone_read: Option<Instant>,
     last_sync: Option<SyncAttempt>,
@@ -48,7 +49,7 @@ pub struct Clock {
 impl Clock {
     pub fn new(keeper: Box<dyn TimeKeeper>, source: Box<dyn TimeSource>, zones: Box<dyn TimeZoneSource>) -> Self {
         Self {
-            state: Shared::new(State { time: None, zone: TimeZone::default(), zone_read: None, last_sync: None }),
+            state: Shared::new(State { time: None, ticked_at: None, zone: TimeZone::default(), zone_read: None, last_sync: None }),
             keeper: Arc::new(Mutex::new(keeper)),
             source: Arc::new(Mutex::new(source)),
             zones: Arc::new(Mutex::new(zones)),
@@ -60,6 +61,10 @@ impl Clock {
         state.time.map(|time| state.zone.local(time))
     }
 
+    pub fn ticked_at(&self) -> Option<Instant> {
+        self.state.get().ticked_at
+    }
+
     pub fn tick(&self, now: Instant) {
         let time = lock(&self.keeper).read();
         let zone_read = self.state.get().zone_read;
@@ -68,6 +73,7 @@ impl Clock {
             .then(|| lock(&self.zones).time_zone());
         self.state.update(|state| {
             state.time = time;
+            state.ticked_at = Some(now);
             if let Some(reading) = zone {
                 // An unreadable zone keeps the one the clock had, rather than jumping hours
                 // to the default and back.
@@ -158,6 +164,15 @@ mod tests {
 
     fn hour(clock: &Clock) -> Option<u8> {
         clock.now().map(|now| now.time_of_day.hour())
+    }
+
+    #[test]
+    fn it_knows_when_it_last_ticked_and_nothing_before_it_did() {
+        let clock = clock(&FakeKeeper::default(), vec![], &FakeZones::default());
+        assert_eq!(clock.ticked_at(), None);
+        let at = Instant::now() + Duration::from_secs(90);
+        clock.tick(at);
+        assert_eq!(clock.ticked_at(), Some(at));
     }
 
     #[test]

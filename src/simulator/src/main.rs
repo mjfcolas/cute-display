@@ -3,12 +3,13 @@ mod clock;
 mod controls;
 mod lights;
 mod network;
+mod options;
 mod panel;
 mod speaker;
+mod steady;
 mod system;
 mod window;
 
-use std::path::PathBuf;
 use std::thread;
 
 use app::{Devices, Hardware};
@@ -22,12 +23,12 @@ use crate::clock::HostClock;
 use crate::controls::{KeyButton, ScrollWheel};
 use crate::lights::SimulatedLight;
 use crate::network::{HostHttpClient, HostWifi};
+use crate::options::Options;
 use crate::panel::SimulatedPanel;
 use crate::speaker::LoggedSpeaker;
+use crate::steady::ScaledClock;
 use crate::system::HostSystem;
 use crate::window::Case;
-
-const DEFAULT_CARD: &str = "sim-sd";
 
 enum Computer {}
 
@@ -43,6 +44,7 @@ impl Hardware for Computer {
     type Http = HostHttpClient;
     type Udp = StdUdpClient;
     type System = HostSystem;
+    type Steady = ScaledClock;
 
     /// Rust's own default: rustls, unoptimised, needs far more than the ESP32's TLS.
     const NETWORK_STACK_BYTES: usize = 2 * 1024 * 1024;
@@ -55,14 +57,15 @@ impl Hardware for Computer {
 /// The window has the main thread: some systems deliver its events on no other.
 fn main() -> Result<(), Fault> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-    let root = std::env::args().nth(1).map_or_else(|| PathBuf::from(DEFAULT_CARD), PathBuf::from);
-    let card = DirectoryCard::open(&root).and_then(with_wifi);
+    let options = Options::parse(std::env::args().skip(1)).map_err(Fault::new)?;
+    let card = DirectoryCard::open(&options.card).and_then(with_wifi);
     match &card {
-        Ok(_) => log::info!("SD card: {}", root.display()),
+        Ok(_) => log::info!("SD card: {}", options.card.display()),
         Err(fault) => log::warn!("no SD card: {fault}"),
     }
 
-    let case = Case::default();
+    let steady = ScaledClock::new(options.speed);
+    let case = Case::new(steady);
     let devices = Devices::<Computer> {
         panel: case.panel.clone(),
         wheel: case.wheel.clone(),
@@ -71,13 +74,14 @@ fn main() -> Result<(), Fault> {
         long_button: case.long_button.clone(),
         front_light: case.front_light.clone(),
         reading_lamp: case.reading_lamp.clone(),
-        rtc: HostClock::default(),
-        speaker: LoggedSpeaker,
+        rtc: HostClock::new(steady)?,
+        speaker: LoggedSpeaker(steady),
         sd_card: card,
         wifi: HostWifi,
         https: HostHttpClient::default(),
         udp: StdUdpClient,
         system: HostSystem,
+        steady,
     };
     thread::Builder::new()
         .name("app".into())
