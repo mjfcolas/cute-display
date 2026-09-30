@@ -5,7 +5,7 @@ use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 
-use crate::app_screen::AppScreen;
+use crate::app_screen::HostedScreen;
 use crate::controls::{Button, ControlsSample, Input};
 use crate::gestures::{Gesture, Gestures};
 
@@ -13,7 +13,7 @@ const MARGIN: i32 = 8;
 
 pub struct Hosted<D> {
     pub app: AppId,
-    pub screen: Box<dyn AppScreen<D>>,
+    pub screen: Box<dyn HostedScreen<D>>,
 }
 
 pub struct Shell<D> {
@@ -107,6 +107,7 @@ mod tests {
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
 
     use super::*;
+    use crate::app_screen::{DrawWithin, Screen};
     use crate::system::{OfferedApp, SystemScreen};
     use crate::controls::{Button, ButtonSample};
     use crate::text::{self, BODY};
@@ -129,7 +130,17 @@ mod tests {
         }
     }
 
-    impl AppScreen<Frame> for StubScreen {
+    struct StubText(String);
+
+    impl DrawWithin for StubText {
+        fn draw_within<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle) {
+            text::write(target, &self.0, area.top_left, area.size.width, &BODY);
+        }
+    }
+
+    impl Screen for StubScreen {
+        type UiState = StubText;
+
         fn entered(&mut self) {
             self.visits.borrow_mut().push("entered");
         }
@@ -142,8 +153,8 @@ mod tests {
         fn on_input(&mut self, input: Input) {
             self.inputs.borrow_mut().push(input);
         }
-        fn draw(&self, target: &mut Frame, area: Rectangle) {
-            text::write(target, &self.text.borrow(), area.top_left, area.size.width, &BODY);
+        fn ui_state(&self) -> StubText {
+            StubText(self.text.borrow().clone())
         }
     }
 

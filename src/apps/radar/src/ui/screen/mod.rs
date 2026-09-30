@@ -3,11 +3,8 @@ mod ui_state;
 
 use domain::fetch::FetchStatus;
 use domain::place::GeoPoint;
-use embedded_graphics::pixelcolor::BinaryColor;
-use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::Rectangle;
 use ui::controls::{Button, Input};
-use ui::AppScreen;
+use ui::Screen;
 
 pub use ui_state::{AircraftMark, AirportMark, FromPlace, ListedAircraft, RadarUiState};
 
@@ -24,8 +21,12 @@ impl RadarScreen {
     pub fn new(radar: Radar) -> Self {
         Self { radar }
     }
+}
 
-    pub fn ui_state(&self) -> RadarUiState {
+impl Screen for RadarScreen {
+    type UiState = RadarUiState;
+
+    fn ui_state(&self) -> RadarUiState {
         let report = self.radar.report();
         let range_km = report.range.km();
         let (airports, aircraft, nearest) = match report.center {
@@ -49,9 +50,7 @@ impl RadarScreen {
             trouble: trouble(&report),
         }
     }
-}
 
-impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for RadarScreen {
     fn version(&self) -> u64 {
         self.radar.report().revision
     }
@@ -68,10 +67,6 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for RadarScreen {
             Input::Press(Button::Long) => self.radar.request_refresh(),
             Input::Press(Button::Yellow) | Input::HoldYellowAndLong => {}
         }
-    }
-
-    fn draw(&self, target: &mut D, area: Rectangle) {
-        drawing::draw(&self.ui_state(), target, area);
     }
 }
 
@@ -130,7 +125,6 @@ mod tests {
     use domain::fetch::Unavailable;
     use domain::place::Place;
     use domain_testing::place::StubPlace;
-    use hal::display::Frame;
 
     use super::*;
     use crate::domain::radar::{AirTrafficSource, Airport, AirportSource};
@@ -230,7 +224,7 @@ mod tests {
     fn the_wheel_changes_the_range_and_stops_at_its_ends() {
         let mut screen = screen_with(vec![]);
         let mut turn = |detents| {
-            AppScreen::<Frame>::on_input(&mut screen, Input::Turn(detents));
+            Screen::on_input(&mut screen, Input::Turn(detents));
             screen.ui_state().range_km
         };
         assert_eq!(turn(1), 50);
@@ -244,7 +238,7 @@ mod tests {
         let now = Instant::now();
         let mut screen = RadarScreen::new(radar.clone());
         assert!(!radar.is_due(now));
-        AppScreen::<Frame>::on_input(&mut screen, Input::Press(Button::Long));
+        Screen::on_input(&mut screen, Input::Press(Button::Long));
         assert!(radar.is_due(now));
     }
 

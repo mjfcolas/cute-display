@@ -3,6 +3,8 @@ mod engine_services;
 pub mod image;
 mod network;
 mod presentation;
+#[cfg(test)]
+mod stub_screen;
 
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -177,6 +179,7 @@ fn light_wanted(services: &[Service]) -> Level {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::stub_screen::StubScreen;
 
     struct StubAppService(Level);
 
@@ -186,15 +189,8 @@ mod tests {
         }
     }
 
-    struct DummyScreen;
-
-    impl ui::AppScreen<Frame> for DummyScreen {
-        fn on_input(&mut self, _: ui::controls::Input) {}
-        fn draw(&self, _: &mut Frame, _: embedded_graphics::primitives::Rectangle) {}
-    }
-
     fn install(_: &dyn domain::apps::Services) -> ui::InstalledApp<Frame> {
-        ui::InstalledApp { service: Arc::new(StubAppService(Level::OFF)), screen: Box::new(DummyScreen) }
+        ui::InstalledApp { service: Arc::new(StubAppService(Level::OFF)), screen: Box::new(StubScreen) }
     }
 
     fn installable(name: &'static str) -> Installable<Frame> {

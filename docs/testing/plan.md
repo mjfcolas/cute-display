@@ -32,9 +32,9 @@
 ### A. A UI state, in `ui`
 
 - Each screen splits into `ui_state(&self) -> <Screen>UiState`, plain data of its own
-  projected from what the screen holds, and a pure drawing of that state;
-  `AppScreen::draw` draws `self.ui_state()`. What a person sees is said as they see it:
-  each row carries its `Mark`, chosen or plain, rather than the state an index.
+  projected from what the screen holds, and a pure drawing of that state, the UI
+  state's `DrawWithin`. What a person sees is said as they see it: each row carries its
+  `Mark`, chosen or plain, rather than the state an index.
 - In order: `SystemScreen`, the alarm, the weather, the radar. Their unit tests move to
   the UI states, `status_line`/`day_line` with them; the pixel tests (nothing outside
   the area, where a mark or a line is drawn) stay, in the rendering tier, drawing UI
@@ -42,10 +42,9 @@
 
 ### B. The description reaches the console
 
-- `ui::Description`, generic, what leaves the UI: an ordered list of
-  `{ name, value, selected }`, made from each UI state. `AppScreen::describe`, empty by
-  default while screens move over. State and description come from the same
-  `ui_state()`.
+- `ui::Description`, generic, what leaves the UI: lines `name value`, ` *` when chosen,
+  in the screen's order. `Describe`, beside `DrawWithin`, on each UI state; the frame
+  is drawn and described from the same `ui_state()`.
 - The `Shell` describes what is in front: the app, the system screen open or not, then
   the screen's description.
 - A UI state holds the text as shown, but for what the toolkit draws from domain data

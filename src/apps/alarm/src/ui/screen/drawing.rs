@@ -5,6 +5,7 @@ use forecast::day_weather;
 use ui::big_digits;
 use ui::mark::Mark;
 use ui::text::{self, BODY, HINT, TITLE};
+use ui::DrawWithin;
 
 use super::ui_state::{AlarmUiState, ClockPage, SettingsPage};
 
@@ -15,10 +16,12 @@ const DOT_GAP: i32 = 10;
 const DAY_NAME_CHARS: i32 = 10;
 const GAP: i32 = 12;
 
-pub(super) fn draw<D: DrawTarget<Color = BinaryColor>>(state: &AlarmUiState, target: &mut D, area: Rectangle) {
-    match state {
-        AlarmUiState::Clock(page) => draw_clock(page, target, area),
-        AlarmUiState::Settings(page) => draw_settings(page, target, area),
+impl DrawWithin for AlarmUiState {
+    fn draw_within<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle) {
+        match self {
+            AlarmUiState::Clock(page) => draw_clock(page, target, area),
+            AlarmUiState::Settings(page) => draw_settings(page, target, area),
+        }
     }
 }
 
@@ -147,7 +150,7 @@ mod tests {
 
     fn render(state: &AlarmUiState) -> Frame {
         let mut frame = Frame::blank();
-        draw(state, &mut frame, AREA);
+        state.draw_within(&mut frame, AREA);
         frame
     }
 

@@ -7,7 +7,13 @@ use embedded_graphics::primitives::Rectangle;
 
 use crate::controls::Input;
 
-pub trait AppScreen<D: DrawTarget<Color = BinaryColor>> {
+pub trait DrawWithin {
+    fn draw_within<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle);
+}
+
+pub trait Screen {
+    type UiState: DrawWithin;
+
     fn entered(&mut self) {}
     fn left(&mut self) {}
     /// Changes whenever what the screen shows changed without an input: the screen is
@@ -16,13 +22,42 @@ pub trait AppScreen<D: DrawTarget<Color = BinaryColor>> {
         0
     }
     fn on_input(&mut self, input: Input);
-    /// Draws within `area`, on paper.
+    fn ui_state(&self) -> Self::UiState;
+}
+
+pub trait HostedScreen<D: DrawTarget<Color = BinaryColor>> {
+    fn entered(&mut self);
+    fn left(&mut self);
+    fn version(&self) -> u64;
+    fn on_input(&mut self, input: Input);
     fn draw(&self, target: &mut D, area: Rectangle);
+}
+
+impl<D: DrawTarget<Color = BinaryColor>, S: Screen> HostedScreen<D> for S {
+    fn entered(&mut self) {
+        Screen::entered(self);
+    }
+
+    fn left(&mut self) {
+        Screen::left(self);
+    }
+
+    fn version(&self) -> u64 {
+        Screen::version(self)
+    }
+
+    fn on_input(&mut self, input: Input) {
+        Screen::on_input(self, input);
+    }
+
+    fn draw(&self, target: &mut D, area: Rectangle) {
+        self.ui_state().draw_within(target, area);
+    }
 }
 
 pub struct InstalledApp<D> {
     pub service: Arc<dyn AppService>,
-    pub screen: Box<dyn AppScreen<D> + Send>,
+    pub screen: Box<dyn HostedScreen<D> + Send>,
 }
 
 pub type Install<D> = fn(&dyn Services) -> InstalledApp<D>;

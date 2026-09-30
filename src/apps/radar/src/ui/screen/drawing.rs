@@ -2,6 +2,7 @@ use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Circle, Line, PrimitiveStyle, Rectangle, Triangle};
 use ui::text::{self, HINT, LIST, TITLE};
+use ui::DrawWithin;
 
 use super::ui_state::{FromPlace, RadarUiState};
 use crate::ui::radar_view::{aircraft_triangle, place_labels, LabelWanted, Scope};
@@ -18,20 +19,22 @@ const TICK: i32 = 4;
 /// Required by adsb.fi's terms.
 const ATTRIBUTION: &str = "data: adsb.fi";
 
-pub(super) fn draw<D: DrawTarget<Color = BinaryColor>>(state: &RadarUiState, target: &mut D, area: Rectangle) {
-    let diameter = (area.size.height as i32).min(area.size.width as i32 * 3 / 5);
-    // An odd diameter, so the circle and its ticks land on the same pixels either side.
-    let radius = (diameter - 1) / 2;
-    let scope = Scope { center: area.top_left + Point::new(radius, radius), radius_px: radius, range_km: f64::from(state.range_km) };
-    draw_scope(target, &scope, state);
+impl DrawWithin for RadarUiState {
+    fn draw_within<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle) {
+        let diameter = (area.size.height as i32).min(area.size.width as i32 * 3 / 5);
+        // An odd diameter, so the circle and its ticks land on the same pixels either side.
+        let radius = (diameter - 1) / 2;
+        let scope = Scope { center: area.top_left + Point::new(radius, radius), radius_px: radius, range_km: f64::from(self.range_km) };
+        draw_scope(target, &scope, self);
 
-    let column_left = area.top_left.x + diameter + COLUMN_GAP;
-    let column = Rectangle::new(
-        Point::new(column_left, area.top_left.y),
-        Size::new((area.top_left.x + area.size.width as i32 - column_left).max(0) as u32, area.size.height),
-    );
-    draw_nearest(target, column, state);
-    draw_footer(target, column, state);
+        let column_left = area.top_left.x + diameter + COLUMN_GAP;
+        let column = Rectangle::new(
+            Point::new(column_left, area.top_left.y),
+            Size::new((area.top_left.x + area.size.width as i32 - column_left).max(0) as u32, area.size.height),
+        );
+        draw_nearest(target, column, self);
+        draw_footer(target, column, self);
+    }
 }
 
 fn draw_scope<D: DrawTarget<Color = BinaryColor>>(target: &mut D, scope: &Scope, state: &RadarUiState) {
@@ -161,7 +164,7 @@ mod tests {
 
     fn render(state: &RadarUiState) -> Frame {
         let mut frame = Frame::blank();
-        draw(state, &mut frame, AREA);
+        state.draw_within(&mut frame, AREA);
         frame
     }
 

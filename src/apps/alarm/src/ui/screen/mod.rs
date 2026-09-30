@@ -6,15 +6,12 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use domain::calendar::Weekday;
 use domain::clock::Clock;
 use domain::time::{LocalTime, TimeOfDay};
-use embedded_graphics::pixelcolor::BinaryColor;
-use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::Rectangle;
 use forecast::day_weather;
 use forecast::Weather;
 use ui::calendar_names;
 use ui::controls::{Button, Input};
 use ui::mark::Mark;
-use ui::AppScreen;
+use ui::Screen;
 
 pub use ui_state::{AlarmUiState, ClockPage, SettingRow, SettingsPage};
 
@@ -52,13 +49,6 @@ pub struct AlarmScreen {
 impl AlarmScreen {
     pub fn new(alarm: AlarmClock, clock: Clock, weather: Weather) -> Self {
         Self { alarm, clock, weather, mode: Mode::Clock, hours_ahead: 0, ringtones: Vec::new() }
-    }
-
-    pub fn ui_state(&self) -> AlarmUiState {
-        match &self.mode {
-            Mode::Clock => AlarmUiState::Clock(self.clock_page()),
-            Mode::Settings(step) => AlarmUiState::Settings(Box::new(self.settings_page(step))),
-        }
     }
 
     fn clock_page(&self) -> ClockPage {
@@ -250,7 +240,16 @@ impl AlarmScreen {
     }
 }
 
-impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for AlarmScreen {
+impl Screen for AlarmScreen {
+    type UiState = AlarmUiState;
+
+    fn ui_state(&self) -> AlarmUiState {
+        match &self.mode {
+            Mode::Clock => AlarmUiState::Clock(self.clock_page()),
+            Mode::Settings(step) => AlarmUiState::Settings(Box::new(self.settings_page(step))),
+        }
+    }
+
     fn entered(&mut self) {
         self.mode = Mode::Clock;
         self.hours_ahead = 0;
@@ -277,10 +276,6 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for AlarmScreen {
             Mode::Clock => self.on_clock_input(input),
             Mode::Settings(step) => self.on_settings_input(step, input),
         }
-    }
-
-    fn draw(&self, target: &mut D, area: Rectangle) {
-        drawing::draw(&self.ui_state(), target, area);
     }
 }
 
@@ -341,7 +336,6 @@ mod tests {
         CompassPoint, DayForecast, Degrees, Forecast, ForecastSource, Hectopascals, HourForecast, KilometresPerHour, Millimetres, Percent, Sky,
         Today, Wind,
     };
-    use hal::display::Frame;
 
     use super::*;
     use crate::domain::alarm_clock::{AlarmSettings, AlarmSettingsStore, Ringer, Volume};
@@ -439,7 +433,7 @@ mod tests {
             let alarm = AlarmClock::new(Box::new(StubAlarmSettingsStore), Box::new(ringer.clone()), Foreground::new(crate::ID));
             let weather = Weather::new(Box::new(StubPlace::at(paris())), Box::new(StubForecastSource));
             let mut screen = AlarmScreen::new(alarm.clone(), clock.clone(), weather.clone());
-            AppScreen::<Frame>::entered(&mut screen);
+            Screen::entered(&mut screen);
             let bench = Self { screen, alarm, clock, weather, keeper, ringer };
             bench.at(saturday_at_seven());
             bench
@@ -454,7 +448,7 @@ mod tests {
         }
 
         fn input(&mut self, input: Input) {
-            AppScreen::<Frame>::on_input(&mut self.screen, input);
+            Screen::on_input(&mut self.screen, input);
         }
 
         fn press(&mut self, control: Button) {
@@ -596,7 +590,7 @@ mod tests {
         bench.input(Input::Turn(2));
         bench.press(Button::Long);
         bench.input(Input::Turn(1));
-        AppScreen::<Frame>::left(&mut bench.screen);
+        Screen::left(&mut bench.screen);
         assert_eq!((bench.alarm.ringtone(), bench.ringer.playing()), (zen(), None));
     }
 
@@ -630,7 +624,7 @@ mod tests {
     #[test]
     fn the_screen_changes_with_the_minute_and_the_schedule() {
         let bench = Bench::new();
-        let version = || AppScreen::<Frame>::version(&bench.screen);
+        let version = || Screen::version(&bench.screen);
         let before = version();
         bench.at(UtcTime::from_unix_seconds(saturday_at_seven().unix_seconds() + 30));
         assert_eq!(version(), before);
@@ -644,10 +638,10 @@ mod tests {
     #[test]
     fn the_weather_shows_once_forecast_and_the_screen_changes_with_it() {
         let bench = Bench::new();
-        let (version, before) = (AppScreen::<Frame>::version(&bench.screen), bench.clock_page());
+        let (version, before) = (Screen::version(&bench.screen), bench.clock_page());
         assert_eq!((before.today, before.hours.len()), (None, 0));
         bench.weather.refresh_if_due(std::time::Instant::now());
-        assert_ne!(AppScreen::<Frame>::version(&bench.screen), version);
+        assert_ne!(Screen::version(&bench.screen), version);
         let after = bench.clock_page();
         assert_eq!(after.today.map(|today| today.high), Some(Degrees(14)));
         assert_eq!(after.hours.len(), day_weather::HOURS_SHOWN);
@@ -666,7 +660,7 @@ mod tests {
         bench.input(Input::Turn(100));
         assert_eq!(bench.first_hour_shown(), Some(23), "the last hours still fill the column");
         assert_eq!(bench.clock_page().hours.len(), day_weather::HOURS_SHOWN);
-        AppScreen::<Frame>::entered(&mut bench.screen);
+        Screen::entered(&mut bench.screen);
         assert_eq!(bench.first_hour_shown(), Some(7), "back to the hour under way");
     }
 

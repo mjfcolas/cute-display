@@ -4,6 +4,7 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Line, PrimitiveStyle, Rectangle};
 
 use super::ui_state::{Current, SettingRow, SystemUiState};
+use crate::app_screen::DrawWithin;
 use crate::mark::Mark;
 use crate::text::{self, BODY, HINT, LIST, TITLE};
 
@@ -17,36 +18,38 @@ const BOX_PADDING: i32 = 3;
 const CHOICE_GAP: i32 = 4;
 const SETTING_GAP: i32 = 10;
 
-pub(super) fn draw<D: DrawTarget<Color = BinaryColor>>(state: &SystemUiState, target: &mut D, area: Rectangle) {
-    let (left, top) = (area.top_left.x, area.top_left.y);
-    let right = left + area.size.width as i32;
-    let bottom = top + area.size.height as i32;
-    let stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
-    text::write(target, NAME, area.top_left, area.size.width, &TITLE);
-    let version = format!("Cute Display {}", state.version);
-    let version_width = text::width(&version, &HINT);
-    let version_top = top + (TITLE.character_size.height - HINT.character_size.height) as i32;
-    text::write(target, &version, Point::new(right - version_width as i32, version_top), version_width, &HINT);
-    let rule = top + TITLE.character_size.height as i32 + SECTION_GAP;
-    let _ = Line::new(Point::new(left, rule), Point::new(right - 1, rule)).into_styled(stroke).draw(target);
+impl DrawWithin for SystemUiState {
+    fn draw_within<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle) {
+        let (left, top) = (area.top_left.x, area.top_left.y);
+        let right = left + area.size.width as i32;
+        let bottom = top + area.size.height as i32;
+        let stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
+        text::write(target, NAME, area.top_left, area.size.width, &TITLE);
+        let version = format!("Cute Display {}", self.version);
+        let version_width = text::width(&version, &HINT);
+        let version_top = top + (TITLE.character_size.height - HINT.character_size.height) as i32;
+        text::write(target, &version, Point::new(right - version_width as i32, version_top), version_width, &HINT);
+        let rule = top + TITLE.character_size.height as i32 + SECTION_GAP;
+        let _ = Line::new(Point::new(left, rule), Point::new(right - 1, rule)).into_styled(stroke).draw(target);
 
-    let hint_top = bottom - HINT.character_size.height as i32;
-    let columns_top = rule + 1 + SECTION_GAP;
-    let apps_width = (area.size.width as i32 - COLUMN_GAP) * 2 / 5;
-    let settings_left = left + apps_width + COLUMN_GAP;
-    let settings_width = (right - settings_left).max(0) as u32;
-    let divider = left + apps_width + COLUMN_GAP / 2;
-    let _ = Line::new(Point::new(divider, columns_top), Point::new(divider, hint_top - SECTION_GAP)).into_styled(stroke).draw(target);
+        let hint_top = bottom - HINT.character_size.height as i32;
+        let columns_top = rule + 1 + SECTION_GAP;
+        let apps_width = (area.size.width as i32 - COLUMN_GAP) * 2 / 5;
+        let settings_left = left + apps_width + COLUMN_GAP;
+        let settings_width = (right - settings_left).max(0) as u32;
+        let divider = left + apps_width + COLUMN_GAP / 2;
+        let _ = Line::new(Point::new(divider, columns_top), Point::new(divider, hint_top - SECTION_GAP)).into_styled(stroke).draw(target);
 
-    let mut apps_top = columns_top + heading(target, "apps", Point::new(left, columns_top), apps_width as u32, &HINT);
-    for app in &state.apps {
-        apps_top += draw_row(target, app.title, Point::new(left, apps_top), apps_width as u32, app.mark) + ROW_GAP;
+        let mut apps_top = columns_top + heading(target, "apps", Point::new(left, columns_top), apps_width as u32, &HINT);
+        for app in &self.apps {
+            apps_top += draw_row(target, app.title, Point::new(left, apps_top), apps_width as u32, app.mark) + ROW_GAP;
+        }
+        let mut settings_top = columns_top + heading(target, "settings", Point::new(settings_left, columns_top), settings_width, &HINT);
+        for setting in &self.settings {
+            settings_top += draw_setting(target, setting, Point::new(settings_left, settings_top), settings_width) + SETTING_GAP;
+        }
+        text::write(target, HINTS, Point::new(left, hint_top), area.size.width, &HINT);
     }
-    let mut settings_top = columns_top + heading(target, "settings", Point::new(settings_left, columns_top), settings_width, &HINT);
-    for setting in &state.settings {
-        settings_top += draw_setting(target, setting, Point::new(settings_left, settings_top), settings_width) + SETTING_GAP;
-    }
-    text::write(target, HINTS, Point::new(left, hint_top), area.size.width, &HINT);
 }
 
 fn draw_setting<D: DrawTarget<Color = BinaryColor>>(target: &mut D, setting: &SettingRow, top_left: Point, width: u32) -> i32 {
@@ -119,7 +122,7 @@ mod tests {
 
     fn render(state: &SystemUiState) -> Frame {
         let mut frame = Frame::blank();
-        draw(state, &mut frame, AREA);
+        state.draw_within(&mut frame, AREA);
         frame
     }
 

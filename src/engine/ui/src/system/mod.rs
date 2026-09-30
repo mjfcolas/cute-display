@@ -3,13 +3,10 @@ mod ui_state;
 
 use domain::apps::{AppId, Foreground};
 use domain::settings::{BacklightDuration, ReadingLamp, Settings};
-use embedded_graphics::pixelcolor::BinaryColor;
-use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::Rectangle;
 
 pub use ui_state::{AppRow, Choice, Current, SettingRow, SystemUiState};
 
-use crate::app_screen::AppScreen;
+use crate::app_screen::Screen;
 use crate::controls::{Button, Input};
 use crate::mark::Mark;
 
@@ -79,16 +76,6 @@ impl SystemScreen {
         Self { foreground, settings, version, offered, chosen_row: 0 }
     }
 
-    pub fn ui_state(&self) -> SystemUiState {
-        SystemUiState {
-            version: self.version,
-            apps: self.offered.iter().map(|&offered| AppRow { title: offered.title, mark: self.mark(Row::App(offered)) }).collect(),
-            settings: Setting::ALL
-                .map(|setting| SettingRow { name: setting.name(), mark: self.mark(Row::Setting(setting)), choices: self.choices(setting) })
-                .into(),
-        }
-    }
-
     fn rows(&self) -> Vec<Row> {
         self.offered.iter().map(|&app| Row::App(app)).chain(Setting::ALL.map(Row::Setting)).collect()
     }
@@ -115,7 +102,19 @@ impl SystemScreen {
     }
 }
 
-impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
+impl Screen for SystemScreen {
+    type UiState = SystemUiState;
+
+    fn ui_state(&self) -> SystemUiState {
+        SystemUiState {
+            version: self.version,
+            apps: self.offered.iter().map(|&offered| AppRow { title: offered.title, mark: self.mark(Row::App(offered)) }).collect(),
+            settings: Setting::ALL
+                .map(|setting| SettingRow { name: setting.name(), mark: self.mark(Row::Setting(setting)), choices: self.choices(setting) })
+                .into(),
+        }
+    }
+
     fn entered(&mut self) {
         let origin = self.foreground.before_system();
         self.chosen_row = self.rows().iter().position(|row| matches!(row, Row::App(offered) if offered.app == origin)).unwrap_or(0);
@@ -136,16 +135,11 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
             Input::HoldYellowAndLong => {}
         }
     }
-
-    fn draw(&self, target: &mut D, area: Rectangle) {
-        drawing::draw(&self.ui_state(), target, area);
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use domain_testing::settings::StubSettingsStore;
-    use hal::display::Frame;
 
     use super::*;
 
@@ -159,12 +153,12 @@ mod tests {
         let settings = Settings::load(Box::new(StubSettingsStore));
         foreground.open_system();
         let mut screen = SystemScreen::new(foreground.clone(), settings.clone(), "2026.9.0", OFFERED.into());
-        AppScreen::<Frame>::entered(&mut screen);
+        Screen::entered(&mut screen);
         (screen, foreground, settings)
     }
 
     fn input(screen: &mut SystemScreen, input: Input) {
-        AppScreen::<Frame>::on_input(screen, input);
+        Screen::on_input(screen, input);
     }
 
     fn names_on_chosen_rows(state: &SystemUiState) -> Vec<&'static str> {

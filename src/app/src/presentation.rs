@@ -10,7 +10,7 @@ use hal::display::{EpaperDisplay, Frame, Redraw, HEIGHT, VISIBLE_WIDTH};
 use hal::input::{PushButton, RotaryEncoder};
 use hal::steady::SteadyClock;
 use ui::system::{OfferedApp, SystemScreen};
-use ui::{AppScreen, Hosted, Shell};
+use ui::{HostedScreen, Hosted, Shell};
 
 use crate::controls::Controls;
 
@@ -18,7 +18,7 @@ const CONTROLS_PERIOD: Duration = Duration::from_millis(20);
 
 pub(crate) struct AppOnScreen {
     pub offered: OfferedApp,
-    pub screen: Box<dyn AppScreen<Frame> + Send>,
+    pub screen: Box<dyn HostedScreen<Frame> + Send>,
 }
 
 pub(crate) struct Presentation<E, B, P, T> {
@@ -74,15 +74,9 @@ mod tests {
     use hal_testing::display::StubPanel;
     use hal_testing::input::{FakeButton, FakeWheel};
     use hal_testing::steady::FakeSteadyClock;
-    use ui::controls::Input;
 
     use super::*;
-
-    struct StubScreen;
-    impl AppScreen<Frame> for StubScreen {
-        fn on_input(&mut self, _: Input) {}
-        fn draw(&self, _: &mut Frame, _: Rectangle) {}
-    }
+    use crate::stub_screen::StubScreen;
 
     struct StubLight(Arc<Mutex<Level>>);
     impl Light for StubLight {
@@ -110,7 +104,7 @@ mod tests {
         let offered = vec![OfferedApp { app: AppId::new("weather"), title: "Weather" }];
         let system = SystemScreen::new(foreground.clone(), settings.clone(), crate::image::VERSION, offered);
         let screens = vec![
-            Hosted { app: AppId::new("weather"), screen: Box::new(StubScreen) as Box<dyn AppScreen<Frame>> },
+            Hosted { app: AppId::new("weather"), screen: Box::new(StubScreen) as Box<dyn HostedScreen<Frame>> },
             Hosted { app: AppId::SYSTEM, screen: Box::new(system) },
         ];
         let mut shell = Shell::new(foreground, screens).unwrap();

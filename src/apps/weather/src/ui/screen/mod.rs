@@ -4,14 +4,11 @@ mod ui_state;
 use domain::clock::Clock;
 use domain::fetch::FetchStatus;
 use domain::time::TimeOfDay;
-use embedded_graphics::pixelcolor::BinaryColor;
-use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::Rectangle;
 use forecast::units::{percent, pressure, temperature, wind_speed};
 use forecast::{DayForecast, Forecast, HourForecast, Sky, Weather, WeatherReport};
 use ui::calendar_names;
 use ui::controls::{Button, Input};
-use ui::AppScreen;
+use ui::Screen;
 
 pub use ui_state::{HourColumn, ShownPage, TodayPage, WeatherUiState, WeekDay};
 
@@ -34,20 +31,6 @@ pub struct WeatherScreen {
 impl WeatherScreen {
     pub fn new(weather: Weather, clock: Clock) -> Self {
         Self { weather, clock, page: Page::Today }
-    }
-
-    pub fn ui_state(&self) -> WeatherUiState {
-        let report = self.weather.report();
-        let forecast = report.forecast.as_ref();
-        let page = match self.page {
-            Page::Today => ShownPage::Today(forecast.map(|forecast| Box::new(self.today_page(forecast)))),
-            Page::Week => ShownPage::Week(forecast.map(week)),
-        };
-        WeatherUiState {
-            title: report.place.clone().unwrap_or_else(|| "Weather".into()),
-            page,
-            status: status_line(&report, &self.clock),
-        }
     }
 
     fn today_page(&self, forecast: &Forecast) -> TodayPage {
@@ -80,7 +63,23 @@ impl WeatherScreen {
     }
 }
 
-impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for WeatherScreen {
+impl Screen for WeatherScreen {
+    type UiState = WeatherUiState;
+
+    fn ui_state(&self) -> WeatherUiState {
+        let report = self.weather.report();
+        let forecast = report.forecast.as_ref();
+        let page = match self.page {
+            Page::Today => ShownPage::Today(forecast.map(|forecast| Box::new(self.today_page(forecast)))),
+            Page::Week => ShownPage::Week(forecast.map(week)),
+        };
+        WeatherUiState {
+            title: report.place.clone().unwrap_or_else(|| "Weather".into()),
+            page,
+            status: status_line(&report, &self.clock),
+        }
+    }
+
     /// The report's revision, and the minutes since it was fetched: "updated 12 min ago"
     /// has to move on by itself, and so do the hours.
     fn version(&self) -> u64 {
@@ -95,10 +94,6 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for WeatherScreen {
             Input::Press(Button::Long) => self.weather.request_refresh(),
             Input::Turn(_) | Input::Press(Button::Yellow) | Input::HoldYellowAndLong => {}
         }
-    }
-
-    fn draw(&self, target: &mut D, area: Rectangle) {
-        drawing::draw(&self.ui_state(), target, area);
     }
 }
 
@@ -178,7 +173,6 @@ mod tests {
     use domain_testing::place::{paris, StubPlace};
     use domain_testing::time::FakeTimeKeeper;
     use forecast::{CompassPoint, Degrees, ForecastSource, Hectopascals, KilometresPerHour, Millimetres, Percent, Today, Wind};
-    use hal::display::Frame;
 
     use super::*;
 
@@ -268,7 +262,7 @@ mod tests {
     }
 
     fn input(screen: &mut WeatherScreen, input: Input) {
-        AppScreen::<Frame>::on_input(screen, input);
+        Screen::on_input(screen, input);
     }
 
     #[test]
@@ -325,9 +319,9 @@ mod tests {
     fn the_version_moves_on_when_the_weather_changes() {
         let weather = weather(vec![Ok(sample())]);
         let screen = WeatherScreen::new(weather.clone(), clock_at(None));
-        let before = AppScreen::<Frame>::version(&screen);
+        let before = Screen::version(&screen);
         weather.refresh_if_due(Instant::now());
-        assert_ne!(AppScreen::<Frame>::version(&screen), before);
+        assert_ne!(Screen::version(&screen), before);
     }
 
     #[test]

@@ -157,7 +157,8 @@ that run and their order.
   app but its `ID`, its `infrastructure` and `ui` build on its `domain`. Its root gives
   a `ui::Installable`: its `ID`, its title, and an `install` that takes what the engine
   lends it, `domain::apps::Services`, and gives a `ui::InstalledApp`: a
-  `domain::apps::AppService` that runs whatever is on screen, and a `ui::AppScreen`.
+  `domain::apps::AppService` that runs whatever is on screen, and its screen, a
+  `ui::Screen`.
 - **What the engine lends** is all an app gets from outside: the app in front, the
   clock, where the device is, the Internet, the files in its own directory
   (`cute-display/apps/<id>/`), the sound.
@@ -168,11 +169,12 @@ that run and their order.
 - **Fetching**: on the network thread, one app after another, each says whether a fetch
   is due and then fetches. Only one fetch runs at a time, so an app keeps its requests
   bounded and rare; the engine brings the Wi-Fi up for a fetch and down once idle.
-- **The UI owns how apps are seen and steered**: an app's `AppScreen` turns the
-  controls into its intents and draws its state. `ui::Shell` hosts the one in front;
+- **The UI owns how apps are seen and steered**: an app's `ui::Screen` turns the
+  controls into its intents and gives its UI state, which draws itself
+  (`ui::DrawWithin`). `ui::Shell` hosts the one in front;
   `ui::gestures` turns the controls into what the shell and the apps receive.
 - **Refreshing**: the app image only asks for its changes; the panel driver's policy
-  decides when the glass gets a clean refresh. `AppScreen::version` is how a screen
+  decides when the glass gets a clean refresh. `Screen::version` is how a screen
   changes on its own.
 
 ## Further

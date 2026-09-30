@@ -6,6 +6,7 @@ use forecast::icons;
 use forecast::Millimetres;
 use ui::big_digits::TEMPERATURE;
 use ui::text::{self, BODY, HINT, LIST, TITLE};
+use ui::DrawWithin;
 
 use super::ui_state::{HourColumn, ShownPage, TodayPage, WeatherUiState, WeekDay};
 use super::HOURS;
@@ -30,24 +31,26 @@ enum Dot {
     Week,
 }
 
-pub(super) fn draw<D: DrawTarget<Color = BinaryColor>>(state: &WeatherUiState, target: &mut D, area: Rectangle) {
-    let (left, top) = (area.top_left.x, area.top_left.y);
-    let status_top = top + area.size.height as i32 - HINT.character_size.height as i32;
-    text::write(target, &state.title, area.top_left, area.size.width, &TITLE);
-    let shown = match state.page {
-        ShownPage::Today(_) => Dot::Today,
-        ShownPage::Week(_) => Dot::Week,
-    };
-    draw_page_dots(target, shown, Point::new(left + area.size.width as i32, top));
+impl DrawWithin for WeatherUiState {
+    fn draw_within<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle) {
+        let (left, top) = (area.top_left.x, area.top_left.y);
+        let status_top = top + area.size.height as i32 - HINT.character_size.height as i32;
+        text::write(target, &self.title, area.top_left, area.size.width, &TITLE);
+        let shown = match self.page {
+            ShownPage::Today(_) => Dot::Today,
+            ShownPage::Week(_) => Dot::Week,
+        };
+        draw_page_dots(target, shown, Point::new(left + area.size.width as i32, top));
 
-    let body_top = top + TITLE.character_size.height as i32 + SECTION_GAP;
-    let body = Rectangle::new(Point::new(left, body_top), Size::new(area.size.width, (status_top - SECTION_GAP - body_top).max(0) as u32));
-    match &state.page {
-        ShownPage::Today(Some(today)) => draw_today(target, body, today),
-        ShownPage::Week(Some(days)) => draw_week(target, body, days),
-        ShownPage::Today(None) | ShownPage::Week(None) => text::write(target, "No forecast yet", body.top_left, body.size.width, &BODY),
+        let body_top = top + TITLE.character_size.height as i32 + SECTION_GAP;
+        let body = Rectangle::new(Point::new(left, body_top), Size::new(area.size.width, (status_top - SECTION_GAP - body_top).max(0) as u32));
+        match &self.page {
+            ShownPage::Today(Some(today)) => draw_today(target, body, today),
+            ShownPage::Week(Some(days)) => draw_week(target, body, days),
+            ShownPage::Today(None) | ShownPage::Week(None) => text::write(target, "No forecast yet", body.top_left, body.size.width, &BODY),
+        }
+        text::write(target, &self.status, Point::new(left, status_top), area.size.width, &HINT);
     }
-    text::write(target, &state.status, Point::new(left, status_top), area.size.width, &HINT);
 }
 
 fn draw_today<D: DrawTarget<Color = BinaryColor>>(target: &mut D, area: Rectangle, today: &TodayPage) {
@@ -216,7 +219,7 @@ mod tests {
 
     fn render(state: &WeatherUiState) -> Frame {
         let mut frame = Frame::blank();
-        draw(state, &mut frame, AREA);
+        state.draw_within(&mut frame, AREA);
         frame
     }
 
