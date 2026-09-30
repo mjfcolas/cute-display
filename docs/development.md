@@ -15,6 +15,11 @@ Both are flashed into an OTA slot, `app0` or `app1`, beside Habity's firmware.
 The [simulator](simulator/README.md) runs the app image on a computer, and the
 [installer](../tools/installer/README.md) is how a computer reaches the device.
 
+## Testing
+
+[The pyramid](testing/README.md): which tier a test goes in, and what each proves; its
+[plan](testing/plan.md), under way.
+
 ## Apps
 
 - An app is a crate in [`src/apps/`](../src/apps/), and what several share, one in

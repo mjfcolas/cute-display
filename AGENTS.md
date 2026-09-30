@@ -38,6 +38,8 @@ is a design change and goes through DESIGN.md first.
 - Logic inside a driver that does not touch a peripheral (a memory layout, a register
   decoder, a debouncer) is written so it compiles on the host and is tested there.
 - Code that consumes a HAL contract is tested against fakes of that contract.
+- Each test goes in the lowest tier of [the pyramid](docs/testing/README.md) that can
+  fail for the right reason.
 
 ### 4. No panics on the device
 
