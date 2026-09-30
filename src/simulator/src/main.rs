@@ -15,12 +15,13 @@ use std::thread;
 
 use app::{Devices, Hardware};
 use drivers::udp_socket::StdUdpClient;
+use hal::display::FRAME_BYTES;
 use hal::storage::FileStorage;
 use hal::Fault;
 use infrastructure::composite_input::{CompositeButton, CompositeWheel};
 use infrastructure::internet::WIFI_FILE;
 use infrastructure::shared_rtc::SharedRtc;
-use maintenance::observation::{LightName, Observation, ObservedLight, ObservedSpeaker};
+use maintenance::observation::{LightName, Observation, ObservedLight, ObservedPanel, ObservedSpeaker};
 use maintenance::remote::{ButtonName, Remote, RemoteButton, RemoteWheel};
 use maintenance::MaintenanceConsole;
 
@@ -39,7 +40,7 @@ use crate::window::Case;
 enum Computer {}
 
 impl Hardware for Computer {
-    type Panel = SimulatedPanel;
+    type Panel = ObservedPanel<SimulatedPanel>;
     type Wheel = CompositeWheel<ScrollWheel, RemoteWheel>;
     type Button = CompositeButton<KeyButton, RemoteButton>;
     type Light = ObservedLight<SimulatedLight>;
@@ -79,7 +80,7 @@ fn main() -> Result<(), Fault> {
         console::listen(path, MaintenanceConsole::new(card.clone(), remote.clone(), observation.clone(), rtc.clone()))?;
     }
     let devices = Devices::<Computer> {
-        panel: case.panel.clone(),
+        panel: observation.panel(case.panel.clone(), Box::new([0; FRAME_BYTES])),
         wheel: CompositeWheel::new(case.wheel.clone(), remote.wheel()),
         wheel_button: CompositeButton::new(case.wheel_button.clone(), remote.button(ButtonName::WheelButton)),
         yellow_button: CompositeButton::new(case.yellow_button.clone(), remote.button(ButtonName::Yellow)),

@@ -31,7 +31,7 @@ lint:
 # render an app screen to a PNG: system, system-settings, alarm, alarm-settings, weather, weather-week or radar
 preview screen="system" zoom="2":
     cargo run --quiet -p simulator --example app_screen -- /tmp/cute-display.fb {{screen}}
-    uv run --quiet --no-project python tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
+    uv run --quiet --project tools/link python -m cute_display_link.frame /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
     xdg-open /tmp/cute-display.png >/dev/null 2>&1 &
 
 # run the app image on this computer, the SD card being a directory, its console for `just remote-sim`; flags in docs/simulator/README.md
@@ -45,7 +45,7 @@ remote-sim *args:
 # render the hardware test's report page to a PNG (`pattern` for the checkerboard)
 preview-hwtest page="" zoom="2":
     cargo run --quiet -p hwtest --example report_page -- /tmp/cute-display.fb {{page}}
-    uv run --quiet --no-project python tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
+    uv run --quiet --project tools/link python -m cute_display_link.frame /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
     xdg-open /tmp/cute-display.png >/dev/null 2>&1 &
 
 # build + flash + monitor an image: `app` (default) or `hwtest`

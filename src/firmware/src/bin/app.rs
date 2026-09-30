@@ -11,6 +11,7 @@ use drivers::esp_wifi::EspWifiRadio;
 use drivers::i2s_speaker::I2sSpeaker;
 use drivers::ledc_light::LedcLight;
 use drivers::pcnt_encoder::PcntEncoder;
+use drivers::psram::PsramBytes;
 use drivers::sdmmc_card::SdmmcCard;
 use drivers::std_steady::StdSteadyClock;
 use drivers::uc8253::Uc8253;
@@ -21,7 +22,7 @@ use esp_idf_svc::hal::task::thread::{MallocCap, ThreadSpawnConfiguration};
 use hal::Fault;
 use infrastructure::composite_input::{CompositeButton, CompositeWheel};
 use infrastructure::shared_rtc::SharedRtc;
-use maintenance::observation::{LightName, Observation, ObservedLight, ObservedSpeaker};
+use maintenance::observation::{LightName, Observation, ObservedLight, ObservedPanel, ObservedSpeaker};
 use maintenance::remote::{ButtonName, Remote, RemoteButton, RemoteWheel};
 use maintenance::MaintenanceConsole;
 
@@ -38,7 +39,7 @@ const SPEAKER_STACK_BYTES: usize = 32 * 1024;
 enum Habity {}
 
 impl Hardware for Habity {
-    type Panel = Uc8253;
+    type Panel = ObservedPanel<Uc8253>;
     type Wheel = CompositeWheel<PcntEncoder, RemoteWheel>;
     type Button = CompositeButton<Button, RemoteButton>;
     type Light = ObservedLight<LedcLight>;
@@ -79,7 +80,7 @@ fn main() -> Result<(), Fault> {
     let rtc = SharedRtc::new(board.clock);
     start_maintenance(board.sd_card.clone(), remote.clone(), observation.clone(), rtc.clone())?;
     let devices = Devices::<Habity> {
-        panel: board.panel,
+        panel: observation.panel(board.panel, PsramBytes::zeroed()?),
         wheel: CompositeWheel::new(board.wheel, remote.wheel()),
         wheel_button: CompositeButton::new(board.wheel_button, remote.button(ButtonName::WheelButton)),
         yellow_button: CompositeButton::new(board.yellow_button, remote.button(ButtonName::Yellow)),

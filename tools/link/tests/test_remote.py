@@ -1,10 +1,13 @@
+import tempfile
 import unittest
 from contextlib import nullcontext
+from pathlib import Path
 from unittest import mock
 
 from serial import SerialException
 
 from cute_display_link import remote, usb
+from cute_display_link.frame import BYTES
 from cute_display_link_testing.fake_clock import FakeClock
 from cute_display_link_testing.fake_console import FakeConsole
 from cute_display_link_testing.fake_controls import FakeControls
@@ -36,6 +39,17 @@ class Command(unittest.TestCase):
                 with mock.patch('sys.argv', ['remote', *arguments]):
                     remote.main()
         self.assertEqual(printed, ['front light 20 %, reading lamp 0 %', 'playing', '2026-09-28T04:30:00+00:00'])
+
+    def test_the_screen_is_saved_as_a_png(self):
+        with tempfile.TemporaryDirectory() as directory:
+            png = Path(directory) / 'screen.png'
+            device = FakeConsole(FakeObservation(ink=bytes(BYTES), times_shown=3))
+            printed = []
+            with mock.patch.object(usb, 'open_link', return_value=nullcontext(device)), mock.patch('builtins.print', printed.append), \
+                    mock.patch('sys.argv', ['remote', 'screen', str(png), '--zoom', '1']):
+                remote.main()
+            self.assertTrue(png.read_bytes().startswith(b'\x89PNG'))
+        self.assertEqual(printed, [f'{png}: the glass was drawn 3 times'])
 
     def test_what_went_wrong_is_said(self):
         self.assertIn('ms at most', self.run_remote('hold', '20000', 'yellow')[1])

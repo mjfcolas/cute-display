@@ -1,9 +1,12 @@
-//! What the app image does with its lights and its speaker, for a computer that tests it.
+//! What the app image does with its glass, its lights and its speaker, for a computer that
+//! tests it.
 
+use core::ops::DerefMut;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use hal::audio::Speaker;
+use hal::display::{EpaperDisplay, Frame, Redraw, Refreshed, FRAME_BYTES};
 use hal::light::{Brightness, DimmableLight};
 use hal::Fault;
 
@@ -13,15 +16,36 @@ pub enum LightName {
     ReadingLamp,
 }
 
-/// Clones share their state with the lights and the speaker they observe.
+type LastFrame = Box<dyn DerefMut<Target = [u8; FRAME_BYTES]> + Send>;
+
+#[derive(Default)]
+struct Glass {
+    times_shown: u64,
+    last_frame: Option<LastFrame>,
+}
+
+/// Clones share their state with the glass, the lights and the speaker they observe.
 #[derive(Clone, Default)]
 pub struct Observation {
+    glass: Arc<Mutex<Glass>>,
     front_light: Arc<AtomicU8>,
     reading_lamp: Arc<AtomicU8>,
     playing: Arc<AtomicBool>,
 }
 
 impl Observation {
+    /// `last_frame` is given, so that the board can keep it in PSRAM.
+    pub fn panel<P: EpaperDisplay>(
+        &self,
+        panel: P,
+        last_frame: impl DerefMut<Target = [u8; FRAME_BYTES]> + Send + 'static,
+    ) -> ObservedPanel<P> {
+        if let Ok(mut glass) = self.glass.lock() {
+            glass.last_frame = Some(Box::new(last_frame));
+        }
+        ObservedPanel { panel, glass: self.glass.clone() }
+    }
+
     pub fn light<L: DimmableLight>(&self, name: LightName, light: L) -> ObservedLight<L> {
         let percent = self.percent(name).clone();
         percent.store(light.brightness().as_percent(), Ordering::Relaxed);
@@ -30,6 +54,16 @@ impl Observation {
 
     pub fn speaker<S: Speaker>(&self, speaker: S) -> ObservedSpeaker<S> {
         ObservedSpeaker { speaker, playing: self.playing.clone() }
+    }
+
+    /// Copies the bytes of the last frame shown from `offset` into `part`, laid out as
+    /// `Frame::as_bytes` does, and gives how many times the app has shown something. Nothing
+    /// before it did, or for a part outside the frame.
+    pub fn copy_screen(&self, offset: usize, part: &mut [u8]) -> Option<u64> {
+        let glass = self.glass.lock().ok()?;
+        let last_frame = glass.last_frame.as_ref().filter(|_| glass.times_shown > 0)?;
+        part.copy_from_slice(last_frame.get(offset..offset.checked_add(part.len())?)?);
+        Some(glass.times_shown)
     }
 
     pub fn brightness(&self, name: LightName) -> Brightness {
@@ -45,6 +79,26 @@ impl Observation {
             LightName::FrontLight => &self.front_light,
             LightName::ReadingLamp => &self.reading_lamp,
         }
+    }
+}
+
+pub struct ObservedPanel<P> {
+    panel: P,
+    glass: Arc<Mutex<Glass>>,
+}
+
+impl<P: EpaperDisplay> EpaperDisplay for ObservedPanel<P> {
+    fn show(&mut self, frame: &Frame, redraw: Redraw) -> Result<Refreshed, Fault> {
+        let refreshed = self.panel.show(frame, redraw)?;
+        if let Ok(mut glass) = self.glass.lock() {
+            if let Some(last_frame) = glass.last_frame.as_mut() {
+                // Not `**last_frame = *frame.as_bytes()`: that goes through the stack in
+                // debug builds, and overflowed the simulator's UI thread.
+                last_frame.copy_from_slice(frame.as_bytes());
+            }
+            glass.times_shown += 1;
+        }
+        Ok(refreshed)
     }
 }
 
@@ -127,6 +181,47 @@ mod tests {
         let mut lamp = observation.light(LightName::ReadingLamp, Broken);
         assert!(lamp.set_brightness(Brightness::FULL).is_err());
         assert_eq!(observation.brightness(LightName::ReadingLamp), Brightness::OFF);
+    }
+
+    struct Glassy;
+    impl EpaperDisplay for Glassy {
+        fn show(&mut self, _: &Frame, _: Redraw) -> Result<Refreshed, Fault> {
+            Ok(Refreshed::Nothing)
+        }
+    }
+
+    struct Cracked;
+    impl EpaperDisplay for Cracked {
+        fn show(&mut self, _: &Frame, _: Redraw) -> Result<Refreshed, Fault> {
+            Err(Fault::new("the panel stayed busy"))
+        }
+    }
+
+    fn last_frame() -> Box<[u8; FRAME_BYTES]> {
+        vec![0; FRAME_BYTES].into_boxed_slice().try_into().unwrap()
+    }
+
+    #[test]
+    fn the_last_frame_shown_is_copied_a_part_at_a_time_and_counted() {
+        let observation = Observation::default();
+        let mut panel = observation.panel(Glassy, last_frame());
+        let mut part = [0; 8];
+        assert_eq!(observation.copy_screen(0, &mut part), None);
+        let mut frame = Frame::blank();
+        frame.set_ink(8 * 8 + 3, 0, true);
+        panel.show(&Frame::blank(), Redraw::Whole).unwrap();
+        panel.show(&frame, Redraw::Changes).unwrap();
+        assert_eq!(observation.copy_screen(8, &mut part), Some(2));
+        assert_eq!(part, frame.as_bytes()[8..16]);
+        assert_eq!(observation.copy_screen(FRAME_BYTES - 4, &mut part), None, "past the end");
+    }
+
+    #[test]
+    fn a_frame_the_panel_did_not_show_is_not_seen() {
+        let observation = Observation::default();
+        let mut panel = observation.panel(Cracked, last_frame());
+        assert!(panel.show(&Frame::blank(), Redraw::Whole).is_err());
+        assert_eq!(observation.copy_screen(0, &mut [0; 8]), None);
     }
 
     struct Listening(Observation, Arc<Mutex<Vec<bool>>>);

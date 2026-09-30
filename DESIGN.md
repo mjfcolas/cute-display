@@ -43,7 +43,7 @@ The apps, on it, listed by `catalog`, which the composition roots share:
 | `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, thermometer, storage, radio, HTTP, UDP, I2C bus, power, system, and the steady clock the app image runs on | nothing          |
 | `drivers`        | Implementations of `hal` on the board's chips                                                  | `hal`            |
 | `ui`             | The shell that hosts the app in front, the system app's screen, and the toolkit apps draw with: reads the controls, turns them into domain intents, renders domain state. Runs on its own thread | `domain`         |
-| `maintenance`    | The console on the USB cable, or a Unix socket on the simulator: the SD card, and for tests a remote for the buttons and the wheel, what the lights and the speaker do, and the RTC read and set | `hal`            |
+| `maintenance`    | The console on the USB cable, or a Unix socket on the simulator: the SD card, and for tests a remote for the buttons and the wheel, what the glass, the lights and the speaker do, and the RTC read and set | `hal`            |
 | `hwtest`         | The hardware test bench                                                                        | `hal`            |
 | `libs`           | What several apps share, as code: each app has its own instance of it | `domain`, `ui`, `conf_text`, other `libs` |
 | `apps`           | One crate per app, layered as the engine is: `domain`, its concepts and the contracts they need; `infrastructure`, those contracts on what the engine lends; `ui`, its screen. Its root installs it | `domain`, `ui`, `conf_text`, `libs` |
@@ -132,7 +132,7 @@ docs/           installing and troubleshooting, development and releasing, the b
 tools/          host tools: the [installer](tools/installer/README.md) (the device's flash
                 and SD card, the step-by-step setup, radar airports, RTC registers), whole-flash
                 test images for it, the [link](tools/link/README.md) to the device's console it
-                shares with tests, frame dump to PNG
+                shares with tests, and that turns a frame dump into a PNG
 ```
 
 ## Applications

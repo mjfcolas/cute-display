@@ -1,5 +1,24 @@
-"""What the device does with its lights and its speaker, through its console."""
+"""What the device does with its glass, its lights and its speaker, through its console."""
+import base64
+from dataclasses import dataclass
+
 from .console import Request
+from .frame import Frame
+
+
+@dataclass(frozen=True)
+class Screen:
+    times_shown: int
+    frame: Frame
+
+
+def screen(link):
+    ink = bytearray()
+    for kind, rest in Request(link, 'screen').replies():
+        if kind == 'data':
+            ink += base64.b64decode(rest)
+        elif kind == 'ok':
+            return Screen(int(rest), Frame(bytes(ink)))
 
 
 def lights(link):

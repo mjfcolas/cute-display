@@ -1,6 +1,7 @@
 use std::io::{self, Write};
 
 use hal::clock::RealTimeClock;
+use hal::display::FRAME_BYTES;
 use hal::storage::{CopyOutcome, FileStorage};
 use hal::Fault;
 
@@ -53,7 +54,7 @@ impl<S: FileStorage> MaintenanceConsole<S> {
                 match request {
                     Request::Card(request) => self.serve_card(&id, request),
                     Request::Remote(request) => self.serve_remote(&id, request),
-                    Request::Observation(request) => self.serve_observation(&id, request),
+                    Request::Observation(request) => return self.serve_observation(&id, request, out),
                     Request::Clock(request) => self.serve_clock(&id, request),
                 }
             }
@@ -73,15 +74,42 @@ impl<S: FileStorage> MaintenanceConsole<S> {
         vec![protocol::ok(id, "")]
     }
 
-    fn serve_observation(&self, id: &str, request: ObservationRequest) -> Vec<String> {
+    /// A line at a time, so that neither the frame nor its lines are held whole in the
+    /// internal RAM a request would take them from.
+    fn send_screen(&self, id: &str, out: &mut impl Write) -> io::Result<()> {
+        let mut chunk = [0; DATA_CHUNK_BYTES];
+        let mut times_shown = None;
+        for offset in (0..FRAME_BYTES).step_by(DATA_CHUNK_BYTES) {
+            let part = chunk.get_mut(..DATA_CHUNK_BYTES.min(FRAME_BYTES - offset)).unwrap_or_default();
+            let now = self.observation.copy_screen(offset, part);
+            let failed = match (times_shown, now) {
+                (_, None) => Some("nothing shown yet"),
+                (Some(before), Some(now)) if before != now => Some("the screen changed while it was sent"),
+                _ => None,
+            };
+            if let Some(reason) = failed {
+                writeln!(out, "{}", protocol::error(id, reason))?;
+                return out.flush();
+            }
+            times_shown = now;
+            writeln!(out, "{}", protocol::data(id, part))?;
+        }
+        writeln!(out, "{}", protocol::ok(id, &times_shown.unwrap_or_default().to_string()))?;
+        out.flush()
+    }
+
+    fn serve_observation(&self, id: &str, request: ObservationRequest, out: &mut impl Write) -> io::Result<()> {
         let observation = &self.observation;
-        vec![match request {
+        let reply = match request {
+            ObservationRequest::Screen => return self.send_screen(id, out),
             ObservationRequest::Lights => {
                 let percent = |name| observation.brightness(name).as_percent();
                 protocol::ok(id, &format!("{} {}", percent(LightName::FrontLight), percent(LightName::ReadingLamp)))
             }
             ObservationRequest::Sound => protocol::ok(id, if observation.is_playing() { "playing" } else { "silent" }),
-        }]
+        };
+        writeln!(out, "{reply}")?;
+        out.flush()
     }
 
     fn serve_clock(&mut self, id: &str, request: ClockRequest) -> Vec<String> {
@@ -208,6 +236,7 @@ mod tests {
 
     use super::*;
     use hal::clock::{ClockReading, DateTime};
+    use hal::display::{EpaperDisplay, Frame, Redraw, Refreshed, FRAME_BYTES};
     use hal::light::{Brightness, DimmableLight};
 
     use crate::remote::ButtonName;
@@ -507,5 +536,27 @@ mod tests {
         let mut console = console(FakeCard::default());
         let replies = talk(&mut console, &["@@ 1 clock set 1790407815".into(), "@@ 2 clock".into()]);
         assert_eq!(replies, ["@@ 1 ok", "@@ 2 ok 1790407815"]);
+    }
+
+    struct Glass;
+    impl EpaperDisplay for Glass {
+        fn show(&mut self, _: &Frame, _: Redraw) -> Result<Refreshed, Fault> {
+            Ok(Refreshed::Nothing)
+        }
+    }
+
+    #[test]
+    fn the_screen_comes_whole_with_the_times_it_was_shown() {
+        let observation = Observation::default();
+        let last_frame: Box<[u8; FRAME_BYTES]> = vec![0; FRAME_BYTES].into_boxed_slice().try_into().unwrap();
+        let mut panel = observation.panel(Glass, last_frame);
+        let mut console = MaintenanceConsole::new(Ok(FakeCard::default()), Remote::new(NoWait), observation, Stopped(MORNING));
+        assert_eq!(talk(&mut console, &["@@ 1 screen".into()]), ["@@ 1 error nothing shown yet"]);
+        let mut frame = Frame::blank();
+        frame.set_ink(0, 0, true);
+        panel.show(&frame, Redraw::Changes).unwrap();
+        let replies = talk(&mut console, &["@@ 2 screen".into()]);
+        assert_eq!(decode_get(&replies, "2"), frame.as_bytes());
+        assert_eq!(replies.last().unwrap(), "@@ 2 ok 1");
     }
 }

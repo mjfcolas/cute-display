@@ -1,5 +1,5 @@
 """`remote`: tap, hold and turn the controls of the device, or of a simulator, from this
-computer; see its lights and its speaker; read and set its clock."""
+computer; see its glass, its lights and its speaker; read and set its clock."""
 import argparse
 import sys
 from datetime import datetime
@@ -9,6 +9,13 @@ from serial import SerialException
 from . import clock, controls, observation, usb
 from .console import ConsoleError
 from .simulator import NoSimulator, SimulatorLink
+
+
+def save_screen(link, arguments):
+    screen = observation.screen(link)
+    with open(arguments.png, 'wb') as f:
+        f.write(screen.frame.png(arguments.zoom))
+    print(f'{arguments.png}: the glass was drawn {screen.times_shown} times')
 
 
 def show_clock(link, arguments):
@@ -35,6 +42,10 @@ def main():
     turn.add_argument('clockwise_detents', type=int)
     turn.set_defaults(act=lambda link, a: controls.turn(link, a.clockwise_detents))
 
+    shot = commands.add_parser('screen', help='what the glass shows, as a PNG')
+    shot.add_argument('png', nargs='?', default='/tmp/cute-display.png')
+    shot.add_argument('--zoom', type=int, default=2)
+    shot.set_defaults(act=save_screen)
     commands.add_parser('lights', help='the front light and the reading lamp').set_defaults(
         act=lambda link, a: print('front light {} %, reading lamp {} %'.format(*observation.lights(link))))
     commands.add_parser('sound', help='whether the speaker plays').set_defaults(

@@ -11,16 +11,17 @@ pub const HEIGHT: u16 = 240;
 pub const VISIBLE_WIDTH: u16 = 398;
 
 const BYTES_PER_ROW: usize = WIDTH as usize / 8;
+pub const FRAME_BYTES: usize = BYTES_PER_ROW * HEIGHT as usize;
 
 /// [`BinaryColor::On`] is ink.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Frame {
-    ink: Box<[u8; BYTES_PER_ROW * HEIGHT as usize]>,
+    ink: Box<[u8; FRAME_BYTES]>,
 }
 
 impl Frame {
     pub fn blank() -> Self {
-        Self { ink: Box::new([0; BYTES_PER_ROW * HEIGHT as usize]) }
+        Self { ink: Box::new([0; FRAME_BYTES]) }
     }
 
     pub fn is_ink(&self, x: i32, y: i32) -> bool {
@@ -41,8 +42,8 @@ impl Frame {
     }
 
     /// Row-major, 52 bytes per row, most significant bit leftmost, 1 = ink.
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.ink[..]
+    pub fn as_bytes(&self) -> &[u8; FRAME_BYTES] {
+        &self.ink
     }
 
     fn locate(x: i32, y: i32) -> Option<(usize, u8)> {

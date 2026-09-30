@@ -38,6 +38,7 @@ pub enum RemoteRequest {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ObservationRequest {
+    Screen,
     Lights,
     Sound,
 }
@@ -117,6 +118,7 @@ fn parse_remote(verb: &str, rest: &str) -> Option<Result<RemoteRequest, String>>
 
 fn parse_observation(verb: &str, rest: &str) -> Option<Result<ObservationRequest, String>> {
     let request = match verb {
+        "screen" => ObservationRequest::Screen,
         "lights" => ObservationRequest::Lights,
         "sound" => ObservationRequest::Sound,
         _ => return None,
@@ -252,6 +254,7 @@ mod tests {
             Some((_, Ok(Request::Observation(request)))) => Some(request),
             _ => None,
         };
+        assert_eq!(observation("@@ 1 screen"), Some(ObservationRequest::Screen));
         assert_eq!(observation("@@ 1 lights"), Some(ObservationRequest::Lights));
         assert_eq!(observation("@@ 1 sound"), Some(ObservationRequest::Sound));
         assert_eq!(parse("@@ 1 clock"), Some(("1".into(), Ok(Request::Clock(ClockRequest::Read)))));
