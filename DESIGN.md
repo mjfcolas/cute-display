@@ -45,7 +45,7 @@ The apps, on it, listed by `catalog`, which the composition roots share:
 | `hal_testing`, `domain_testing` | For tests only: test doubles of the contracts of `hal`, and of those `domain` needs from the outside world, and the checks every implementation of a contract passes, the doubles as the real ones | `hal`; `domain` |
 | `ui_testing`     | For tests only: the rendering references a screen's drawing is held to | `hal` |
 | `ui`             | The shell that hosts the app in front, the system app's screen, and the toolkit apps draw with: reads the controls, turns them into domain intents, renders domain state. Runs on its own thread | `domain`         |
-| `maintenance`    | The console on the USB cable, or a Unix socket on the simulator: the SD card, and for tests a remote for the buttons and the wheel, what the glass, the lights and the speaker do, and the RTC read and set | `hal`            |
+| `maintenance`    | The console on the USB cable, or a Unix socket on the simulator: the SD card, and for tests a remote for the buttons and the wheel, what the glass shows and says, what the lights and the speaker do, and the RTC read and set | `hal`            |
 | `hwtest`         | The hardware test bench                                                                        | `hal`            |
 | `libs`           | What several apps share, as code: each app has its own instance of it | `domain`, `ui`, `conf_text`, other `libs` |
 | `apps`           | One crate per app, layered as the engine is: `domain`, its concepts and the contracts they need; `infrastructure`, those contracts on what the engine lends; `ui`, its screen. Its root installs it | `domain`, `ui`, `conf_text`, `libs` |
@@ -62,10 +62,13 @@ gets from outside comes through the engine's contracts. Tests are the one except
 `hal_testing`, `domain_testing` and `ui_testing`, all as dev-dependencies; the
 simulator's screen preview, an example, uses `domain_testing` the same way.
 
-The UI meets the hardware through two exchange surfaces, which `app` connects:
+The UI meets the outside through three exchange surfaces, which `app` connects:
 
 - **out**: embedded-graphics' `DrawTarget`, a library trait that `hal::display::Frame`
   implements and that every screen draws on;
+- **said**: `ui::Description`, what a frame says in words, handed as lines to the
+  composition root once the frame is shown, by the function `app::run` is given; the
+  roots give them to the maintenance console;
 - **in**: `ui::controls::ControlsSample`, plain data owned by the UI (detents, presses,
   buttons held), filled from the HAL's `RotaryEncoder` and `PushButton`.
 

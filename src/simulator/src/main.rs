@@ -98,7 +98,7 @@ fn main() -> Result<(), Fault> {
     };
     thread::Builder::new()
         .name("app".into())
-        .spawn(move || match app::run(devices, catalog::APPS) {
+        .spawn(move || match app::run(devices, catalog::APPS, move |lines| observation.said(lines)) {
             Ok(never) => match never {},
             Err(fault) => log::error!("app: {fault}"),
         })

@@ -98,10 +98,23 @@ impl<S: FileStorage> MaintenanceConsole<S> {
         out.flush()
     }
 
+    fn send_said(&self, id: &str, out: &mut impl Write) -> io::Result<()> {
+        let Some(said) = self.observation.last_said() else {
+            writeln!(out, "{}", protocol::error(id, "nothing said yet"))?;
+            return out.flush();
+        };
+        for line in &said.lines {
+            writeln!(out, "{}", protocol::text(id, line))?;
+        }
+        writeln!(out, "{}", protocol::ok(id, &said.times_shown.to_string()))?;
+        out.flush()
+    }
+
     fn serve_observation(&self, id: &str, request: ObservationRequest, out: &mut impl Write) -> io::Result<()> {
         let observation = &self.observation;
         let reply = match request {
             ObservationRequest::Screen => return self.send_screen(id, out),
+            ObservationRequest::Describe => return self.send_said(id, out),
             ObservationRequest::Lights => {
                 let percent = |name| observation.brightness(name).as_percent();
                 protocol::ok(id, &format!("{} {}", percent(LightName::FrontLight), percent(LightName::ReadingLamp)))
@@ -461,5 +474,18 @@ mod tests {
         let replies = talk(&mut console, &["@@ 2 screen".into()]);
         assert_eq!(decode_get(&replies, "2"), frame.as_bytes());
         assert_eq!(replies.last().unwrap(), "@@ 2 ok 1");
+    }
+
+    #[test]
+    fn what_the_screen_says_comes_a_line_at_a_time_with_the_times_it_was_shown() {
+        let observation = Observation::default();
+        let last_frame: Box<[u8; FRAME_BYTES]> = vec![0; FRAME_BYTES].into_boxed_slice().try_into().unwrap();
+        let mut panel = observation.panel(StubPanel::default(), last_frame);
+        let said = observation.clone();
+        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), Remote::new(FakeSteadyClock::default()), observation, FakeRtc::at(MORNING));
+        assert_eq!(talk(&mut console, &["@@ 1 describe".into()]), ["@@ 1 error nothing said yet"]);
+        panel.show(&Frame::blank(), Redraw::Changes).unwrap();
+        said.said(vec!["front radar".into(), "range 25 km".into()]);
+        assert_eq!(talk(&mut console, &["@@ 2 describe".into()]), ["@@ 2 text front radar", "@@ 2 text range 25 km", "@@ 2 ok 1"]);
     }
 }

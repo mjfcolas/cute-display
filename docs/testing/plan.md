@@ -49,12 +49,8 @@
   then the screen's description.
 - A UI state holds the text as shown, but for what the toolkit draws from domain data
   (the time in big digits, a forecast's icons): the description turns those into text.
-- `maintenance` sees `hal` only: plain data on the `hal` side, as `ControlsSample` is on
-  the `ui` side (`hal::display::ScreenText`, lines `name value [*]`), and a contract that
-  receives it (`ScreenReader`, like an accessibility screen reader). Names settled in
-  DESIGN.md at that step.
-- `app::Presentation::tick` turns the `Description` into `ScreenText` and hands it over
-  right after `panel.show`.
+- It is not the hardware's: `app::run` is given a function it tells, right after each
+  frame is shown, what the frame says as lines; the roots hand them to the console.
 - `maintenance::Observation` keeps the last one with its `times_shown`; a `describe`
   request answers `text` lines then `ok <times_shown>`; `remote describe` in `tools/link`.
 - `docs/maintenance/DESIGN.md`: the console sees what a person reads, never the domain.
@@ -83,7 +79,7 @@
   speaker sleeps on the virtual clock for the length of the sound, or sound is asserted
   as "eventually".
 - `TestHardware`, an `app::Hardware` in `src/app/tests/`: the doubles of C, driven by
-  `maintenance::Remote`, observed by `maintenance::Observation` and the `ScreenText`,
+  `maintenance::Remote`, observed by `maintenance::Observation` and what the frames say,
   with the apps of `catalog`.
 
 ### E. A deterministic simulator
@@ -129,8 +125,8 @@ still true.
 2. **Done.** Shared test doubles and contracts (C).
 3. **Done.** The UI state (A) of the four screens, and their rendering references.
 4. **Current.** The description to the console (B): in `ui`, each screen and the
-   `Shell` (done); to the console, `describe`; `remote describe`, and the `drive` skill
-   reads the screen as text.
+   `Shell` (done); to the console, `describe` (done); `remote describe`, and the `drive`
+   skill reads the screen as text.
 5. A trial of the virtual clock, then the integration tier (D): starting with and
    without a card; a night until the alarm (in front, light and sound, snooze, stop);
    NTP setting the RTC, failing, retrying ten minutes later; a recorded forecast shown.

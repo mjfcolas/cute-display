@@ -39,6 +39,7 @@ pub enum RemoteRequest {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ObservationRequest {
     Screen,
+    Describe,
     Lights,
     Sound,
 }
@@ -119,6 +120,7 @@ fn parse_remote(verb: &str, rest: &str) -> Option<Result<RemoteRequest, String>>
 fn parse_observation(verb: &str, rest: &str) -> Option<Result<ObservationRequest, String>> {
     let request = match verb {
         "screen" => ObservationRequest::Screen,
+        "describe" => ObservationRequest::Describe,
         "lights" => ObservationRequest::Lights,
         "sound" => ObservationRequest::Sound,
         _ => return None,
@@ -180,6 +182,10 @@ pub fn error(id: &str, reason: &str) -> String {
 
 pub fn entry(id: &str, entry: &Entry) -> String {
     format!("{PREFIX} {id} entry {} {} {}", if entry.is_dir { 'd' } else { 'f' }, entry.size_bytes, entry.name)
+}
+
+pub fn text(id: &str, line: &str) -> String {
+    format!("{PREFIX} {id} text {line}")
 }
 
 pub fn data(id: &str, bytes: &[u8]) -> String {
@@ -255,6 +261,7 @@ mod tests {
             _ => None,
         };
         assert_eq!(observation("@@ 1 screen"), Some(ObservationRequest::Screen));
+        assert_eq!(observation("@@ 1 describe"), Some(ObservationRequest::Describe));
         assert_eq!(observation("@@ 1 lights"), Some(ObservationRequest::Lights));
         assert_eq!(observation("@@ 1 sound"), Some(ObservationRequest::Sound));
         assert_eq!(parse("@@ 1 clock"), Some(("1".into(), Ok(Request::Clock(ClockRequest::Read)))));

@@ -85,7 +85,8 @@ pub struct Devices<H: Hardware> {
 
 type Service = (AppId, Arc<dyn AppService>);
 
-pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>]) -> Result<Infallible, Fault> {
+/// `read_out` hears each frame's lines once the frame is shown.
+pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>], read_out: impl FnMut(Vec<String>) + Send + 'static) -> Result<Infallible, Fault> {
     let settings_store: Box<dyn SettingsStore> = match &devices.sd_card {
         Ok(card) => Box::new(SettingsFile::new(card.clone())),
         Err(fault) => {
@@ -136,7 +137,7 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>]) -> Res
         yellow_button: devices.yellow_button,
         long_button: devices.long_button,
     };
-    let presentation = Presentation { controls, panel: devices.panel, steady: steady.clone(), started: steady.now() };
+    let presentation = Presentation { controls, panel: devices.panel, read_out, steady: steady.clone(), started: steady.now() };
     let shown_lighting = lighting.clone();
     thread::Builder::new()
         .name("ui".into())

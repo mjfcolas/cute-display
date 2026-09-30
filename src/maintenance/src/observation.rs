@@ -22,6 +22,15 @@ type LastFrame = Box<dyn DerefMut<Target = [u8; FRAME_BYTES]> + Send>;
 struct Glass {
     times_shown: u64,
     last_frame: Option<LastFrame>,
+    said: Option<Said>,
+}
+
+/// What a frame said, a line for each thing a person reads, and how many frames had been
+/// shown with it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Said {
+    pub times_shown: u64,
+    pub lines: Vec<String>,
 }
 
 /// Clones share their state with the glass, the lights and the speaker they observe.
@@ -46,6 +55,14 @@ impl Observation {
         ObservedPanel { panel, glass: self.glass.clone() }
     }
 
+    /// Tagged with the frames shown so far: called right after the frame's `show`, on the
+    /// same thread.
+    pub fn said(&self, lines: Vec<String>) {
+        if let Ok(mut glass) = self.glass.lock() {
+            glass.said = Some(Said { times_shown: glass.times_shown, lines });
+        }
+    }
+
     pub fn light<L: DimmableLight>(&self, name: LightName, light: L) -> ObservedLight<L> {
         let percent = self.percent(name).clone();
         percent.store(light.brightness().as_percent(), Ordering::Relaxed);
@@ -64,6 +81,10 @@ impl Observation {
         let last_frame = glass.last_frame.as_ref().filter(|_| glass.times_shown > 0)?;
         part.copy_from_slice(last_frame.get(offset..offset.checked_add(part.len())?)?);
         Some(glass.times_shown)
+    }
+
+    pub fn last_said(&self) -> Option<Said> {
+        self.glass.lock().ok()?.said.clone()
     }
 
     pub fn brightness(&self, name: LightName) -> Brightness {
@@ -229,5 +250,16 @@ mod tests {
         speaker.play(&mut [1, 2, 3].into_iter()).unwrap();
         assert_eq!(*heard.lock().unwrap(), [true]);
         assert!(!observation.is_playing());
+    }
+
+    #[test]
+    fn what_a_frame_says_is_kept_with_the_times_the_app_had_shown_something() {
+        let observation = Observation::default();
+        let mut panel = observation.panel(StubPanel::default(), last_frame());
+        assert_eq!(observation.last_said(), None);
+        panel.show(&Frame::blank(), Redraw::Whole).unwrap();
+        panel.show(&Frame::blank(), Redraw::Changes).unwrap();
+        observation.said(vec!["front alarm".into()]);
+        assert_eq!(observation.last_said(), Some(Said { times_shown: 2, lines: vec!["front alarm".into()] }));
     }
 }

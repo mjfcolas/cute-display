@@ -96,7 +96,7 @@ fn main() -> Result<(), Fault> {
         system: board.system,
         steady: StdSteadyClock,
     };
-    match app::run(devices, catalog::APPS)? {}
+    match app::run(devices, catalog::APPS, move |lines| observation.said(lines))? {}
 }
 
 fn start_maintenance(

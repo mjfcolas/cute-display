@@ -21,15 +21,16 @@ pub(crate) struct AppOnScreen {
     pub screen: Box<dyn HostedScreen<Frame> + Send>,
 }
 
-pub(crate) struct Presentation<E, B, P, T> {
+pub(crate) struct Presentation<E, B, P, R, T> {
     pub controls: Controls<E, B>,
     pub panel: P,
+    pub read_out: R,
     pub steady: T,
     /// Where the gestures count their time from.
     pub started: Instant,
 }
 
-impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay, T: SteadyClock> Presentation<E, B, P, T> {
+impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay, R: FnMut(Vec<String>), T: SteadyClock> Presentation<E, B, P, R, T> {
     pub fn run(mut self, foreground: Foreground, settings: Settings, lighting: Lighting, apps: Vec<AppOnScreen>) {
         let offered = apps.iter().map(|app| app.offered).collect();
         let mut screens: Vec<Hosted<Frame>> = apps.into_iter().map(|app| Hosted { app: app.offered.app, screen: app.screen }).collect();
@@ -58,9 +59,10 @@ impl<E: RotaryEncoder, B: PushButton, P: EpaperDisplay, T: SteadyClock> Presenta
         }
         let visible = Rectangle::new(Point::zero(), Size::new(VISIBLE_WIDTH.into(), HEIGHT.into()));
         let _ = frame.clear(BinaryColor::Off);
-        shell.draw(frame, visible);
-        if let Err(fault) = self.panel.show(frame, Redraw::Changes) {
-            log::warn!("ui: {fault}");
+        let description = shell.draw(frame, visible);
+        match self.panel.show(frame, Redraw::Changes) {
+            Ok(_) => (self.read_out)(description.text()),
+            Err(fault) => log::warn!("ui: {fault}"),
         }
     }
 }
@@ -71,6 +73,8 @@ mod tests {
 
     use domain::lighting::{Level, Light};
     use domain_testing::settings::StubSettingsStore;
+    use hal::display::Refreshed;
+    use hal::Fault;
     use hal_testing::display::StubPanel;
     use hal_testing::input::{FakeButton, FakeWheel};
     use hal_testing::steady::FakeSteadyClock;
@@ -85,6 +89,53 @@ mod tests {
         }
     }
 
+    struct StubFailingPanel;
+    impl EpaperDisplay for StubFailingPanel {
+        fn show(&mut self, _: &Frame, _: Redraw) -> Result<Refreshed, Fault> {
+            Err(Fault::new("the panel stayed busy"))
+        }
+    }
+
+    fn weather_in_front(settings: &Settings) -> Shell<Frame> {
+        let foreground = Foreground::new(AppId::new("weather"));
+        let offered = vec![OfferedApp { app: AppId::new("weather"), title: "Weather" }];
+        let system = SystemScreen::new(foreground.clone(), settings.clone(), crate::image::VERSION, offered);
+        let screens = vec![
+            Hosted { app: AppId::new("weather"), screen: Box::new(StubScreen) as Box<dyn HostedScreen<Frame>> },
+            Hosted { app: AppId::SYSTEM, screen: Box::new(system) },
+        ];
+        Shell::new(foreground, screens).unwrap()
+    }
+
+    fn heard_after_showing_on(panel: impl EpaperDisplay) -> Option<Vec<String>> {
+        let heard: Arc<Mutex<Option<Vec<String>>>> = Arc::default();
+        let hears = heard.clone();
+        let started = Instant::now();
+        let mut presentation = Presentation {
+            controls: Controls {
+                wheel: FakeWheel::default(),
+                wheel_button: FakeButton::default(),
+                yellow_button: FakeButton::default(),
+                long_button: FakeButton::default(),
+            },
+            panel,
+            read_out: move |lines| *hears.lock().unwrap() = Some(lines),
+            steady: FakeSteadyClock::default(),
+            started,
+        };
+        let settings = Settings::load(Box::new(StubSettingsStore));
+        let lighting = Lighting::new(Box::new(StubLight(Arc::default())), Box::new(StubLight(Arc::default())), settings.clone());
+        presentation.tick(&mut weather_in_front(&settings), &lighting, &mut Frame::blank(), started);
+        let lines = heard.lock().unwrap().clone();
+        lines
+    }
+
+    #[test]
+    fn what_is_shown_is_read_out_and_what_the_panel_did_not_show_is_not() {
+        assert_eq!(heard_after_showing_on(StubPanel::default()), Some(vec!["front weather".to_owned()]));
+        assert_eq!(heard_after_showing_on(StubFailingPanel), None);
+    }
+
     #[test]
     fn every_redraw_asks_only_for_the_changes() {
         let (wheel, wheel_button, panel) = (FakeWheel::default(), FakeButton::default(), StubPanel::default());
@@ -96,18 +147,12 @@ mod tests {
                 long_button: FakeButton::default(),
             },
             panel: panel.clone(),
+            read_out: |_| {},
             steady: FakeSteadyClock::default(),
             started: Instant::now(),
         };
-        let foreground = Foreground::new(AppId::new("weather"));
         let settings = Settings::load(Box::new(StubSettingsStore));
-        let offered = vec![OfferedApp { app: AppId::new("weather"), title: "Weather" }];
-        let system = SystemScreen::new(foreground.clone(), settings.clone(), crate::image::VERSION, offered);
-        let screens = vec![
-            Hosted { app: AppId::new("weather"), screen: Box::new(StubScreen) as Box<dyn HostedScreen<Frame>> },
-            Hosted { app: AppId::SYSTEM, screen: Box::new(system) },
-        ];
-        let mut shell = Shell::new(foreground, screens).unwrap();
+        let mut shell = weather_in_front(&settings);
         let backlight = Arc::new(Mutex::new(Level::OFF));
         let lighting = Lighting::new(Box::new(StubLight(backlight.clone())), Box::new(StubLight(Arc::default())), settings);
         let mut frame = Frame::blank();
