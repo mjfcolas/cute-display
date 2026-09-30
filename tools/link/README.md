@@ -11,6 +11,8 @@ the SD card for the [installer](../installer/README.md), the controls for tests.
 just remote tap yellow            # a button pressed and released: wheel, yellow or long
 just remote hold 1500 yellow long # held down together, then released
 just remote turn -2               # the wheel, clockwise positive
+just remote lights                # also sound, and clock: the RTC's time
+just remote clock --set 2026-09-28T06:59:50  # sets the RTC, until the next daily network time
 ```
 
 - `just remote-sim …` does the same on the simulator `just sim` started, through its Unix

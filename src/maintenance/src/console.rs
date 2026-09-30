@@ -1,10 +1,12 @@
 use std::io::{self, Write};
 
+use hal::clock::RealTimeClock;
 use hal::storage::{CopyOutcome, FileStorage};
 use hal::Fault;
 
 use crate::path::SdPath;
-use crate::protocol::{self, CardRequest, RemoteRequest, Request};
+use crate::observation::{LightName, Observation};
+use crate::protocol::{self, CardRequest, ClockRequest, ObservationRequest, RemoteRequest, Request};
 use crate::remote::Remote;
 
 /// A put is for configuration, not for media.
@@ -26,12 +28,14 @@ struct PendingPut {
 pub struct MaintenanceConsole<S> {
     storage: Result<S, Fault>,
     remote: Remote,
+    observation: Observation,
+    rtc: Box<dyn RealTimeClock + Send>,
     put: Option<PendingPut>,
 }
 
 impl<S: FileStorage> MaintenanceConsole<S> {
-    pub fn new(storage: Result<S, Fault>, remote: Remote) -> Self {
-        Self { storage, remote, put: None }
+    pub fn new(storage: Result<S, Fault>, remote: Remote, observation: Observation, rtc: impl RealTimeClock + Send + 'static) -> Self {
+        Self { storage, remote, observation, rtc: Box::new(rtc), put: None }
     }
 
     /// One line from the computer. Lines that are not the protocol's are ignored; a new
@@ -49,6 +53,8 @@ impl<S: FileStorage> MaintenanceConsole<S> {
                 match request {
                     Request::Card(request) => self.serve_card(&id, request),
                     Request::Remote(request) => self.serve_remote(&id, request),
+                    Request::Observation(request) => self.serve_observation(&id, request),
+                    Request::Clock(request) => self.serve_clock(&id, request),
                 }
             }
         };
@@ -65,6 +71,30 @@ impl<S: FileStorage> MaintenanceConsole<S> {
             RemoteRequest::Turn(clockwise_detents) => self.remote.turn(clockwise_detents),
         }
         vec![protocol::ok(id, "")]
+    }
+
+    fn serve_observation(&self, id: &str, request: ObservationRequest) -> Vec<String> {
+        let observation = &self.observation;
+        vec![match request {
+            ObservationRequest::Lights => {
+                let percent = |name| observation.brightness(name).as_percent();
+                protocol::ok(id, &format!("{} {}", percent(LightName::FrontLight), percent(LightName::ReadingLamp)))
+            }
+            ObservationRequest::Sound => protocol::ok(id, if observation.is_playing() { "playing" } else { "silent" }),
+        }]
+    }
+
+    fn serve_clock(&mut self, id: &str, request: ClockRequest) -> Vec<String> {
+        match request {
+            ClockRequest::Read => vec![match self.rtc.read() {
+                Ok(reading) => protocol::ok(id, &reading.time.unix_seconds().to_string()),
+                Err(fault) => protocol::error(id, fault.reason()),
+            }],
+            ClockRequest::Set(time) => vec![match self.rtc.set(time) {
+                Ok(()) => protocol::ok(id, ""),
+                Err(fault) => protocol::error(id, fault.reason()),
+            }],
+        }
     }
 
     fn serve_card(&mut self, id: &str, request: CardRequest) -> Vec<String> {
@@ -177,6 +207,9 @@ mod tests {
     use hal::Fault;
 
     use super::*;
+    use hal::clock::{ClockReading, DateTime};
+    use hal::light::{Brightness, DimmableLight};
+
     use crate::remote::ButtonName;
 
     #[derive(Clone, Default)]
@@ -225,6 +258,19 @@ mod tests {
         }
     }
 
+    const MORNING: DateTime = DateTime { year: 2026, month: 9, day: 26, hour: 7, minute: 30, second: 15 };
+
+    struct Stopped(DateTime);
+    impl RealTimeClock for Stopped {
+        fn read(&mut self) -> Result<ClockReading, Fault> {
+            Ok(ClockReading { time: self.0, oscillator_stopped: false, alarm_raised: false })
+        }
+        fn set(&mut self, time: DateTime) -> Result<(), Fault> {
+            self.0 = time;
+            Ok(())
+        }
+    }
+
     struct NoWait;
     impl SteadyClock for NoWait {
         fn now(&self) -> Instant {
@@ -234,7 +280,7 @@ mod tests {
     }
 
     fn console(card: FakeCard) -> MaintenanceConsole<FakeCard> {
-        MaintenanceConsole::new(Ok(card), Remote::new(NoWait))
+        MaintenanceConsole::new(Ok(card), Remote::new(NoWait), Observation::default(), Stopped(MORNING))
     }
 
     fn talk(console: &mut MaintenanceConsole<FakeCard>, lines: &[String]) -> Vec<String> {
@@ -400,7 +446,7 @@ mod tests {
     #[test]
     fn the_remote_taps_holds_and_turns() {
         let remote = Remote::new(NoWait);
-        let mut console = MaintenanceConsole::new(Ok(FakeCard::default()), remote.clone());
+        let mut console = MaintenanceConsole::new(Ok(FakeCard::default()), remote.clone(), Observation::default(), Stopped(MORNING));
         let mut yellow = remote.button(ButtonName::Yellow);
         let mut long = remote.button(ButtonName::Long);
         let mut wheel = remote.wheel();
@@ -412,8 +458,54 @@ mod tests {
 
     #[test]
     fn without_a_card_the_remote_still_answers() {
-        let mut console = MaintenanceConsole::<FakeCard>::new(Err(Fault::new("not inserted")), Remote::new(NoWait));
+        let mut console = MaintenanceConsole::<FakeCard>::new(Err(Fault::new("not inserted")), Remote::new(NoWait), Observation::default(), Stopped(MORNING));
         let replies = talk(&mut console, &["@@ 1 ls".into(), "@@ 2 turn 2".into()]);
         assert_eq!(replies, ["@@ 1 error no SD card: not inserted", "@@ 2 ok"]);
+    }
+
+    struct Lamp(Brightness);
+    impl DimmableLight for Lamp {
+        fn set_brightness(&mut self, brightness: Brightness) -> Result<(), Fault> {
+            self.0 = brightness;
+            Ok(())
+        }
+        fn brightness(&self) -> Brightness {
+            self.0
+        }
+    }
+
+    #[test]
+    fn what_is_observed_is_answered() {
+        let observation = Observation::default();
+        let mut lamp = observation.light(LightName::ReadingLamp, Lamp(Brightness::OFF));
+        lamp.set_brightness(Brightness::percent(30)).unwrap();
+        let mut console = MaintenanceConsole::new(Ok(FakeCard::default()), Remote::new(NoWait), observation, Stopped(MORNING));
+        let replies = talk(&mut console, &["@@ 1 lights".into(), "@@ 2 sound".into()]);
+        assert_eq!(replies, ["@@ 1 ok 0 30", "@@ 2 ok silent"]);
+    }
+
+    struct Unreadable;
+    impl RealTimeClock for Unreadable {
+        fn read(&mut self) -> Result<ClockReading, Fault> {
+            Err(Fault::new("I2C: no answer"))
+        }
+        fn set(&mut self, _: DateTime) -> Result<(), Fault> {
+            Err(Fault::new("I2C: no answer"))
+        }
+    }
+
+    #[test]
+    fn the_clock_is_read_from_the_rtc_and_its_fault_said() {
+        let mut console = console(FakeCard::default());
+        assert_eq!(talk(&mut console, &["@@ 1 clock".into()]), [format!("@@ 1 ok {}", MORNING.unix_seconds())]);
+        let mut console = MaintenanceConsole::new(Ok(FakeCard::default()), Remote::new(NoWait), Observation::default(), Unreadable);
+        assert_eq!(talk(&mut console, &["@@ 1 clock".into(), "@@ 2 clock set 0".into()]), ["@@ 1 error I2C: no answer", "@@ 2 error I2C: no answer"]);
+    }
+
+    #[test]
+    fn the_clock_set_is_the_clock_read() {
+        let mut console = console(FakeCard::default());
+        let replies = talk(&mut console, &["@@ 1 clock set 1790407815".into(), "@@ 2 clock".into()]);
+        assert_eq!(replies, ["@@ 1 ok", "@@ 2 ok 1790407815"]);
     }
 }

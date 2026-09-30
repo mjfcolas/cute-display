@@ -19,6 +19,8 @@ use hal::storage::FileStorage;
 use hal::Fault;
 use infrastructure::composite_input::{CompositeButton, CompositeWheel};
 use infrastructure::internet::WIFI_FILE;
+use infrastructure::shared_rtc::SharedRtc;
+use maintenance::observation::{LightName, Observation, ObservedLight, ObservedSpeaker};
 use maintenance::remote::{ButtonName, Remote, RemoteButton, RemoteWheel};
 use maintenance::MaintenanceConsole;
 
@@ -40,9 +42,9 @@ impl Hardware for Computer {
     type Panel = SimulatedPanel;
     type Wheel = CompositeWheel<ScrollWheel, RemoteWheel>;
     type Button = CompositeButton<KeyButton, RemoteButton>;
-    type Light = SimulatedLight;
-    type Rtc = HostClock;
-    type Speaker = LoggedSpeaker;
+    type Light = ObservedLight<SimulatedLight>;
+    type Rtc = SharedRtc<HostClock>;
+    type Speaker = ObservedSpeaker<LoggedSpeaker>;
     type Card = DirectoryCard;
     type Wifi = HostWifi;
     type Http = HostHttpClient;
@@ -71,8 +73,10 @@ fn main() -> Result<(), Fault> {
     let steady = ScaledClock::new(options.speed);
     let case = Case::new(steady);
     let remote = Remote::new(steady);
+    let observation = Observation::default();
+    let rtc = SharedRtc::new(HostClock::new(steady)?);
     if let Some(path) = &options.console_socket {
-        console::listen(path, MaintenanceConsole::new(card.clone(), remote.clone()))?;
+        console::listen(path, MaintenanceConsole::new(card.clone(), remote.clone(), observation.clone(), rtc.clone()))?;
     }
     let devices = Devices::<Computer> {
         panel: case.panel.clone(),
@@ -80,10 +84,10 @@ fn main() -> Result<(), Fault> {
         wheel_button: CompositeButton::new(case.wheel_button.clone(), remote.button(ButtonName::WheelButton)),
         yellow_button: CompositeButton::new(case.yellow_button.clone(), remote.button(ButtonName::Yellow)),
         long_button: CompositeButton::new(case.long_button.clone(), remote.button(ButtonName::Long)),
-        front_light: case.front_light.clone(),
-        reading_lamp: case.reading_lamp.clone(),
-        rtc: HostClock::new(steady)?,
-        speaker: LoggedSpeaker(steady),
+        front_light: observation.light(LightName::FrontLight, case.front_light.clone()),
+        reading_lamp: observation.light(LightName::ReadingLamp, case.reading_lamp.clone()),
+        rtc,
+        speaker: observation.speaker(LoggedSpeaker(steady)),
         sd_card: card,
         wifi: HostWifi,
         https: HostHttpClient::default(),

@@ -38,7 +38,7 @@ preview screen="system" zoom="2":
 sim card="sim-sd" *flags:
     cargo run --quiet -p simulator -- {{card}} --console {{sim_console}} {{flags}}
 
-# tap, hold or turn the controls of the simulator `just sim` started
+# the same on the simulator `just sim` started
 remote-sim *args:
     uv run --quiet --project {{justfile_directory()}}/tools/link remote --simulator {{sim_console}} {{args}}
 
@@ -120,7 +120,7 @@ sd-put file path:
 sd-rm path:
     {{cute_display}} card rm {{path}}
 
-# tap, hold or turn the device's controls: tap yellow, hold 1500 yellow long, turn -2 (monitor closed)
+# the device's controls and what it does: tap yellow, hold 1500 yellow long, turn -2, lights, sound, clock (monitor closed)
 remote *args:
     uv run --quiet --project {{justfile_directory()}}/tools/link remote {{args}}
 

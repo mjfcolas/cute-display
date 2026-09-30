@@ -20,6 +20,8 @@ use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::hal::task::thread::{MallocCap, ThreadSpawnConfiguration};
 use hal::Fault;
 use infrastructure::composite_input::{CompositeButton, CompositeWheel};
+use infrastructure::shared_rtc::SharedRtc;
+use maintenance::observation::{LightName, Observation, ObservedLight, ObservedSpeaker};
 use maintenance::remote::{ButtonName, Remote, RemoteButton, RemoteWheel};
 use maintenance::MaintenanceConsole;
 
@@ -39,9 +41,9 @@ impl Hardware for Habity {
     type Panel = Uc8253;
     type Wheel = CompositeWheel<PcntEncoder, RemoteWheel>;
     type Button = CompositeButton<Button, RemoteButton>;
-    type Light = LedcLight;
-    type Rtc = Ds3231Clock;
-    type Speaker = I2sSpeaker;
+    type Light = ObservedLight<LedcLight>;
+    type Rtc = SharedRtc<Ds3231Clock>;
+    type Speaker = ObservedSpeaker<I2sSpeaker>;
     type Card = SdmmcCard;
     type Wifi = EspWifiRadio;
     type Http = EspHttpsClient;
@@ -73,17 +75,19 @@ fn main() -> Result<(), Fault> {
 
     let board = Board::bring_up()?;
     let remote = Remote::new(StdSteadyClock);
-    start_maintenance(board.sd_card.clone(), remote.clone())?;
+    let observation = Observation::default();
+    let rtc = SharedRtc::new(board.clock);
+    start_maintenance(board.sd_card.clone(), remote.clone(), observation.clone(), rtc.clone())?;
     let devices = Devices::<Habity> {
         panel: board.panel,
         wheel: CompositeWheel::new(board.wheel, remote.wheel()),
         wheel_button: CompositeButton::new(board.wheel_button, remote.button(ButtonName::WheelButton)),
         yellow_button: CompositeButton::new(board.yellow_button, remote.button(ButtonName::Yellow)),
         long_button: CompositeButton::new(board.long_button, remote.button(ButtonName::Long)),
-        front_light: board.front_light,
-        reading_lamp: board.reading_lamp,
-        rtc: board.clock,
-        speaker: board.speaker,
+        front_light: observation.light(LightName::FrontLight, board.front_light),
+        reading_lamp: observation.light(LightName::ReadingLamp, board.reading_lamp),
+        rtc,
+        speaker: observation.speaker(board.speaker),
         sd_card: board.sd_card,
         wifi: board.wifi,
         https: board.https,
@@ -94,13 +98,18 @@ fn main() -> Result<(), Fault> {
     match app::run(devices, catalog::APPS)? {}
 }
 
-fn start_maintenance(card: Result<SdmmcCard, Fault>, remote: Remote) -> Result<(), Fault> {
+fn start_maintenance(
+    card: Result<SdmmcCard, Fault>,
+    remote: Remote,
+    observation: Observation,
+    rtc: SharedRtc<Ds3231Clock>,
+) -> Result<(), Fault> {
     usb_console::listen()?;
     thread::Builder::new()
         .name("maintenance".into())
         .stack_size(16 * 1024)
         .spawn(move || {
-            let mut console = MaintenanceConsole::new(card, remote);
+            let mut console = MaintenanceConsole::new(card, remote, observation, rtc);
             let mut line = String::new();
             loop {
                 line.clear();

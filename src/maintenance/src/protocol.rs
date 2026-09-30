@@ -2,6 +2,7 @@ use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use core::time::Duration;
 
+use hal::clock::DateTime;
 use hal::storage::Entry;
 
 use crate::path::SdPath;
@@ -13,6 +14,8 @@ pub const PREFIX: &str = "@@";
 pub enum Request {
     Card(CardRequest),
     Remote(RemoteRequest),
+    Observation(ObservationRequest),
+    Clock(ClockRequest),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -33,6 +36,18 @@ pub enum RemoteRequest {
     Turn(i32),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ObservationRequest {
+    Lights,
+    Sound,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ClockRequest {
+    Read,
+    Set(DateTime),
+}
+
 pub fn parse(line: &str) -> Option<(String, Result<Request, String>)> {
     let rest = line.trim_end_matches(['\r', '\n']).strip_prefix(PREFIX)?.strip_prefix(' ')?;
     let (id, rest) = first_word(rest);
@@ -43,6 +58,8 @@ pub fn parse(line: &str) -> Option<(String, Result<Request, String>)> {
     let request = parse_card(verb, rest)
         .map(|request| request.map(Request::Card))
         .or_else(|| parse_remote(verb, rest).map(|request| request.map(Request::Remote)))
+        .or_else(|| parse_observation(verb, rest).map(|request| request.map(Request::Observation)))
+        .or_else(|| parse_clock(verb, rest).map(|request| request.map(Request::Clock)))
         .unwrap_or_else(|| Err(format!("unknown request '{verb}'")));
     Some((id.to_owned(), request))
 }
@@ -96,6 +113,37 @@ fn parse_remote(verb: &str, rest: &str) -> Option<Result<RemoteRequest, String>>
         "turn" => rest.parse().map(RemoteRequest::Turn).map_err(|_| "turn: how many detents, clockwise positive?".to_owned()),
         _ => return None,
     })
+}
+
+fn parse_observation(verb: &str, rest: &str) -> Option<Result<ObservationRequest, String>> {
+    let request = match verb {
+        "lights" => ObservationRequest::Lights,
+        "sound" => ObservationRequest::Sound,
+        _ => return None,
+    };
+    Some(alone(verb, rest, request))
+}
+
+fn parse_clock(verb: &str, rest: &str) -> Option<Result<ClockRequest, String>> {
+    if verb != "clock" {
+        return None;
+    }
+    Some(match first_word(rest) {
+        ("", _) => Ok(ClockRequest::Read),
+        ("set", seconds) => seconds
+            .parse()
+            .map(|seconds| ClockRequest::Set(DateTime::from_unix_seconds(seconds)))
+            .map_err(|_| "clock set: the Unix seconds are missing".to_owned()),
+        _ => Err("clock: alone, or `clock set <Unix seconds>`".to_owned()),
+    })
+}
+
+fn alone<R>(verb: &str, rest: &str, request: R) -> Result<R, String> {
+    if rest.is_empty() {
+        Ok(request)
+    } else {
+        Err(format!("{verb}: nothing follows it"))
+    }
 }
 
 fn button(name: &str) -> Result<ButtonName, String> {
@@ -199,9 +247,24 @@ mod tests {
     }
 
     #[test]
+    fn observation_requests_parse() {
+        let observation = |line| match parse(line) {
+            Some((_, Ok(Request::Observation(request)))) => Some(request),
+            _ => None,
+        };
+        assert_eq!(observation("@@ 1 lights"), Some(ObservationRequest::Lights));
+        assert_eq!(observation("@@ 1 sound"), Some(ObservationRequest::Sound));
+        assert_eq!(parse("@@ 1 clock"), Some(("1".into(), Ok(Request::Clock(ClockRequest::Read)))));
+        assert_eq!(
+            parse("@@ 2 clock set 1790407815"),
+            Some(("2".into(), Ok(Request::Clock(ClockRequest::Set(DateTime::from_unix_seconds(1_790_407_815))))))
+        );
+    }
+
+    #[test]
     fn a_bad_request_is_an_error_for_its_id() {
         let bad_requests =
-            ["@@ 4 frobnicate", "@@ 4 get 0 ../x", "@@ 4 get x", "@@ 4 put nope 1 cute-display/a", "@@ 4 data !!!", "@@ 4 cp a b", "@@ 4 cp a\t../b", "@@ 4 tap red", "@@ 4 hold yellow", "@@ 4 hold 10", "@@ 4 hold 10001 yellow", "@@ 4 turn x"];
+            ["@@ 4 frobnicate", "@@ 4 get 0 ../x", "@@ 4 get x", "@@ 4 put nope 1 cute-display/a", "@@ 4 data !!!", "@@ 4 cp a b", "@@ 4 cp a\t../b", "@@ 4 tap red", "@@ 4 hold yellow", "@@ 4 hold 10", "@@ 4 hold 10001 yellow", "@@ 4 turn x", "@@ 4 clock set", "@@ 4 clock set noon", "@@ 4 clock stop", "@@ 4 lights on"];
         for bad in bad_requests {
             assert!(matches!(parse(bad), Some((id, Err(_))) if id == "4"), "{bad}");
         }

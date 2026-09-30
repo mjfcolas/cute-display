@@ -57,10 +57,13 @@ mod tests {
 
     use hal::input::PushButton;
     use hal::steady::SteadyClock;
+    use maintenance::observation::Observation;
     use maintenance::remote::{ButtonName, Remote};
 
     use super::*;
     use crate::card::DirectoryCard;
+    use crate::clock::HostClock;
+    use crate::steady::ScaledClock;
 
     struct NoWait;
     impl SteadyClock for NoWait {
@@ -68,6 +71,10 @@ mod tests {
             Instant::now()
         }
         fn sleep(&self, _: Duration) {}
+    }
+
+    fn rtc() -> HostClock {
+        HostClock::new(ScaledClock::new(core::num::NonZeroU32::MIN)).unwrap()
     }
 
     fn directory(name: &str) -> std::path::PathBuf {
@@ -83,7 +90,7 @@ mod tests {
         drop(UnixListener::bind(&path).unwrap());
         let remote = Remote::new(NoWait);
         let mut yellow = remote.button(ButtonName::Yellow);
-        listen(&path, MaintenanceConsole::new(DirectoryCard::open(&root), remote)).unwrap();
+        listen(&path, MaintenanceConsole::new(DirectoryCard::open(&root), remote, Observation::default(), rtc())).unwrap();
 
         let mut stream = UnixStream::connect(&path).unwrap();
         stream.write_all(b"@@ 1 tap yellow\n").unwrap();
@@ -99,7 +106,7 @@ mod tests {
         let root = directory("console-file");
         let path = root.join("settings.conf");
         std::fs::write(&path, b"backlight = 5s\n").unwrap();
-        assert!(listen(&path, MaintenanceConsole::new(DirectoryCard::open(&root), Remote::new(NoWait))).is_err());
+        assert!(listen(&path, MaintenanceConsole::new(DirectoryCard::open(&root), Remote::new(NoWait), Observation::default(), rtc())).is_err());
         assert_eq!(std::fs::read(&path).unwrap(), b"backlight = 5s\n");
         std::fs::remove_dir_all(&root).unwrap();
     }
