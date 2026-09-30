@@ -11,7 +11,7 @@ use domain::apps::{AppId, Foreground};
 use domain::calendar::{Date, Weekday};
 use domain::clock::{Clock, TimeKeeper, TimeSource, TimeZoneSource};
 use domain::fetch::Unavailable;
-use domain::place::{GeoPoint, Place};
+use domain::place::{CompassPoint, GeoPoint, Place};
 use domain::settings::Settings;
 use domain::time::{LocalTime, TimeOfDay, UtcTime};
 use domain::time_zone::TimeZone;
@@ -20,7 +20,7 @@ use domain_testing::settings::StubSettingsStore;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 use forecast::{
-    CompassPoint, DayForecast, Degrees, Forecast, ForecastSource, Hectopascals, HourForecast, KilometresPerHour, Millimetres, Percent, Sky, Today,
+    DayForecast, Degrees, Forecast, ForecastSource, Hectopascals, HourForecast, KilometresPerHour, Millimetres, Percent, Sky, Today,
     Weather, Wind,
 };
 use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH};

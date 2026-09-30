@@ -45,8 +45,8 @@
 - `ui::Description`, generic, what leaves the UI: lines `name value`, ` *` when chosen,
   in the screen's order. `Describe`, beside `DrawWithin`, on each UI state; the frame
   is drawn and described from the same `ui_state()`.
-- The `Shell` describes what is in front: the app, the system screen open or not, then
-  the screen's description.
+- The `Shell` says the app in front (`front system` when the system screen is open),
+  then the screen's description.
 - A UI state holds the text as shown, but for what the toolkit draws from domain data
   (the time in big digits, a forecast's icons): the description turns those into text.
 - `maintenance` sees `hal` only: plain data on the `hal` side, as `ControlsSample` is on
@@ -128,8 +128,9 @@ still true.
    `docs/development.md` and AGENTS.md.
 2. **Done.** Shared test doubles and contracts (C).
 3. **Done.** The UI state (A) of the four screens, and their rendering references.
-4. **Current.** The description to the console (B): `describe`, `remote describe`;
-   the `drive` skill reads the screen as text.
+4. **Current.** The description to the console (B): in `ui`, each screen and the
+   `Shell` (done); to the console, `describe`; `remote describe`, and the `drive` skill
+   reads the screen as text.
 5. A trial of the virtual clock, then the integration tier (D): starting with and
    without a card; a night until the alarm (in front, light and sound, snooze, stop);
    NTP setting the RTC, failing, retrying ten minutes later; a recorded forecast shown.

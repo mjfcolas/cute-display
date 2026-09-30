@@ -23,6 +23,56 @@ impl GeoPoint {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CompassPoint {
+    North,
+    NorthEast,
+    East,
+    SouthEast,
+    South,
+    SouthWest,
+    West,
+    NorthWest,
+}
+
+impl CompassPoint {
+    const CLOCKWISE: [Self; 8] = [
+        Self::North,
+        Self::NorthEast,
+        Self::East,
+        Self::SouthEast,
+        Self::South,
+        Self::SouthWest,
+        Self::West,
+        Self::NorthWest,
+    ];
+
+    /// Clockwise from north.
+    pub fn from_degrees(degrees: u16) -> Self {
+        let point = (u32::from(degrees) * 2 + 45) / 90 % 8;
+        Self::CLOCKWISE.get(point as usize).copied().unwrap_or(Self::North)
+    }
+
+    /// The nearest point to the way of something `east` and `north` of here.
+    pub fn toward(east: f64, north: f64) -> Self {
+        let bearing = east.atan2(north).to_degrees().rem_euclid(360.0);
+        Self::from_degrees(bearing.round() as u16 % 360)
+    }
+
+    pub fn abbreviation(self) -> &'static str {
+        match self {
+            Self::North => "N",
+            Self::NorthEast => "NE",
+            Self::East => "E",
+            Self::SouthEast => "SE",
+            Self::South => "S",
+            Self::SouthWest => "SW",
+            Self::West => "W",
+            Self::NorthWest => "NW",
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Place {
     pub name: String,
@@ -39,6 +89,15 @@ mod tests {
 
     const PARIS: GeoPoint = GeoPoint { latitude: 48.8566, longitude: 2.3522 };
     const ORLY: GeoPoint = GeoPoint { latitude: 48.7233, longitude: 2.3794 };
+
+    #[test]
+    fn a_direction_goes_to_the_nearest_point() {
+        let points = [0, 22, 23, 90, 180, 214, 292, 337, 338, 359, 360].map(CompassPoint::from_degrees);
+        use CompassPoint::*;
+        assert_eq!(points, [North, North, NorthEast, East, South, SouthWest, West, NorthWest, North, North, North]);
+        assert_eq!([CompassPoint::toward(8.0, 8.0), CompassPoint::toward(-6.0, -15.0), CompassPoint::toward(-1.0, 0.0)], [NorthEast, South, West]);
+        assert_eq!(NorthWest.abbreviation(), "NW");
+    }
 
     #[test]
     fn orly_is_fifteen_kilometres_south_of_paris() {

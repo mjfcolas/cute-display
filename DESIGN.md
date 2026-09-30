@@ -170,8 +170,8 @@ that run and their order.
   is due and then fetches. Only one fetch runs at a time, so an app keeps its requests
   bounded and rare; the engine brings the Wi-Fi up for a fetch and down once idle.
 - **The UI owns how apps are seen and steered**: an app's `ui::Screen` turns the
-  controls into its intents and gives its UI state, which draws itself
-  (`ui::DrawWithin`). `ui::Shell` hosts the one in front;
+  controls into its intents and gives its UI state, which draws and describes itself
+  (`ui::DrawWithin`, `ui::Describe`). `ui::Shell` hosts the one in front;
   `ui::gestures` turns the controls into what the shell and the apps receive.
 - **Refreshing**: the app image only asks for its changes; the panel driver's policy
   decides when the glass gets a clean refresh. `Screen::version` is how a screen

@@ -1,11 +1,13 @@
+mod description;
 mod drawing;
 mod ui_state;
 
 use domain::clock::Clock;
 use domain::fetch::FetchStatus;
 use domain::time::TimeOfDay;
+use forecast::day_weather;
 use forecast::units::{percent, pressure, temperature, wind_speed};
-use forecast::{DayForecast, Forecast, HourForecast, Sky, Weather, WeatherReport};
+use forecast::{DayForecast, Forecast, HourForecast, Weather, WeatherReport};
 use ui::calendar_names;
 use ui::controls::{Button, Input};
 use ui::Screen;
@@ -13,6 +15,7 @@ use ui::Screen;
 pub use ui_state::{HourColumn, ShownPage, TodayPage, WeatherUiState, WeekDay};
 
 const HOURS: usize = 12;
+const NO_FORECAST: &str = "No forecast yet";
 /// Below it, an hour's rain is not worth a number.
 const LIKELY_RAIN: u8 = 10;
 
@@ -39,8 +42,7 @@ impl WeatherScreen {
         TodayPage {
             sky: now.sky,
             temperature: now.now,
-            sky_name: sky_name(now.sky),
-            feels_like: format!("feels like {}", temperature(now.feels_like)),
+            feels_like: now.feels_like,
             day: day.map(day_line),
             humidity: percent(now.humidity),
             pressure: pressure(now.pressure),
@@ -120,7 +122,7 @@ fn week(forecast: &Forecast) -> Vec<WeekDay> {
 }
 
 fn day_line(day: &DayForecast) -> String {
-    let range = format!("{} / {}", temperature(day.low), temperature(day.high));
+    let range = day_weather::range(day);
     match day.rain_chance {
         Some(rain) => format!("{range}   rain {}", percent(rain)),
         None => range,
@@ -149,18 +151,6 @@ fn status_line(report: &WeatherReport, clock: &Clock) -> String {
     }
 }
 
-fn sky_name(sky: Sky) -> &'static str {
-    match sky {
-        Sky::Clear => "Clear",
-        Sky::PartlyCloudy => "Partly cloudy",
-        Sky::Cloudy => "Cloudy",
-        Sky::Fog => "Fog",
-        Sky::Rain => "Rain",
-        Sky::Snow => "Snow",
-        Sky::Storm => "Storm",
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
@@ -172,7 +162,8 @@ mod tests {
     use domain::time::{LocalTime, UtcTime};
     use domain_testing::place::{paris, StubPlace};
     use domain_testing::time::FakeTimeKeeper;
-    use forecast::{CompassPoint, Degrees, ForecastSource, Hectopascals, KilometresPerHour, Millimetres, Percent, Today, Wind};
+    use domain::place::CompassPoint;
+    use forecast::{Degrees, ForecastSource, Hectopascals, KilometresPerHour, Millimetres, Percent, Sky, Today, Wind};
 
     use super::*;
 
@@ -336,7 +327,7 @@ mod tests {
     #[test]
     fn today_says_the_sky_the_details_and_the_likely_rain_of_each_hour() {
         let page = today_page(&WeatherScreen::new(fetched(), clock_at(Some(17))));
-        assert_eq!((page.sky_name, page.feels_like.as_str()), ("Cloudy", "feels like -18°"));
+        assert_eq!((page.sky, page.feels_like), (Sky::Cloudy, Degrees(-18)));
         assert_eq!([page.humidity, page.pressure, page.wind, page.sun], ["100%", "1016 hPa", "112 km/h", "07:40-19:43"]);
         assert_eq!(page.wind_from, Some(CompassPoint::NorthWest));
         let rain: Vec<Option<String>> = page.hours.iter().take(4).map(|hour| hour.likely_rain.clone()).collect();

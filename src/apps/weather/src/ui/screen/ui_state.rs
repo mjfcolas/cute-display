@@ -1,4 +1,5 @@
-use forecast::{CompassPoint, Degrees, Millimetres, Sky};
+use domain::place::CompassPoint;
+use forecast::{Degrees, Millimetres, Sky};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WeatherUiState {
@@ -18,8 +19,7 @@ pub enum ShownPage {
 pub struct TodayPage {
     pub sky: Sky,
     pub temperature: Degrees,
-    pub sky_name: &'static str,
-    pub feels_like: String,
+    pub feels_like: Degrees,
     pub day: Option<String>,
     pub humidity: String,
     pub pressure: String,

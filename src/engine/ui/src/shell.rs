@@ -7,6 +7,7 @@ use embedded_graphics::primitives::Rectangle;
 
 use crate::app_screen::HostedScreen;
 use crate::controls::{Button, ControlsSample, Input};
+use crate::description::Description;
 use crate::gestures::{Gesture, Gestures};
 
 const MARGIN: i32 = 8;
@@ -42,12 +43,15 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
         self.drawn != Some((front, self.version_of(front)))
     }
 
-    pub fn draw(&mut self, target: &mut D, area: Rectangle) {
+    pub fn draw(&mut self, target: &mut D, area: Rectangle) -> Description {
         let front = self.enter_front();
+        let mut description = Description::default();
+        description.say("front", front.name());
         if let Some(hosted) = self.hosted(front) {
-            hosted.screen.draw(target, area.offset(-MARGIN));
+            description = description.followed_by(hosted.screen.draw(target, area.offset(-MARGIN)));
         }
         self.drawn = Some((front, self.version_of(front)));
+        description
     }
 
     fn follow(&mut self, gesture: Gesture) -> bool {
@@ -107,7 +111,7 @@ mod tests {
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
 
     use super::*;
-    use crate::app_screen::{DrawWithin, Screen};
+    use crate::app_screen::{Describe, DrawWithin, Screen};
     use crate::system::{OfferedApp, SystemScreen};
     use crate::controls::{Button, ButtonSample};
     use crate::text::{self, BODY};
@@ -135,6 +139,14 @@ mod tests {
     impl DrawWithin for StubText {
         fn draw_within<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle) {
             text::write(target, &self.0, area.top_left, area.size.width, &BODY);
+        }
+    }
+
+    impl Describe for StubText {
+        fn describe(&self) -> Description {
+            let mut description = Description::default();
+            description.say("text", &self.0);
+            description
         }
     }
 
@@ -302,5 +314,15 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn what_is_drawn_is_said_the_app_in_front_first() {
+        let foreground = Foreground::new(RADAR);
+        let (mut shell, _, radar) = shell(&foreground);
+        *radar.text.borrow_mut() = "12 aircraft".into();
+        let mut frame = Frame::blank();
+        let visible = Rectangle::new(Point::zero(), Size::new(VISIBLE_WIDTH.into(), HEIGHT.into()));
+        assert_eq!(shell.draw(&mut frame, visible).text(), ["front radar", "text 12 aircraft"]);
     }
 }

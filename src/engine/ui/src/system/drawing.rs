@@ -8,8 +8,6 @@ use crate::app_screen::DrawWithin;
 use crate::mark::Mark;
 use crate::text::{self, BODY, HINT, LIST, TITLE};
 
-const NAME: &str = "System";
-const HINTS: &str = "wheel: choose   click or long: open or change   yellow: back";
 const SECTION_GAP: i32 = 6;
 const COLUMN_GAP: i32 = 16;
 const BAR_PADDING: i32 = 3;
@@ -24,7 +22,7 @@ impl DrawWithin for SystemUiState {
         let right = left + area.size.width as i32;
         let bottom = top + area.size.height as i32;
         let stroke = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
-        text::write(target, NAME, area.top_left, area.size.width, &TITLE);
+        text::write(target, self.title, area.top_left, area.size.width, &TITLE);
         let version = format!("Cute Display {}", self.version);
         let version_width = text::width(&version, &HINT);
         let version_top = top + (TITLE.character_size.height - HINT.character_size.height) as i32;
@@ -48,7 +46,7 @@ impl DrawWithin for SystemUiState {
         for setting in &self.settings {
             settings_top += draw_setting(target, setting, Point::new(settings_left, settings_top), settings_width) + SETTING_GAP;
         }
-        text::write(target, HINTS, Point::new(left, hint_top), area.size.width, &HINT);
+        text::write(target, self.hint, Point::new(left, hint_top), area.size.width, &HINT);
     }
 }
 
@@ -111,12 +109,14 @@ mod tests {
             labels.iter().zip(0..).map(|(label, n)| Choice { label: (*label).into(), current: current(n) }).collect()
         };
         SystemUiState {
+            title: "System",
             version: "2026.9.0",
             apps: APPS.map(|title| AppRow { title, mark: mark(title) }).into(),
             settings: vec![
                 SettingRow { name: SETTINGS[0], mark: mark(SETTINGS[0]), choices: choices(&["5 s", "10 s", "30 s", "always"]) },
                 SettingRow { name: SETTINGS[1], mark: mark(SETTINGS[1]), choices: choices(&["off", "10%", "30%", "50%", "100%"]) },
             ],
+            hint: "wheel: choose   click or long: open or change   yellow: back",
         }
     }
 

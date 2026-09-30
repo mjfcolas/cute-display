@@ -1,3 +1,4 @@
+mod description;
 mod drawing;
 mod ui_state;
 
@@ -12,6 +13,9 @@ use crate::domain::radar::{Aircraft, Airport, Altitude, Radar, RadarReport};
 use crate::ui::radar_view::short_registration;
 
 const NEAREST_LISTED: usize = 5;
+const HINTS: [&str; 2] = ["wheel: range", "long: update"];
+/// Required by adsb.fi's terms.
+const ATTRIBUTION: &str = "data: adsb.fi";
 
 pub struct RadarScreen {
     radar: Radar,
@@ -48,6 +52,8 @@ impl Screen for RadarScreen {
             aircraft,
             nearest,
             trouble: trouble(&report),
+            hints: HINTS,
+            credit: ATTRIBUTION,
         }
     }
 
@@ -103,8 +109,11 @@ fn whereabouts(aircraft: &Aircraft, distance_km: f64) -> String {
         Some(Altitude::Feet(feet)) => format!("{feet} ft"),
         None => "-".to_owned(),
     };
-    let distance = if distance_km < 10.0 { format!("{distance_km:.1} km") } else { format!("{distance_km:.0} km") };
-    format!("   {altitude}  {distance}")
+    format!("   {altitude}  {}", distance(distance_km))
+}
+
+fn distance(km: f64) -> String {
+    if km < 10.0 { format!("{km:.1} km") } else { format!("{km:.0} km") }
 }
 
 fn trouble(report: &RadarReport) -> Option<String> {

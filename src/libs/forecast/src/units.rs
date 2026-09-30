@@ -1,4 +1,4 @@
-use crate::{Degrees, Hectopascals, KilometresPerHour, Percent};
+use crate::{Degrees, Hectopascals, KilometresPerHour, Millimetres, Percent};
 
 pub fn temperature(degrees: Degrees) -> String {
     format!("{}°", degrees.0)
@@ -20,6 +20,10 @@ pub fn wind_speed(speed: KilometresPerHour) -> String {
     format!("{} km/h", speed.0)
 }
 
+pub fn millimetres(depth: Millimetres) -> String {
+    format!("{}.{} mm", depth.tenths() / 10, depth.tenths() % 10)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -31,5 +35,6 @@ mod tests {
         assert_eq!(pressure(Hectopascals(1016)), "1016 hPa");
         assert_eq!(wind_speed(KilometresPerHour(12)), "12 km/h");
         assert_eq!(wind_speed(KilometresPerHour(0)), "calm");
+        assert_eq!(millimetres(Millimetres::from_tenths(12)), "1.2 mm");
     }
 }

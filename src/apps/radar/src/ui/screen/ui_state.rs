@@ -7,6 +7,8 @@ pub struct RadarUiState {
     pub aircraft: Vec<AircraftMark>,
     pub nearest: Vec<ListedAircraft>,
     pub trouble: Option<String>,
+    pub hints: [&'static str; 2],
+    pub credit: &'static str,
 }
 
 /// Where a mark is from the place, within the range.

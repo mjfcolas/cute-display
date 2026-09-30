@@ -3,12 +3,12 @@
 use domain::calendar::Date;
 use domain::fetch::Unavailable;
 use domain::internet::Internet;
-use domain::place::Place;
+use domain::place::{CompassPoint, Place};
 use domain::time::{LocalTime, TimeOfDay};
 use serde::Deserialize;
 
 use crate::{
-    CompassPoint, DayForecast, Degrees, Forecast, ForecastSource, Hectopascals, HourForecast, KilometresPerHour, Millimetres,
+    DayForecast, Degrees, Forecast, ForecastSource, Hectopascals, HourForecast, KilometresPerHour, Millimetres,
     Percent, Sky, Today, Wind,
 };
 

@@ -6,13 +6,18 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 
 use crate::controls::Input;
+use crate::description::Description;
 
 pub trait DrawWithin {
     fn draw_within<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle);
 }
 
+pub trait Describe {
+    fn describe(&self) -> Description;
+}
+
 pub trait Screen {
-    type UiState: DrawWithin;
+    type UiState: DrawWithin + Describe;
 
     fn entered(&mut self) {}
     fn left(&mut self) {}
@@ -30,7 +35,7 @@ pub trait HostedScreen<D: DrawTarget<Color = BinaryColor>> {
     fn left(&mut self);
     fn version(&self) -> u64;
     fn on_input(&mut self, input: Input);
-    fn draw(&self, target: &mut D, area: Rectangle);
+    fn draw(&self, target: &mut D, area: Rectangle) -> Description;
 }
 
 impl<D: DrawTarget<Color = BinaryColor>, S: Screen> HostedScreen<D> for S {
@@ -50,8 +55,10 @@ impl<D: DrawTarget<Color = BinaryColor>, S: Screen> HostedScreen<D> for S {
         Screen::on_input(self, input);
     }
 
-    fn draw(&self, target: &mut D, area: Rectangle) {
-        self.ui_state().draw_within(target, area);
+    fn draw(&self, target: &mut D, area: Rectangle) -> Description {
+        let state = self.ui_state();
+        state.draw_within(target, area);
+        state.describe()
     }
 }
 

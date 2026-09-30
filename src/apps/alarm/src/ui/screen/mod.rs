@@ -1,3 +1,4 @@
+mod description;
 mod drawing;
 mod ui_state;
 
@@ -328,12 +329,12 @@ mod tests {
     use domain::calendar::Date;
     use domain::clock::TimeKeeper;
     use domain::fetch::Unavailable;
-    use domain::place::Place;
+    use domain::place::{CompassPoint, Place};
     use domain::time::UtcTime;
     use domain_testing::place::{paris, StubPlace};
     use domain_testing::time::FakeTimeKeeper;
     use forecast::{
-        CompassPoint, DayForecast, Degrees, Forecast, ForecastSource, Hectopascals, HourForecast, KilometresPerHour, Millimetres, Percent, Sky,
+        DayForecast, Degrees, Forecast, ForecastSource, Hectopascals, HourForecast, KilometresPerHour, Millimetres, Percent, Sky,
         Today, Wind,
     };
 

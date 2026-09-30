@@ -3,13 +3,14 @@ use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Circle, Line, PrimitiveStyle, Rectangle};
 use forecast::icons;
+use forecast::units::temperature;
 use forecast::Millimetres;
 use ui::big_digits::TEMPERATURE;
 use ui::text::{self, BODY, HINT, LIST, TITLE};
 use ui::DrawWithin;
 
 use super::ui_state::{HourColumn, ShownPage, TodayPage, WeatherUiState, WeekDay};
-use super::HOURS;
+use super::{HOURS, NO_FORECAST};
 use crate::ui::wind_arrow;
 
 const GAP: i32 = 12;
@@ -47,7 +48,7 @@ impl DrawWithin for WeatherUiState {
         match &self.page {
             ShownPage::Today(Some(today)) => draw_today(target, body, today),
             ShownPage::Week(Some(days)) => draw_week(target, body, days),
-            ShownPage::Today(None) | ShownPage::Week(None) => text::write(target, "No forecast yet", body.top_left, body.size.width, &BODY),
+            ShownPage::Today(None) | ShownPage::Week(None) => text::write(target, NO_FORECAST, body.top_left, body.size.width, &BODY),
         }
         text::write(target, &self.status, Point::new(left, status_top), area.size.width, &HINT);
     }
@@ -63,9 +64,9 @@ fn draw_today<D: DrawTarget<Color = BinaryColor>>(target: &mut D, area: Rectangl
     let lines_left = degrees_left + TEMPERATURE.degrees_width(today.temperature.0) as i32 + GAP;
     let lines_width = (right - lines_left).max(0) as u32;
     let mut line_top = top + (TODAY_ICON as i32 - lines_height()) / 2;
-    text::write(target, today.sky_name, Point::new(lines_left, line_top), lines_width, &BODY);
+    text::write(target, today.sky.name(), Point::new(lines_left, line_top), lines_width, &BODY);
     line_top += BODY.character_size.height as i32 + LINE_GAP;
-    text::write(target, &today.feels_like, Point::new(lines_left, line_top), lines_width, &LIST);
+    text::write(target, &format!("feels like {}", temperature(today.feels_like)), Point::new(lines_left, line_top), lines_width, &LIST);
     if let Some(day) = &today.day {
         line_top += LIST.character_size.height as i32 + LINE_GAP;
         text::write(target, day, Point::new(lines_left, line_top), lines_width, &LIST);
@@ -176,7 +177,8 @@ fn write_centred<D: DrawTarget<Color = BinaryColor>>(target: &mut D, line: &str,
 
 #[cfg(test)]
 mod tests {
-    use forecast::{CompassPoint, Degrees, Sky};
+    use domain::place::CompassPoint;
+    use forecast::{Degrees, Sky};
     use hal::display::{Frame, HEIGHT, WIDTH};
     use ui_testing::references;
 
@@ -193,10 +195,9 @@ mod tests {
             fallen: Some(Millimetres::from_tenths(u16::from(n) * 5)),
         };
         TodayPage {
-            sky: Sky::Snow,
+            sky: Sky::PartlyCloudy,
             temperature: Degrees(-12),
-            sky_name: "Partly cloudy",
-            feels_like: "feels like -18°".into(),
+            feels_like: Degrees(-18),
             day: Some("-12° / 21°   rain 45%".into()),
             humidity: "100%".into(),
             pressure: "1016 hPa".into(),

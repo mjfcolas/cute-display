@@ -2,9 +2,11 @@ use crate::mark::Mark;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SystemUiState {
+    pub title: &'static str,
     pub version: &'static str,
     pub apps: Vec<AppRow>,
     pub settings: Vec<SettingRow>,
+    pub hint: &'static str,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

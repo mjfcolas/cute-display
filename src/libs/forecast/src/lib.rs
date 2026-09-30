@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use domain::apps::{AppService, Services};
 use domain::calendar::Date;
 use domain::fetch::{FetchStatus, Unavailable};
-use domain::place::{Place, PlaceSource};
+use domain::place::{CompassPoint, Place, PlaceSource};
 use domain::time::{LocalTime, TimeOfDay};
 
 use crate::open_meteo::OpenMeteo;
@@ -26,6 +26,20 @@ pub enum Sky {
     Rain,
     Snow,
     Storm,
+}
+
+impl Sky {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Clear => "Clear",
+            Self::PartlyCloudy => "Partly cloudy",
+            Self::Cloudy => "Cloudy",
+            Self::Fog => "Fog",
+            Self::Rain => "Rain",
+            Self::Snow => "Snow",
+            Self::Storm => "Storm",
+        }
+    }
 }
 
 /// Whole degrees Celsius.
@@ -71,37 +85,6 @@ pub struct Hectopascals(pub u16);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct KilometresPerHour(pub u16);
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CompassPoint {
-    North,
-    NorthEast,
-    East,
-    SouthEast,
-    South,
-    SouthWest,
-    West,
-    NorthWest,
-}
-
-impl CompassPoint {
-    const CLOCKWISE: [Self; 8] = [
-        Self::North,
-        Self::NorthEast,
-        Self::East,
-        Self::SouthEast,
-        Self::South,
-        Self::SouthWest,
-        Self::West,
-        Self::NorthWest,
-    ];
-
-    /// Clockwise from north.
-    pub fn from_degrees(degrees: u16) -> Self {
-        let point = (u32::from(degrees) * 2 + 45) / 90 % 8;
-        Self::CLOCKWISE.get(point as usize).copied().unwrap_or(Self::North)
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Wind {
@@ -392,13 +375,6 @@ mod tests {
         assert_eq!(Percent::new(100).map(Percent::value), Some(100));
         assert_eq!(Percent::new(101), None);
         assert_eq!(Percent::saturating(250), Percent::new(100).unwrap());
-    }
-
-    #[test]
-    fn a_wind_direction_goes_to_the_nearest_point() {
-        let points = [0, 22, 23, 90, 180, 214, 292, 337, 338, 359, 360].map(CompassPoint::from_degrees);
-        use CompassPoint::*;
-        assert_eq!(points, [North, North, NorthEast, East, South, SouthWest, West, NorthWest, North, North, North]);
     }
 
     #[test]

@@ -1,3 +1,4 @@
+mod description;
 mod drawing;
 mod ui_state;
 
@@ -38,6 +39,9 @@ enum Row {
     App(OfferedApp),
     Setting(Setting),
 }
+
+const TITLE: &str = "System";
+const HINT: &str = "wheel: choose   click or long: open or change   yellow: back";
 
 fn backlight_label(duration: BacklightDuration) -> &'static str {
     match duration {
@@ -107,11 +111,13 @@ impl Screen for SystemScreen {
 
     fn ui_state(&self) -> SystemUiState {
         SystemUiState {
+            title: TITLE,
             version: self.version,
             apps: self.offered.iter().map(|&offered| AppRow { title: offered.title, mark: self.mark(Row::App(offered)) }).collect(),
             settings: Setting::ALL
                 .map(|setting| SettingRow { name: setting.name(), mark: self.mark(Row::Setting(setting)), choices: self.choices(setting) })
                 .into(),
+            hint: HINT,
         }
     }
 

@@ -16,8 +16,6 @@ const COLUMN_GAP: i32 = 10;
 const ENTRY_PITCH: i32 = 26;
 const LINE_GAP: i32 = 2;
 const TICK: i32 = 4;
-/// Required by adsb.fi's terms.
-const ATTRIBUTION: &str = "data: adsb.fi";
 
 impl DrawWithin for RadarUiState {
     fn draw_within<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle) {
@@ -113,7 +111,7 @@ fn draw_nearest<D: DrawTarget<Color = BinaryColor>>(target: &mut D, column: Rect
 }
 
 fn draw_footer<D: DrawTarget<Color = BinaryColor>>(target: &mut D, column: Rectangle, state: &RadarUiState) {
-    let lines = footer(state.trouble.as_deref(), text::chars_across(column.size.width, &HINT));
+    let lines = footer(state, text::chars_across(column.size.width, &HINT));
     let pitch = HINT.character_size.height as i32 + 1;
     let bottom = column.top_left.y + column.size.height as i32;
     for (n, line) in lines.iter().enumerate() {
@@ -122,9 +120,9 @@ fn draw_footer<D: DrawTarget<Color = BinaryColor>>(target: &mut D, column: Recta
     }
 }
 
-fn footer(trouble: Option<&str>, chars: usize) -> Vec<String> {
-    let mut lines = trouble.map_or_else(Vec::new, |trouble| text::wrap(trouble, chars));
-    lines.extend(["wheel: range", "long: update", ATTRIBUTION].map(str::to_owned));
+fn footer(state: &RadarUiState, chars: usize) -> Vec<String> {
+    let mut lines = state.trouble.as_deref().map_or_else(Vec::new, |trouble| text::wrap(trouble, chars));
+    lines.extend(state.hints.iter().chain([&state.credit]).map(|line| (*line).to_owned()));
     lines
 }
 
@@ -159,6 +157,8 @@ mod tests {
             nearest: vec![listed; aircraft.len().min(NEAREST_LISTED)],
             aircraft,
             trouble: Some("offline: no Wi-Fi: put cute-display/wifi.conf".into()),
+            hints: ["wheel: range", "long: update"],
+            credit: "data: adsb.fi",
         }
     }
 
@@ -209,10 +209,12 @@ mod tests {
 
     #[test]
     fn trouble_is_said_above_the_controls_in_lines_that_fit() {
-        let lines = footer(Some("no place: put cute-display/general.conf"), 22);
-        assert_eq!(lines, ["no place: put", "cute-display/general.c", "onf", "wheel: range", "long: update", ATTRIBUTION]);
+        let no_place = RadarUiState { trouble: Some("no place: put cute-display/general.conf".into()), ..state(vec![], vec![]) };
+        let lines = footer(&no_place, 22);
+        assert_eq!(lines, ["no place: put", "cute-display/general.c", "onf", "wheel: range", "long: update", "data: adsb.fi"]);
         assert!(lines.iter().all(|l| l.chars().count() <= 22));
-        assert_eq!(footer(None, 22), ["wheel: range", "long: update", ATTRIBUTION], "the source is credited");
+        let fine = RadarUiState { trouble: None, ..state(vec![], vec![]) };
+        assert_eq!(footer(&fine, 22), ["wheel: range", "long: update", "data: adsb.fi"], "the source is credited");
     }
 
     #[test]

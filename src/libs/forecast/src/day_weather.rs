@@ -21,8 +21,12 @@ pub const HOURS_WIDTH: u32 =
     ((HOUR_LABEL_CHARS + TEMPERATURE_CHARS) * ADVANCE + 2 * ICON_GAP) as u32 + HOUR_ICON;
 pub const HOURS_HEIGHT: u32 = (HOURS_SHOWN as u32 - 1) * HOUR_PITCH as u32 + HOUR_ICON;
 
-fn range(day: &DayForecast) -> String {
+pub fn range(day: &DayForecast) -> String {
     format!("{} / {}", temperature(day.low), temperature(day.high))
+}
+
+pub fn hour_label(hour: &HourForecast) -> String {
+    format!("{:02}:00", hour.start.time_of_day.hour())
 }
 
 pub fn range_width(day: &DayForecast) -> u32 {
@@ -48,8 +52,7 @@ pub fn draw_hours<'a, D: DrawTarget<Color = BinaryColor>>(
     let text_top = (HOUR_ICON as i32 - LIST.character_size.height as i32) / 2;
     for (n, hour) in (0..).zip(hours.take(HOURS_SHOWN)) {
         let top = area.top_left.y + n * HOUR_PITCH;
-        let label = format!("{:02}:00", hour.start.time_of_day.hour());
-        text::write(target, &label, Point::new(area.top_left.x, top + text_top), (HOUR_LABEL_CHARS * ADVANCE) as u32, &LIST);
+        text::write(target, &hour_label(hour), Point::new(area.top_left.x, top + text_top), (HOUR_LABEL_CHARS * ADVANCE) as u32, &LIST);
         icons::draw(target, hour.sky, Point::new(icon_left, top), HOUR_ICON);
         text::write(target, &temperature(hour.temperature), Point::new(temperature_left, top + text_top), temperature_width, &LIST);
     }

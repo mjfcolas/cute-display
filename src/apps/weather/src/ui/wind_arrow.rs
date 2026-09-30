@@ -4,7 +4,7 @@
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Line, PrimitiveStyle, Triangle};
-use forecast::CompassPoint;
+use domain::place::CompassPoint;
 
 pub(crate) fn draw<D: DrawTarget<Color = BinaryColor>>(target: &mut D, from: CompassPoint, top_left: Point, side: u32) {
     let (dx, dy) = downwind(from);
