@@ -202,7 +202,7 @@ mod tests {
     use std::io::Read;
 
     use domain::internet::MAX_HELD_BYTES;
-    use hal_testing::steady::FakeSteadyClock;
+    use hal_testing::steady_clock::FakeSteadyClock;
     use hal_testing::storage::FakeFileStorage;
 
     use super::*;

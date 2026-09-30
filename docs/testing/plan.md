@@ -71,13 +71,10 @@
 
 ### D. Virtual time, and the app image in a test
 
-- `VirtualSteady`: `sleep` records a deadline and parks the thread; `advance(d)` wakes
-  the sleepers one at a time, earliest first, each until it parks again: serial and
-  deterministic. Dropped, it leaves the threads parked, so `app::run` keeps returning
-  `Infallible`.
-- To try first: the speaker's thread waits on a channel, not on `sleep`. Either the stub
-  speaker sleeps on the virtual clock for the length of the sound, or sound is asserted
-  as "eventually".
+- `hal_testing::stepped_clock::FakeSteppedClock` (done). Dropped, it leaves the threads
+  parked, so `app::run` keeps returning `Infallible`.
+- The speaker's thread waits on a channel, not on the clock, and is not one of its
+  threads: its stub plays at once, and a test asserts the sound as "eventually".
 - `TestHardware`, an `app::Hardware` in `src/app/tests/`: the doubles of C, driven by
   `maintenance::Remote`, observed by `maintenance::Observation` and what the frames say,
   with the apps of `catalog`.
@@ -127,7 +124,7 @@ still true.
 4. **Done.** The description to the console (B): each screen and the `Shell` say
    what they drew, `describe` answers it, `remote describe` prints it, the `drive` skill
    reads it.
-5. **Current.** A trial of the virtual clock, then the integration tier (D): starting
+5. **Current.** The stepped clock (done), then the integration tier (D): starting
    with and without a card; a night until the alarm (in front, light and sound, snooze,
    stop); NTP setting the RTC, failing, retrying ten minutes later; a recorded forecast
    shown.

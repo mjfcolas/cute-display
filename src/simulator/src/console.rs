@@ -55,7 +55,7 @@ mod tests {
     use std::os::unix::net::{UnixListener, UnixStream};
 
     use hal::input::PushButton;
-    use hal_testing::steady::FakeSteadyClock;
+    use hal_testing::steady_clock::FakeSteadyClock;
     use maintenance::observation::Observation;
     use maintenance::remote::{ButtonName, Remote};
 

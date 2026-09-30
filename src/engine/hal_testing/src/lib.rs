@@ -10,7 +10,8 @@ pub mod clock;
 pub mod display;
 pub mod input;
 pub mod light;
-pub mod steady;
+pub mod steady_clock;
+pub mod stepped_clock;
 pub mod storage;
 
 mod shared;

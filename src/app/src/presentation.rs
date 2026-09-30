@@ -77,7 +77,7 @@ mod tests {
     use hal::Fault;
     use hal_testing::display::StubPanel;
     use hal_testing::input::{FakeButton, FakeWheel};
-    use hal_testing::steady::FakeSteadyClock;
+    use hal_testing::steady_clock::FakeSteadyClock;
 
     use super::*;
     use crate::stub_screen::StubScreen;

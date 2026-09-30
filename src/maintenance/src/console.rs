@@ -244,7 +244,7 @@ mod tests {
     use hal_testing::clock::FakeRtc;
     use hal_testing::display::StubPanel;
     use hal_testing::light::FakeLight;
-    use hal_testing::steady::FakeSteadyClock;
+    use hal_testing::steady_clock::FakeSteadyClock;
     use hal_testing::storage::FakeFileStorage;
 
     use super::*;

@@ -19,12 +19,12 @@ impl SteadyClock for StdSteadyClock {
 
 #[cfg(test)]
 mod tests {
-    use hal_testing::steady;
+    use hal_testing::steady_clock;
 
     use super::*;
 
     #[test]
     fn the_computers_clock_keeps_the_contract() {
-        steady::check_contract(&StdSteadyClock);
+        steady_clock::check_contract(&StdSteadyClock);
     }
 }
