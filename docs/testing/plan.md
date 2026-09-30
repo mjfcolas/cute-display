@@ -20,8 +20,8 @@
 
 ## Decisions
 
-- Screens get a view model; tests check what a screen shows through it.
-- End-to-end scenarios check the view model, which the console reads out; reference PNGs
+- Screens get a UI state; tests check what a screen shows through it.
+- End-to-end scenarios check the UI state, which the console reads out; reference PNGs
   belong to the rendering tier.
 - The device for end-to-end is the clock in daily use, in a test mode that restores its
   card, its clock and its state afterwards.
@@ -29,22 +29,25 @@
 
 ## What is missing
 
-### A. A view model, in `ui`
+### A. A UI state, in `ui`
 
-- Each screen splits into `view(&self) -> <Screen>View`, plain data of its own
-  (`AlarmView { mode, times, ringtone, selected_row, ringing }`), and a pure drawing of
-  that view; `AppScreen::draw` draws `self.view()`.
-- `ui::view::Description`, generic, what leaves the UI: an ordered list of
-  `{ name, value, selected }`, made from each view. `AppScreen::describe`, empty by
-  default while screens move over. View and description come from the same `view()`.
-- The `Shell` describes what is in front: the app, the system screen open or not, then
-  the screen's description.
+- Each screen splits into `ui_state(&self) -> <Screen>UiState`, plain data of its own
+  projected from what the screen holds, and a pure drawing of that state;
+  `AppScreen::draw` draws `self.ui_state()`. What a person sees is said as they see it:
+  each row carries its `Mark`, chosen or plain, rather than the state an index.
 - In order: `SystemScreen`, the alarm, the weather, the radar. Their unit tests move to
-  the views; ink counts and `status_line`/`day_line` become assertions on views; "nothing
-  outside the area" stays, in the rendering tier.
+  the UI states, `status_line`/`day_line` with them; the pixel tests (nothing outside
+  the area, where a mark or a line is drawn) stay, in the rendering tier, drawing UI
+  states made by hand.
 
 ### B. The description reaches the console
 
+- `ui::Description`, generic, what leaves the UI: an ordered list of
+  `{ name, value, selected }`, made from each UI state. `AppScreen::describe`, empty by
+  default while screens move over. State and description come from the same
+  `ui_state()`.
+- The `Shell` describes what is in front: the app, the system screen open or not, then
+  the screen's description.
 - `maintenance` sees `hal` only: plain data on the `hal` side, as `ControlsSample` is on
   the `ui` side (`hal::display::ScreenText`, lines `name value [*]`), and a contract that
   receives it (`ScreenReader`, like an accessibility screen reader). Names settled in
@@ -123,8 +126,9 @@ still true.
 1. **Done.** The strategy: [the pyramid](README.md), this plan, linked from
    `docs/development.md` and AGENTS.md.
 2. **Done.** Shared test doubles and contracts (C).
-3. **Current.** The view model (A): `SystemScreen`, alarm, weather, radar; rendering references in
-   Rust, `<name>.seen.png` beside them on a difference, `BLESS=1` to take them anew.
+3. **Current.** The UI state (A): `SystemScreen`'s (done), the alarm's, the weather's,
+   the radar's; then rendering references in Rust, `<name>.seen.png` beside them on a
+   difference, `BLESS=1` to take them anew.
 4. The description to the console (B): `describe`, `remote describe`; the `drive` skill
    reads the screen as text.
 5. A trial of the virtual clock, then the integration tier (D): starting with and
