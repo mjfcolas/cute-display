@@ -43,6 +43,7 @@ The apps, on it, listed by `catalog`, which the composition roots share:
 | `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, thermometer, storage, radio, HTTP, UDP, I2C bus, power, system, and the steady clock the app image runs on | nothing          |
 | `drivers`        | Implementations of `hal` on the board's chips                                                  | `hal`            |
 | `hal_testing`, `domain_testing` | For tests only: test doubles of the contracts of `hal`, and of those `domain` needs from the outside world, and the checks every implementation of a contract passes, the doubles as the real ones | `hal`; `domain` |
+| `ui_testing`     | For tests only: the rendering references a screen's drawing is held to | `hal` |
 | `ui`             | The shell that hosts the app in front, the system app's screen, and the toolkit apps draw with: reads the controls, turns them into domain intents, renders domain state. Runs on its own thread | `domain`         |
 | `maintenance`    | The console on the USB cable, or a Unix socket on the simulator: the SD card, and for tests a remote for the buttons and the wheel, what the glass, the lights and the speaker do, and the RTC read and set | `hal`            |
 | `hwtest`         | The hardware test bench                                                                        | `hal`            |
@@ -58,8 +59,8 @@ type, the UI never sees hardware, `app` never sees a chip, and nothing but `firm
 knows which chip is on which pin. An app sees neither the HAL nor another app: what it
 gets from outside comes through the engine's contracts. Tests are the one exception:
 `ui`, the apps and the libs draw on `hal`'s `Frame` there, and any crate's tests use
-`hal_testing` and `domain_testing`, all as dev-dependencies; the simulator's screen
-preview, an example, uses `domain_testing` the same way.
+`hal_testing`, `domain_testing` and `ui_testing`, all as dev-dependencies; the
+simulator's screen preview, an example, uses `domain_testing` the same way.
 
 The UI meets the hardware through two exchange surfaces, which `app` connects:
 
@@ -117,6 +118,7 @@ src/            the sources, one crate per directory
                     speaker, Internet on demand, NTP; controls made of two, an RTC shared
     ui/             the shell, gestures, the system app, and the toolkit apps draw
                     with; host-tested with hal's Frame as a dev-dependency
+    ui_testing/     for tests: the rendering references screens are held to
     conf_text/      the `key = value` format of the device's conf files
     hal/            contracts with the hardware, and the Frame the display shows
     hal_testing/    for tests: test doubles of hal, and the checks each implementation

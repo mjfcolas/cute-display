@@ -30,6 +30,7 @@ dependencies = [
  "log",
  "mbop3",
  "ui",
+ "ui_testing",
 ]
 
 [[package]]
@@ -1651,6 +1652,7 @@ dependencies = [
  "serde",
  "serde_json",
  "ui",
+ "ui_testing",
 ]
 
 [[package]]
@@ -2132,6 +2134,14 @@ dependencies = [
  "domain_testing",
  "embedded-graphics",
  "hal",
+ "ui_testing",
+]
+
+[[package]]
+name = "ui_testing"
+version = "0.1.0"
+dependencies = [
+ "hal",
 ]
 
 [[package]]
@@ -2377,6 +2387,7 @@ dependencies = [
  "forecast",
  "hal",
  "ui",
+ "ui_testing",
 ]
 
 [[package]]

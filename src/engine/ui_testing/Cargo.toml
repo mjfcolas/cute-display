@@ -1,0 +1,12 @@
+[package]
+name = "ui_testing"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "For tests: the rendering references the screens' drawings are held to."
+
+[lints]
+workspace = true
+
+[dependencies]
+hal = { path = "../hal" }

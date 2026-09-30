@@ -1,6 +1,6 @@
 # Testing plan
 
-> **Not done yet.** Steps 1 and 2 are done; **step 3 is the current one**. This file
+> **Not done yet.** Steps 1 to 3 are done; **step 4 is the current one**. This file
 > is updated as each step lands, and goes once the last one has: the
 > [pyramid](README.md) and the code are then the reference.
 
@@ -128,11 +128,9 @@ still true.
 1. **Done.** The strategy: [the pyramid](README.md), this plan, linked from
    `docs/development.md` and AGENTS.md.
 2. **Done.** Shared test doubles and contracts (C).
-3. **Current.** The UI state (A): `SystemScreen`'s (done), the alarm's (done), the
-   weather's (done), the radar's (done); then rendering references in Rust,
-   `<name>.seen.png` beside them on a difference, `BLESS=1` to take them anew.
-4. The description to the console (B): `describe`, `remote describe`; the `drive` skill
-   reads the screen as text.
+3. **Done.** The UI state (A) of the four screens, and their rendering references.
+4. **Current.** The description to the console (B): `describe`, `remote describe`;
+   the `drive` skill reads the screen as text.
 5. A trial of the virtual clock, then the integration tier (D): starting with and
    without a card; a night until the alarm (in front, light and sound, snooze, stop);
    NTP setting the RTC, failing, retrying ten minutes later; a recorded forecast shown.

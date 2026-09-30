@@ -15,5 +15,6 @@ forecast = { path = "../../libs/forecast" }
 embedded-graphics = "0.8"
 
 [dev-dependencies]
+ui_testing = { path = "../../engine/ui_testing" }
 domain_testing = { path = "../../engine/domain_testing" }
 hal = { path = "../../engine/hal" }

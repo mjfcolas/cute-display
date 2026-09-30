@@ -128,6 +128,7 @@ fn footer(trouble: Option<&str>, chars: usize) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
+    use ui_testing::references;
 
     use super::*;
     use crate::ui::screen::{AircraftMark, AirportMark, ListedAircraft, NEAREST_LISTED};
@@ -224,5 +225,11 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn it_looks_as_its_reference() {
+        let aircraft = vec![plane(8.0, 8.0), AircraftMark { track_degrees: None, ..plane(-10.0, 3.0) }, unlabelled(plane(4.0, -14.0))];
+        references::check(&render(&state(aircraft, vec![orly(Some("LFPO"))])), env!("CARGO_MANIFEST_DIR"), "radar");
     }
 }

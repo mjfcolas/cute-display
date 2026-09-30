@@ -175,6 +175,7 @@ fn write_centred<D: DrawTarget<Color = BinaryColor>>(target: &mut D, line: &str,
 mod tests {
     use forecast::{CompassPoint, Degrees, Sky};
     use hal::display::{Frame, HEIGHT, WIDTH};
+    use ui_testing::references;
 
     use super::*;
 
@@ -256,5 +257,20 @@ mod tests {
         assert_eq!(height(20), 10);
         assert_eq!(height(40), 20);
         assert_eq!(height(120), 20, "no higher than the room");
+    }
+
+    #[test]
+    fn today_looks_as_its_reference() {
+        references::check(&render(&state(ShownPage::Today(Some(Box::new(today_page()))))), env!("CARGO_MANIFEST_DIR"), "today");
+    }
+
+    #[test]
+    fn the_week_looks_as_its_reference() {
+        references::check(&render(&state(ShownPage::Week(Some(week())))), env!("CARGO_MANIFEST_DIR"), "week");
+    }
+
+    #[test]
+    fn no_forecast_looks_as_its_reference() {
+        references::check(&render(&state(ShownPage::Today(None))), env!("CARGO_MANIFEST_DIR"), "no-forecast");
     }
 }

@@ -13,3 +13,6 @@ backup/
 
 # Whole-flash test images: they hold the backup's Wi-Fi password.
 tools/test_flashes/test-bins/
+
+# What a rendering test saw when it differed from its reference.
+*.seen.png

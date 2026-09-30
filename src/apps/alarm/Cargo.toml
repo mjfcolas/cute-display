@@ -18,5 +18,6 @@ log = "0.4"
 mbop3 = { version = "0.1", features = ["alloc"] }
 
 [dev-dependencies]
+ui_testing = { path = "../../engine/ui_testing" }
 domain_testing = { path = "../../engine/domain_testing" }
 hal = { path = "../../engine/hal" }

@@ -84,6 +84,7 @@ mod tests {
     use domain::time::{LocalTime, TimeOfDay};
     use forecast::{DayForecast, Degrees, HourForecast, Millimetres, Percent, Sky};
     use hal::display::{Frame, HEIGHT, WIDTH};
+    use ui_testing::references;
 
     use super::*;
     use crate::ui::screen::ui_state::SettingRow;
@@ -183,5 +184,15 @@ mod tests {
             let beside = Rectangle::new(Point::new(AREA.top_left.x, first_top + n * ROW_PITCH), Size::new(DOT_DIAMETER, BODY.character_size.height));
             assert_eq!(ink_in(&frame, beside), n == CHOSEN_DAY as i32, "row {n}");
         }
+    }
+
+    #[test]
+    fn the_clock_looks_as_its_reference() {
+        references::check(&render(&clock_state_with_forecast()), env!("CARGO_MANIFEST_DIR"), "clock");
+    }
+
+    #[test]
+    fn the_settings_look_as_their_reference() {
+        references::check(&render(&settings_state("[07]:30")), env!("CARGO_MANIFEST_DIR"), "settings");
     }
 }

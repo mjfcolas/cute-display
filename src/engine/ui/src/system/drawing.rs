@@ -91,6 +91,7 @@ fn heading<D: DrawTarget<Color = BinaryColor>>(target: &mut D, name: &str, top_l
 #[cfg(test)]
 mod tests {
     use hal::display::{Frame, HEIGHT, WIDTH};
+    use ui_testing::references;
 
     use super::*;
     use crate::system::ui_state::{AppRow, Choice};
@@ -156,5 +157,15 @@ mod tests {
     fn the_chosen_app_is_on_an_ink_bar() {
         assert!(bar_lines_under_the_apps(&render(&state_choosing("Radar"))) > 0);
         assert_eq!(bar_lines_under_the_apps(&render(&state_choosing("Backlight"))), 0);
+    }
+
+    #[test]
+    fn an_app_chosen_looks_as_its_reference() {
+        references::check(&render(&state_choosing("Radar")), env!("CARGO_MANIFEST_DIR"), "system-app-chosen");
+    }
+
+    #[test]
+    fn a_setting_chosen_looks_as_its_reference() {
+        references::check(&render(&state_choosing("Backlight")), env!("CARGO_MANIFEST_DIR"), "system-setting-chosen");
     }
 }
