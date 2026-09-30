@@ -129,7 +129,7 @@ still true.
    `docs/development.md` and AGENTS.md.
 2. **Done.** Shared test doubles and contracts (C).
 3. **Current.** The UI state (A): `SystemScreen`'s (done), the alarm's (done), the
-   weather's, the radar's; then rendering references in Rust, `<name>.seen.png` beside
+   weather's (done), the radar's; then rendering references in Rust, `<name>.seen.png` beside
    them on a difference, `BLESS=1` to take them anew.
 4. The description to the console (B): `describe`, `remote describe`; the `drive` skill
    reads the screen as text.
