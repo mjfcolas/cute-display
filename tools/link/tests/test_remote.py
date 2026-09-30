@@ -40,6 +40,14 @@ class Command(unittest.TestCase):
                     remote.main()
         self.assertEqual(printed, ['front light 20 %, reading lamp 0 %', 'playing', '2026-09-28T04:30:00+00:00'])
 
+    def test_what_the_screen_says_is_printed_a_line_at_a_time(self):
+        device = FakeConsole(FakeObservation(lines=['front radar', 'range 25 km'], times_shown=2))
+        printed = []
+        with mock.patch.object(usb, 'open_link', return_value=nullcontext(device)), mock.patch('builtins.print', printed.append), \
+                mock.patch('sys.argv', ['remote', 'describe']):
+            remote.main()
+        self.assertEqual(printed, ['front radar\nrange 25 km', 'said when the glass was drawn 2 times'])
+
     def test_the_screen_is_saved_as_a_png(self):
         with tempfile.TemporaryDirectory() as directory:
             png = Path(directory) / 'screen.png'

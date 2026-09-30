@@ -18,6 +18,15 @@ class Observation(unittest.TestCase):
         screen = observation.screen(FakeConsole(FakeObservation(ink=ink, times_shown=7)))
         self.assertEqual((screen.times_shown, screen.frame.ink), (7, ink))
 
+    def test_what_the_screen_says_comes_with_the_times_it_was_shown(self):
+        lines = ('front alarm', 'row Saturday [07]:00 *')
+        said = observation.said(FakeConsole(FakeObservation(lines=list(lines), times_shown=4)))
+        self.assertEqual(said, observation.Said(4, lines))
+
+    def test_a_screen_that_said_nothing_yet_is_said(self):
+        with self.assertRaisesRegex(ConsoleError, 'nothing said'):
+            observation.said(FakeConsole(FakeObservation()))
+
     def test_a_screen_never_shown_is_said(self):
         with self.assertRaisesRegex(ConsoleError, 'nothing shown'):
             observation.screen(FakeConsole(FakeObservation()))

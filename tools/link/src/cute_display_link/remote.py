@@ -1,5 +1,6 @@
 """`remote`: tap, hold and turn the controls of the device, or of a simulator, from this
-computer; see its glass, its lights and its speaker; read and set its clock."""
+computer; see its glass and read what it says, see its lights and its speaker; read and
+set its clock."""
 import argparse
 import sys
 from datetime import datetime
@@ -16,6 +17,12 @@ def save_screen(link, arguments):
     with open(arguments.png, 'wb') as f:
         f.write(screen.frame.png(arguments.zoom))
     print(f'{arguments.png}: the glass was drawn {screen.times_shown} times')
+
+
+def print_said(link, arguments):
+    said = observation.said(link)
+    print('\n'.join(said.lines))
+    print(f'said when the glass was drawn {said.times_shown} times')
 
 
 def show_clock(link, arguments):
@@ -46,6 +53,7 @@ def main():
     shot.add_argument('png', nargs='?', default='/tmp/cute-display.png')
     shot.add_argument('--zoom', type=int, default=2)
     shot.set_defaults(act=save_screen)
+    commands.add_parser('describe', help='what the glass says, a line for each thing a person reads').set_defaults(act=print_said)
     commands.add_parser('lights', help='the front light and the reading lamp').set_defaults(
         act=lambda link, a: print('front light {} %, reading lamp {} %'.format(*observation.lights(link))))
     commands.add_parser('sound', help='whether the speaker plays').set_defaults(

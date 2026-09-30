@@ -1,6 +1,6 @@
 # Testing plan
 
-> **Not done yet.** Steps 1 to 3 are done; **step 4 is the current one**. This file
+> **Not done yet.** Steps 1 to 4 are done; **step 5 is the current one**. This file
 > is updated as each step lands, and goes once the last one has: the
 > [pyramid](README.md) and the code are then the reference.
 
@@ -124,12 +124,13 @@ still true.
    `docs/development.md` and AGENTS.md.
 2. **Done.** Shared test doubles and contracts (C).
 3. **Done.** The UI state (A) of the four screens, and their rendering references.
-4. **Current.** The description to the console (B): in `ui`, each screen and the
-   `Shell` (done); to the console, `describe` (done); `remote describe`, and the `drive`
-   skill reads the screen as text.
-5. A trial of the virtual clock, then the integration tier (D): starting with and
-   without a card; a night until the alarm (in front, light and sound, snooze, stop);
-   NTP setting the RTC, failing, retrying ten minutes later; a recorded forecast shown.
+4. **Done.** The description to the console (B): each screen and the `Shell` say
+   what they drew, `describe` answers it, `remote describe` prints it, the `drive` skill
+   reads it.
+5. **Current.** A trial of the virtual clock, then the integration tier (D): starting
+   with and without a card; a night until the alarm (in front, light and sound, snooze,
+   stop); NTP setting the RTC, failing, retrying ten minutes later; a recorded forecast
+   shown.
 6. The deterministic simulator (E) and the console's synchronisation (F), but `restart`.
 7. The end-to-end harness on the simulator (G), five to eight scenarios: start, switching
    apps, setting an alarm, ringing on time, the light, recorded weather, recorded radar,

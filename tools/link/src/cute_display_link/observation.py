@@ -1,4 +1,5 @@
-"""What the device does with its glass, its lights and its speaker, through its console."""
+"""What the device shows and says on its glass, and does with its lights and its speaker,
+through its console."""
 import base64
 from dataclasses import dataclass
 
@@ -19,6 +20,21 @@ def screen(link):
             ink += base64.b64decode(rest)
         elif kind == 'ok':
             return Screen(int(rest), Frame(bytes(ink)))
+
+
+@dataclass(frozen=True)
+class Said:
+    times_shown: int
+    lines: tuple[str, ...]
+
+
+def said(link):
+    lines = []
+    for kind, rest in Request(link, 'describe').replies():
+        if kind == 'text':
+            lines.append(rest)
+        elif kind == 'ok':
+            return Said(int(rest), tuple(lines))
 
 
 def lights(link):
