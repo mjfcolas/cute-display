@@ -19,6 +19,7 @@ app = { path = "../app" }
 drivers = { path = "../engine/drivers" }
 hal = { path = "../engine/hal" }
 infrastructure = { path = "../engine/infrastructure" }
+maintenance = { path = "../maintenance" }
 catalog = { path = "../catalog", default-features = false }
 embedded-graphics = "0.8"
 env_logger = "0.11"

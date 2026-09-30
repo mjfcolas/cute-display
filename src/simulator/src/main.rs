@@ -1,5 +1,6 @@
 mod card;
 mod clock;
+mod console;
 mod controls;
 mod lights;
 mod network;
@@ -16,7 +17,10 @@ use app::{Devices, Hardware};
 use drivers::udp_socket::StdUdpClient;
 use hal::storage::FileStorage;
 use hal::Fault;
+use infrastructure::composite_input::{CompositeButton, CompositeWheel};
 use infrastructure::internet::WIFI_FILE;
+use maintenance::remote::{ButtonName, Remote, RemoteButton, RemoteWheel};
+use maintenance::MaintenanceConsole;
 
 use crate::card::DirectoryCard;
 use crate::clock::HostClock;
@@ -34,8 +38,8 @@ enum Computer {}
 
 impl Hardware for Computer {
     type Panel = SimulatedPanel;
-    type Wheel = ScrollWheel;
-    type Button = KeyButton;
+    type Wheel = CompositeWheel<ScrollWheel, RemoteWheel>;
+    type Button = CompositeButton<KeyButton, RemoteButton>;
     type Light = SimulatedLight;
     type Rtc = HostClock;
     type Speaker = LoggedSpeaker;
@@ -66,12 +70,16 @@ fn main() -> Result<(), Fault> {
 
     let steady = ScaledClock::new(options.speed);
     let case = Case::new(steady);
+    let remote = Remote::new(steady);
+    if let Some(path) = &options.console_socket {
+        console::listen(path, MaintenanceConsole::new(card.clone(), remote.clone()))?;
+    }
     let devices = Devices::<Computer> {
         panel: case.panel.clone(),
-        wheel: case.wheel.clone(),
-        wheel_button: case.wheel_button.clone(),
-        yellow_button: case.yellow_button.clone(),
-        long_button: case.long_button.clone(),
+        wheel: CompositeWheel::new(case.wheel.clone(), remote.wheel()),
+        wheel_button: CompositeButton::new(case.wheel_button.clone(), remote.button(ButtonName::WheelButton)),
+        yellow_button: CompositeButton::new(case.yellow_button.clone(), remote.button(ButtonName::Yellow)),
+        long_button: CompositeButton::new(case.long_button.clone(), remote.button(ButtonName::Long)),
         front_light: case.front_light.clone(),
         reading_lamp: case.reading_lamp.clone(),
         rtc: HostClock::new(steady)?,

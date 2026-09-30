@@ -1,4 +1,5 @@
-"""`remote`: tap, hold and turn the device's controls from this computer."""
+"""`remote`: tap, hold and turn the controls of the device, or of a simulator, from this
+computer."""
 import argparse
 import sys
 
@@ -6,10 +7,12 @@ from serial import SerialException
 
 from . import controls, usb
 from .console import ConsoleError
+from .simulator import NoSimulator, SimulatorLink
 
 
 def main():
     parser = argparse.ArgumentParser(prog='remote', description=__doc__)
+    parser.add_argument('--simulator', metavar='SOCKET', help="a simulator's, started with --console SOCKET")
     commands = parser.add_subparsers(required=True, metavar='command')
 
     tap = commands.add_parser('tap', help='press and release a button')
@@ -27,11 +30,13 @@ def main():
 
     arguments = parser.parse_args()
     try:
-        with usb.open_link() as link:
+        with SimulatorLink(arguments.simulator) if arguments.simulator else usb.open_link() as link:
             arguments.act(link, arguments)
     except usb.NoDevice as error:
         sys.exit(str(error))
     except SerialException as error:
         sys.exit(usb.explain(error))
+    except NoSimulator as error:
+        sys.exit(str(error))
     except ConsoleError as error:
         sys.exit(f'The device: {error}')

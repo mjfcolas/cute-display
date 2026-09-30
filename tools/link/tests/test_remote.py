@@ -29,3 +29,4 @@ class Command(unittest.TestCase):
         self.assertIn('ms at most', self.run_remote('hold', '20000', 'yellow')[1])
         self.assertIn('No Habity found', self.run_remote('tap', 'long', fails=usb.NoDevice('No Habity found on USB.'))[1])
         self.assertIn('in use', self.run_remote('tap', 'long', fails=SerialException('device busy'))[1])
+        self.assertIn('No simulator on nowhere.sock', self.run_remote('--simulator', 'nowhere.sock', 'tap', 'long')[1])

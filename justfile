@@ -9,6 +9,7 @@ elf_dir := "src/firmware/target/xtensa-esp32s3-espidf/release"
 backup_dir := justfile_directory() / "backup"
 release_dir := justfile_directory() / "release"
 cute_display := "uv run --quiet --project " + justfile_directory() / "tools/installer" + " cute-display"
+sim_console := justfile_directory() / "target/simulator.sock"
 
 # list recipes
 default:
@@ -33,9 +34,13 @@ preview screen="system" zoom="2":
     uv run --quiet --no-project python tools/fb2png.py /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
     xdg-open /tmp/cute-display.png >/dev/null 2>&1 &
 
-# run the app image on this computer, the SD card being a directory; flags in docs/simulator/README.md
+# run the app image on this computer, the SD card being a directory, its console for `just remote-sim`; flags in docs/simulator/README.md
 sim card="sim-sd" *flags:
-    cargo run --quiet -p simulator -- {{card}} {{flags}}
+    cargo run --quiet -p simulator -- {{card}} --console {{sim_console}} {{flags}}
+
+# tap, hold or turn the controls of the simulator `just sim` started
+remote-sim *args:
+    uv run --quiet --project {{justfile_directory()}}/tools/link remote --simulator {{sim_console}} {{args}}
 
 # render the hardware test's report page to a PNG (`pattern` for the checkerboard)
 preview-hwtest page="" zoom="2":

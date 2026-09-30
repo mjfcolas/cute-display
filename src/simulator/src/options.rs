@@ -8,11 +8,12 @@ pub struct Options {
     pub card: PathBuf,
     /// How many times faster than the wall the app image runs.
     pub speed: NonZeroU32,
+    pub console_socket: Option<PathBuf>,
 }
 
 impl Options {
     pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Self, String> {
-        let mut options = Self { card: PathBuf::from(DEFAULT_CARD), speed: NonZeroU32::MIN };
+        let mut options = Self { card: PathBuf::from(DEFAULT_CARD), speed: NonZeroU32::MIN, console_socket: None };
         let mut args = args.into_iter();
         while let Some(arg) = args.next() {
             match arg.as_str() {
@@ -20,6 +21,7 @@ impl Options {
                     let speed = args.next().ok_or("--speed: how many times faster?")?;
                     options.speed = speed.parse().map_err(|_| format!("--speed {speed}: a whole number from 1"))?;
                 }
+                "--console" => options.console_socket = Some(PathBuf::from(args.next().ok_or("--console: the socket's path")?)),
                 flag if flag.starts_with("--") => return Err(format!("{flag}: no such option")),
                 card => options.card = PathBuf::from(card),
             }
@@ -42,17 +44,20 @@ mod tests {
 
     #[test]
     fn without_arguments_the_card_is_sim_sd_at_the_walls_speed() {
-        assert_eq!(parse(&[]), Ok(Options { card: PathBuf::from("sim-sd"), speed: speed(1) }));
+        assert_eq!(parse(&[]), Ok(Options { card: PathBuf::from("sim-sd"), speed: speed(1), console_socket: None }));
     }
 
     #[test]
-    fn the_card_and_the_speed_come_in_any_order() {
-        assert_eq!(parse(&["--speed", "20", "backup/sd"]), Ok(Options { card: PathBuf::from("backup/sd"), speed: speed(20) }));
+    fn the_card_and_the_flags_come_in_any_order() {
+        assert_eq!(
+            parse(&["--speed", "20", "backup/sd", "--console", "target/simulator.sock"]),
+            Ok(Options { card: PathBuf::from("backup/sd"), speed: speed(20), console_socket: Some(PathBuf::from("target/simulator.sock")) })
+        );
     }
 
     #[test]
     fn a_speed_that_is_not_a_positive_number_or_an_unknown_flag_is_refused() {
-        for bad in [&["--speed"][..], &["--speed", "0"], &["--speed", "fast"], &["--fast"]] {
+        for bad in [&["--speed"][..], &["--speed", "0"], &["--speed", "fast"], &["--fast"], &["--console"]] {
             assert!(parse(bad).is_err(), "{bad:?}");
         }
     }

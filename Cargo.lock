@@ -1898,6 +1898,7 @@ dependencies = [
  "hal",
  "infrastructure",
  "log",
+ "maintenance",
  "minifb",
  "radar",
  "ui",

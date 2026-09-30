@@ -43,14 +43,14 @@ The apps, on it, listed by `catalog`, which the composition roots share:
 | `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, thermometer, storage, radio, HTTP, UDP, I2C bus, power, system, and the steady clock the app image runs on | nothing          |
 | `drivers`        | Implementations of `hal` on the board's chips                                                  | `hal`            |
 | `ui`             | The shell that hosts the app in front, the system app's screen, and the toolkit apps draw with: reads the controls, turns them into domain intents, renders domain state. Runs on its own thread | `domain`         |
-| `maintenance`    | The console on the USB cable: the SD card, and a remote for the buttons and the wheel that tests use | `hal`            |
+| `maintenance`    | The console on the USB cable, or a Unix socket on the simulator: the SD card, and a remote for the buttons and the wheel that tests use | `hal`            |
 | `hwtest`         | The hardware test bench                                                                        | `hal`            |
 | `libs`           | What several apps share, as code: each app has its own instance of it | `domain`, `ui`, `conf_text`, other `libs` |
 | `apps`           | One crate per app, layered as the engine is: `domain`, its concepts and the contracts they need; `infrastructure`, those contracts on what the engine lends; `ui`, its screen. Its root installs it | `domain`, `ui`, `conf_text`, `libs` |
 | `app`            | The app image on any hardware that keeps the HAL's contracts: wires the layers, runs the threads, runs the apps it is given | `domain`, `infrastructure`, `ui`, `hal` |
 | `catalog`        | The apps an image can hold, picked by its Cargo features; the same list for the board and the computer | `apps`, `ui`, `hal` |
 | `firmware`       | Composition roots on the board: builds the drivers from the pin map (`board`), hands them and the catalog's apps to `app`, or hands them to `hwtest` | everything but `simulator` |
-| `simulator`      | Composition root on a computer: the HAL in a window, on the keyboard, in a directory, on the computer's Internet, on a clock that may run faster; hands it and the catalog's apps to `app`; the panel refreshes by the UC8253 driver's policy | `app`, `catalog`, `hal`, `infrastructure`, `drivers` (its host half); `domain`, `ui`, `libs` and `apps` for its screen preview |
+| `simulator`      | Composition root on a computer: the HAL in a window, on the keyboard, in a directory, on the computer's Internet, on a clock that may run faster; hands it and the catalog's apps to `app`, and serves the maintenance console on a Unix socket; the panel refreshes by the UC8253 driver's policy | `app`, `catalog`, `hal`, `infrastructure`, `maintenance`, `drivers` (its host half); `domain`, `ui`, `libs` and `apps` for its screen preview |
 
 The arrows are the only allowed dependencies. In particular the domain never sees a HAL
 type, the UI never sees hardware, `app` never sees a chip, and nothing but `firmware`
@@ -98,7 +98,7 @@ faster than the wall:
 | ui       | controls, apps, display | a refresh blocks for 0.35 to 7 s                 |
 | buttons  | the button pins        | presses must be counted while everyone else is busy |
 | speaker  | the speaker            | playing blocks until the sound ends or is stopped  |
-| maintenance | the USB console's input | it waits for lines from a computer            |
+| maintenance | the USB console's input (a Unix socket's on the simulator) | it waits for lines from a computer |
 | network  | the Wi-Fi, HTTPS and UDP clients, for the time and each app's `fetch` | a fetch waits on the network for seconds; one thread, since each stack is internal RAM |
 
 ## Where things live
@@ -120,7 +120,8 @@ src/            the sources, one crate per directory
   libs/           what apps share: forecasts
   apps/           one crate per app: the alarm clock, the weather, the radar
   catalog/        the apps an image can hold, the same for the board and the computer
-  maintenance/    the console on the USB cable: the SD card, and the remote for tests
+  maintenance/    the console on the USB cable (a Unix socket on the simulator): the SD
+                  card, and the remote for tests
   hwtest/         the hardware test bench
   app/            the app image's threads and wiring, generic over the HAL
   firmware/       board pin map + one binary per image (`app`, `hwtest`); the only crate

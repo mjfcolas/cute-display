@@ -12,3 +12,6 @@ just remote tap yellow            # a button pressed and released: wheel, yellow
 just remote hold 1500 yellow long # held down together, then released
 just remote turn -2               # the wheel, clockwise positive
 ```
+
+- `just remote-sim …` does the same on the simulator `just sim` started, through its Unix
+  socket.
