@@ -7,10 +7,11 @@ use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 
-pub use ui_state::{AppRow, Choice, Current, Mark, SettingRow, SystemUiState};
+pub use ui_state::{AppRow, Choice, Current, SettingRow, SystemUiState};
 
 use crate::app_screen::AppScreen;
 use crate::controls::{Button, Input};
+use crate::mark::Mark;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Setting {

@@ -48,6 +48,8 @@
   `ui_state()`.
 - The `Shell` describes what is in front: the app, the system screen open or not, then
   the screen's description.
+- A UI state holds the text as shown, but for what the toolkit draws from domain data
+  (the time in big digits, a forecast's icons): the description turns those into text.
 - `maintenance` sees `hal` only: plain data on the `hal` side, as `ControlsSample` is on
   the `ui` side (`hal::display::ScreenText`, lines `name value [*]`), and a contract that
   receives it (`ScreenReader`, like an accessibility screen reader). Names settled in
@@ -126,9 +128,9 @@ still true.
 1. **Done.** The strategy: [the pyramid](README.md), this plan, linked from
    `docs/development.md` and AGENTS.md.
 2. **Done.** Shared test doubles and contracts (C).
-3. **Current.** The UI state (A): `SystemScreen`'s (done), the alarm's, the weather's,
-   the radar's; then rendering references in Rust, `<name>.seen.png` beside them on a
-   difference, `BLESS=1` to take them anew.
+3. **Current.** The UI state (A): `SystemScreen`'s (done), the alarm's (done), the
+   weather's, the radar's; then rendering references in Rust, `<name>.seen.png` beside
+   them on a difference, `BLESS=1` to take them anew.
 4. The description to the console (B): `describe`, `remote describe`; the `drive` skill
    reads the screen as text.
 5. A trial of the virtual clock, then the integration tier (D): starting with and

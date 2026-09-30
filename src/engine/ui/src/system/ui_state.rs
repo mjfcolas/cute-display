@@ -1,14 +1,10 @@
+use crate::mark::Mark;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SystemUiState {
     pub version: &'static str,
     pub apps: Vec<AppRow>,
     pub settings: Vec<SettingRow>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Mark {
-    Chosen,
-    Plain,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

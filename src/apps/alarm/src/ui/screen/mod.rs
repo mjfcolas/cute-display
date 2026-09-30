@@ -1,3 +1,6 @@
+mod drawing;
+mod ui_state;
+
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use domain::calendar::Weekday;
@@ -5,31 +8,32 @@ use domain::clock::Clock;
 use domain::time::{LocalTime, TimeOfDay};
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{Circle, PrimitiveStyle, Rectangle};
+use embedded_graphics::primitives::Rectangle;
 use forecast::day_weather;
 use forecast::Weather;
-use ui::big_digits;
 use ui::calendar_names;
 use ui::controls::{Button, Input};
-use ui::text::{self, BODY, HINT, TITLE};
+use ui::mark::Mark;
 use ui::AppScreen;
+
+pub use ui_state::{AlarmUiState, ClockPage, SettingRow, SettingsPage};
 
 use crate::domain::alarm_clock::{AlarmClock, AlarmState, Ringtone, SNOOZE};
 
 const FIRST_TIME: Option<TimeOfDay> = TimeOfDay::new(7, 0);
 const RINGTONE_ROW: usize = Weekday::ALL.len();
 const ROWS: usize = RINGTONE_ROW + 1;
-const ROW_PITCH: i32 = 22;
-const DOT_DIAMETER: u32 = 8;
-const DOT_GAP: i32 = 10;
-/// "Wednesday" and a space.
-const DAY_NAME_CHARS: i32 = 10;
-const GAP: i32 = 12;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Mode {
     Clock,
-    Settings { row: usize },
+    Settings(SettingsStep),
+}
+
+/// Where the settings page is: choosing a row, or setting what is on it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SettingsStep {
+    Choosing { row: usize },
     Hour { day: Weekday, time_to_put_back: Option<TimeOfDay> },
     Minute { day: Weekday, time_to_put_back: Option<TimeOfDay> },
     Ringtone { to_put_back: Ringtone },
@@ -50,12 +54,97 @@ impl AlarmScreen {
         Self { alarm, clock, weather, mode: Mode::Clock, hours_ahead: 0, ringtones: Vec::new() }
     }
 
+    pub fn ui_state(&self) -> AlarmUiState {
+        match &self.mode {
+            Mode::Clock => AlarmUiState::Clock(self.clock_page()),
+            Mode::Settings(step) => AlarmUiState::Settings(Box::new(self.settings_page(step))),
+        }
+    }
+
+    fn clock_page(&self) -> ClockPage {
+        let now = self.clock.now();
+        let forecast = self.weather.report().forecast;
+        let (today, hours) = match (&forecast, now) {
+            (Some(forecast), Some(now)) => (
+                forecast.day(now.date).cloned(),
+                forecast.hours_from(now).skip(self.hours_ahead).take(day_weather::HOURS_SHOWN).cloned().collect(),
+            ),
+            _ => (None, Vec::new()),
+        };
+        let hint = match self.alarm.state() {
+            AlarmState::Ringing => format!("long: snooze {} min   hold yellow and long: stop", SNOOZE.as_secs() / 60),
+            AlarmState::Snoozed { .. } => "hold yellow and long: stop".into(),
+            AlarmState::Waiting { .. } => "yellow: alarm on/off   long: settings   wheel: hours".into(),
+        };
+        ClockPage {
+            date: now.map_or_else(|| "The time is not known yet".into(), |now| long_date(&now)),
+            time: now.map(|now| now.time_of_day),
+            today,
+            hours,
+            alarm: self.alarm_line(now),
+            hint,
+        }
+    }
+
+    fn alarm_line(&self, now: Option<LocalTime>) -> String {
+        match self.alarm.state() {
+            AlarmState::Ringing => "Good morning!".into(),
+            AlarmState::Snoozed { until } => format!("Snoozing until {}", clock_time(until.time_of_day)),
+            AlarmState::Waiting { .. } if !self.alarm.schedule().enabled => "Alarm off".into(),
+            AlarmState::Waiting { next: Some(next) } => match now {
+                Some(now) => format!("Alarm {} at {}", day_from(now, next), clock_time(next.time_of_day)),
+                None => format!("Alarm at {}", clock_time(next.time_of_day)),
+            },
+            AlarmState::Waiting { next: None } if now.is_none() => "Alarm on".into(),
+            AlarmState::Waiting { next: None } => "No wake-up time set".into(),
+        }
+    }
+
+    fn settings_page(&self, step: &SettingsStep) -> SettingsPage {
+        let enabled = if self.alarm.schedule().enabled { "on" } else { "off" };
+        let chosen_row = match step {
+            SettingsStep::Choosing { row } => *row,
+            SettingsStep::Hour { day, .. } | SettingsStep::Minute { day, .. } => day.days_since_monday(),
+            SettingsStep::Ringtone { .. } => RINGTONE_ROW,
+        };
+        let mark = |row: usize| if row == chosen_row { Mark::Chosen } else { Mark::Plain };
+        let days = Weekday::ALL.map(|day| {
+            let field = match step {
+                SettingsStep::Hour { day: editing, .. } if *editing == day => Some(Field::Hour),
+                SettingsStep::Minute { day: editing, .. } if *editing == day => Some(Field::Minute),
+                _ => None,
+            };
+            SettingRow { name: calendar_names::weekday(day), value: wake_up_time(self.time_on(day), field), mark: mark(day.days_since_monday()) }
+        });
+        let ringtone = self.alarm.ringtone();
+        let ringtone = match step {
+            SettingsStep::Ringtone { .. } => format!("[{}]", ringtone_name(&ringtone)),
+            _ => ringtone_name(&ringtone).into(),
+        };
+        let hint = match step {
+            SettingsStep::Choosing { .. } => "wheel: day or ringtone   long: set   yellow: back",
+            SettingsStep::Hour { .. } => "wheel: hour, past 23 is off   long: minutes   yellow: cancel",
+            SettingsStep::Minute { .. } => "wheel: minutes   long: done   yellow: cancel",
+            SettingsStep::Ringtone { .. } => "wheel: ringtone, playing softly   long: done   yellow: cancel",
+        };
+        SettingsPage {
+            title: format!("Alarm settings (alarm {enabled})"),
+            days,
+            ringtone: SettingRow { name: "Ringtone", value: ringtone, mark: mark(RINGTONE_ROW) },
+            hint,
+        }
+    }
+
     fn time_on(&self, day: Weekday) -> Option<TimeOfDay> {
         self.alarm.schedule().time_on(day)
     }
 
+    fn choosing(row: usize) -> Mode {
+        Mode::Settings(SettingsStep::Choosing { row })
+    }
+
     fn days_row_of(day: Weekday) -> Mode {
-        Mode::Settings { row: day.days_since_monday() }
+        Self::choosing(day.days_since_monday())
     }
 
     /// Ringing or snoozed, every other input is ignored so that nothing half asleep turns
@@ -72,6 +161,45 @@ impl AlarmScreen {
             }
             (AlarmState::Waiting { .. }, Input::Turn(detents)) => self.scroll_hours(detents),
             (AlarmState::Waiting { .. }, _) => {}
+        }
+    }
+
+    fn on_settings_input(&mut self, step: SettingsStep, input: Input) {
+        match (step, input) {
+            (_, Input::HoldYellowAndLong) => {}
+            (SettingsStep::Choosing { row }, Input::Turn(detents)) => {
+                self.mode = Self::choosing((row as i64 + i64::from(detents)).rem_euclid(ROWS as i64) as usize);
+            }
+            (SettingsStep::Choosing { row: RINGTONE_ROW }, Input::Press(Button::Long)) => self.choose_ringtone(),
+            (SettingsStep::Choosing { row }, Input::Press(Button::Long)) => {
+                let day = Weekday::ALL.get(row).copied().unwrap_or(Weekday::Monday);
+                let time_to_put_back = self.time_on(day);
+                if time_to_put_back.is_none() {
+                    self.alarm.set_time_on(day, FIRST_TIME);
+                }
+                self.mode = Mode::Settings(SettingsStep::Hour { day, time_to_put_back });
+            }
+            (SettingsStep::Choosing { .. }, Input::Press(Button::Yellow)) => self.mode = Mode::Clock,
+            (SettingsStep::Hour { day, .. }, Input::Turn(detents)) => self.turn_hour(day, detents),
+            (SettingsStep::Hour { day, time_to_put_back }, Input::Press(Button::Long)) if self.time_on(day).is_some() => {
+                self.mode = Mode::Settings(SettingsStep::Minute { day, time_to_put_back });
+            }
+            (SettingsStep::Hour { day, .. }, Input::Press(Button::Long)) => self.mode = Self::days_row_of(day),
+            (SettingsStep::Minute { day, .. }, Input::Turn(detents)) => self.turn_minute(day, detents),
+            (SettingsStep::Minute { day, .. }, Input::Press(Button::Long)) => self.mode = Self::days_row_of(day),
+            (
+                SettingsStep::Hour { day, time_to_put_back } | SettingsStep::Minute { day, time_to_put_back },
+                Input::Press(Button::Yellow),
+            ) => {
+                self.alarm.set_time_on(day, time_to_put_back);
+                self.mode = Self::days_row_of(day);
+            }
+            (SettingsStep::Ringtone { .. }, Input::Turn(detents)) => self.turn_ringtone(detents),
+            (SettingsStep::Ringtone { .. }, Input::Press(Button::Long)) => self.close_ringtone(),
+            (SettingsStep::Ringtone { to_put_back }, Input::Press(Button::Yellow)) => {
+                self.alarm.set_ringtone(to_put_back);
+                self.close_ringtone();
+            }
         }
     }
 
@@ -96,7 +224,7 @@ impl AlarmScreen {
 
     fn choose_ringtone(&mut self) {
         self.ringtones = self.alarm.ringtones();
-        self.mode = Mode::Ringtone { to_put_back: self.alarm.ringtone() };
+        self.mode = Mode::Settings(SettingsStep::Ringtone { to_put_back: self.alarm.ringtone() });
         self.alarm.preview();
     }
 
@@ -111,7 +239,7 @@ impl AlarmScreen {
 
     fn close_ringtone(&mut self) {
         self.alarm.end_preview();
-        self.mode = Mode::Settings { row: RINGTONE_ROW };
+        self.mode = Self::choosing(RINGTONE_ROW);
     }
 
     fn turn_minute(&self, day: Weekday, detents: i32) {
@@ -129,7 +257,7 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for AlarmScreen {
     }
 
     fn left(&mut self) {
-        if let Mode::Ringtone { .. } = self.mode {
+        if let Mode::Settings(SettingsStep::Ringtone { .. }) = self.mode {
             self.alarm.end_preview();
         }
     }
@@ -145,157 +273,15 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for AlarmScreen {
         if !matches!(self.alarm.state(), AlarmState::Waiting { .. }) {
             self.mode = Mode::Clock;
         }
-        match (self.mode.clone(), input) {
-            (Mode::Clock, input) => self.on_clock_input(input),
-            (_, Input::HoldYellowAndLong) => {}
-            (Mode::Settings { row }, Input::Turn(detents)) => {
-                let row = (row as i64 + i64::from(detents)).rem_euclid(ROWS as i64) as usize;
-                self.mode = Mode::Settings { row };
-            }
-            (Mode::Settings { row: RINGTONE_ROW }, Input::Press(Button::Long)) => self.choose_ringtone(),
-            (Mode::Settings { row }, Input::Press(Button::Long)) => {
-                let day = Weekday::ALL.get(row).copied().unwrap_or(Weekday::Monday);
-                let time_to_put_back = self.time_on(day);
-                if time_to_put_back.is_none() {
-                    self.alarm.set_time_on(day, FIRST_TIME);
-                }
-                self.mode = Mode::Hour { day, time_to_put_back };
-            }
-            (Mode::Settings { .. }, Input::Press(Button::Yellow)) => self.mode = Mode::Clock,
-            (Mode::Hour { day, .. }, Input::Turn(detents)) => self.turn_hour(day, detents),
-            (Mode::Hour { day, time_to_put_back }, Input::Press(Button::Long)) if self.time_on(day).is_some() => {
-                self.mode = Mode::Minute { day, time_to_put_back };
-            }
-            (Mode::Hour { day, .. }, Input::Press(Button::Long)) => self.mode = Self::days_row_of(day),
-            (Mode::Minute { day, .. }, Input::Turn(detents)) => self.turn_minute(day, detents),
-            (Mode::Minute { day, .. }, Input::Press(Button::Long)) => self.mode = Self::days_row_of(day),
-            (Mode::Hour { day, time_to_put_back } | Mode::Minute { day, time_to_put_back }, Input::Press(Button::Yellow)) => {
-                self.alarm.set_time_on(day, time_to_put_back);
-                self.mode = Self::days_row_of(day);
-            }
-            (Mode::Ringtone { .. }, Input::Turn(detents)) => self.turn_ringtone(detents),
-            (Mode::Ringtone { .. }, Input::Press(Button::Long)) => self.close_ringtone(),
-            (Mode::Ringtone { to_put_back }, Input::Press(Button::Yellow)) => {
-                self.alarm.set_ringtone(to_put_back);
-                self.close_ringtone();
-            }
+        match self.mode.clone() {
+            Mode::Clock => self.on_clock_input(input),
+            Mode::Settings(step) => self.on_settings_input(step, input),
         }
     }
 
     fn draw(&self, target: &mut D, area: Rectangle) {
-        match self.mode {
-            Mode::Clock => self.draw_clock(target, area),
-            Mode::Settings { .. } | Mode::Hour { .. } | Mode::Minute { .. } | Mode::Ringtone { .. } => self.draw_settings(target, area),
-        }
+        drawing::draw(&self.ui_state(), target, area);
     }
-}
-
-impl AlarmScreen {
-    fn draw_clock<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle) {
-        let now = self.clock.now();
-        let top = area.top_left.y;
-        let right = area.top_left.x + area.size.width as i32;
-        let digits_top = top + BODY.character_size.height as i32 + 2 * GAP;
-        let forecast = self.weather.report().forecast;
-        let mut date_width = area.size.width;
-        if let (Some(forecast), Some(now)) = (&forecast, now) {
-            if let Some(today) = forecast.day(now.date) {
-                day_weather::draw_range(target, today, Point::new(right, top));
-                date_width = date_width.saturating_sub(day_weather::range_width(today) + GAP as u32);
-            }
-            day_weather::draw_hours(target, forecast.hours_from(now).skip(self.hours_ahead), hours_column(area));
-        }
-        let date = now.map_or_else(|| "The time is not known yet".into(), |now| long_date(&now));
-        text::write(target, &date, area.top_left, date_width, &BODY);
-        big_digits::CLOCK.draw_time(target, now.map(|now| now.time_of_day), Point::new(area.top_left.x, digits_top));
-
-        let line_top = digits_top + big_digits::CLOCK.height as i32 + 2 * GAP;
-        text::write(target, &self.alarm_line(now), Point::new(area.top_left.x, line_top), big_digits::CLOCK.time_width(), &BODY);
-        let hint = match self.alarm.state() {
-            AlarmState::Ringing => format!("long: snooze {} min   hold yellow and long: stop", SNOOZE.as_secs() / 60),
-            AlarmState::Snoozed { .. } => "hold yellow and long: stop".into(),
-            AlarmState::Waiting { .. } => "yellow: alarm on/off   long: settings   wheel: hours".into(),
-        };
-        write_hint(target, &hint, area);
-    }
-
-    fn alarm_line(&self, now: Option<LocalTime>) -> String {
-        match self.alarm.state() {
-            AlarmState::Ringing => "Good morning!".into(),
-            AlarmState::Snoozed { until } => format!("Snoozing until {}", clock_time(until.time_of_day)),
-            AlarmState::Waiting { .. } if !self.alarm.schedule().enabled => "Alarm off".into(),
-            AlarmState::Waiting { next: Some(next) } => match now {
-                Some(now) => format!("Alarm {} at {}", day_from(now, next), clock_time(next.time_of_day)),
-                None => format!("Alarm at {}", clock_time(next.time_of_day)),
-            },
-            AlarmState::Waiting { next: None } if now.is_none() => "Alarm on".into(),
-            AlarmState::Waiting { next: None } => "No wake-up time set".into(),
-        }
-    }
-
-    fn draw_settings<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle) {
-        let enabled = if self.alarm.schedule().enabled { "on" } else { "off" };
-        text::write(target, &format!("Alarm settings (alarm {enabled})"), area.top_left, area.size.width, &TITLE);
-        let advance = (BODY.character_size.width + BODY.character_spacing) as i32;
-        let name_left = area.top_left.x + DOT_DIAMETER as i32 + DOT_GAP;
-        let value_left = name_left + DAY_NAME_CHARS * advance;
-        let value_width = (area.top_left.x + area.size.width as i32 - value_left).max(0) as u32;
-        let first_top = area.top_left.y + TITLE.character_size.height as i32 + GAP;
-        let row_top = |row: usize| first_top + row as i32 * ROW_PITCH;
-        let chosen_row = match self.mode {
-            Mode::Settings { row } => Some(row),
-            Mode::Hour { day, .. } | Mode::Minute { day, .. } => Some(day.days_since_monday()),
-            Mode::Ringtone { .. } => Some(RINGTONE_ROW),
-            Mode::Clock => None,
-        };
-        if let Some(row) = chosen_row {
-            let dot_top = row_top(row) + (BODY.character_size.height as i32 - DOT_DIAMETER as i32) / 2;
-            let _ = Circle::new(Point::new(area.top_left.x, dot_top), DOT_DIAMETER)
-                .into_styled(PrimitiveStyle::with_fill(BinaryColor::On))
-                .draw(target);
-        }
-        for (n, &day) in Weekday::ALL.iter().enumerate() {
-            text::write(target, calendar_names::weekday(day), Point::new(name_left, row_top(n)), (DAY_NAME_CHARS * advance) as u32, &BODY);
-            let field = match self.mode {
-                Mode::Hour { day: editing, .. } if editing == day => Some(Field::Hour),
-                Mode::Minute { day: editing, .. } if editing == day => Some(Field::Minute),
-                _ => None,
-            };
-            text::write(target, &wake_up_time(self.time_on(day), field), Point::new(value_left, row_top(n)), value_width, &BODY);
-        }
-        let top = row_top(RINGTONE_ROW);
-        text::write(target, "Ringtone", Point::new(name_left, top), (DAY_NAME_CHARS * advance) as u32, &BODY);
-        let ringtone = self.alarm.ringtone();
-        let ringtone = match self.mode {
-            Mode::Ringtone { .. } => format!("[{}]", ringtone_name(&ringtone)),
-            _ => ringtone_name(&ringtone).into(),
-        };
-        text::write(target, &ringtone, Point::new(value_left, top), value_width, &BODY);
-        let hint = match self.mode {
-            Mode::Hour { .. } => "wheel: hour, past 23 is off   long: minutes   yellow: cancel",
-            Mode::Minute { .. } => "wheel: minutes   long: done   yellow: cancel",
-            Mode::Ringtone { .. } => "wheel: ringtone, playing softly   long: done   yellow: cancel",
-            Mode::Settings { .. } | Mode::Clock => "wheel: day or ringtone   long: set   yellow: back",
-        };
-        write_hint(target, hint, area);
-    }
-}
-
-fn hours_column(area: Rectangle) -> Rectangle {
-    let right = area.top_left.x + area.size.width as i32;
-    let room_beside_time = right - area.top_left.x - big_digits::CLOCK.time_width() as i32;
-    let left = right - (room_beside_time + day_weather::HOURS_WIDTH as i32) / 2;
-    let below_date = area.top_left.y + BODY.character_size.height as i32;
-    let top = below_date + (hint_top(area) - below_date - day_weather::HOURS_HEIGHT as i32) / 2;
-    Rectangle::new(Point::new(left, top), Size::new(day_weather::HOURS_WIDTH, day_weather::HOURS_HEIGHT))
-}
-
-fn hint_top(area: Rectangle) -> i32 {
-    area.top_left.y + area.size.height as i32 - HINT.character_size.height as i32
-}
-
-fn write_hint<D: DrawTarget<Color = BinaryColor>>(target: &mut D, hint: &str, area: Rectangle) {
-    text::write(target, hint, Point::new(area.top_left.x, hint_top(area)), area.size.width, &HINT);
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -355,7 +341,7 @@ mod tests {
         CompassPoint, DayForecast, Degrees, Forecast, ForecastSource, Hectopascals, HourForecast, KilometresPerHour, Millimetres, Percent, Sky,
         Today, Wind,
     };
-    use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
+    use hal::display::Frame;
 
     use super::*;
     use crate::domain::alarm_clock::{AlarmSettings, AlarmSettingsStore, Ringer, Volume};
@@ -475,11 +461,41 @@ mod tests {
             self.input(Input::Press(control));
         }
 
-        fn render(&self) -> Frame {
-            let mut frame = Frame::blank();
-            let visible = Rectangle::new(Point::zero(), Size::new(VISIBLE_WIDTH.into(), HEIGHT.into()));
-            AppScreen::draw(&self.screen, &mut frame, visible.offset(-8));
-            frame
+        fn shows_clock(&self) -> bool {
+            matches!(self.screen.ui_state(), AlarmUiState::Clock(_))
+        }
+
+        fn clock_page(&self) -> ClockPage {
+            match self.screen.ui_state() {
+                AlarmUiState::Clock(page) => page,
+                AlarmUiState::Settings(page) => panic!("the settings are shown: {page:?}"),
+            }
+        }
+
+        fn settings_page(&self) -> SettingsPage {
+            match self.screen.ui_state() {
+                AlarmUiState::Settings(page) => *page,
+                AlarmUiState::Clock(page) => panic!("the clock is shown: {page:?}"),
+            }
+        }
+
+        fn chosen_row(&self) -> &'static str {
+            let chosen: Vec<&'static str> = self.setting_rows().filter(|row| row.mark == Mark::Chosen).map(|row| row.name).collect();
+            let [row] = chosen[..] else { panic!("rows chosen: {chosen:?}") };
+            row
+        }
+
+        fn value_of(&self, name: &str) -> String {
+            self.setting_rows().find(|row| row.name == name).map(|row| row.value).unwrap()
+        }
+
+        fn setting_rows(&self) -> impl Iterator<Item = SettingRow> {
+            let page = self.settings_page();
+            page.days.into_iter().chain([page.ringtone])
+        }
+
+        fn first_hour_shown(&self) -> Option<u8> {
+            self.clock_page().hours.first().map(|hour| hour.start.time_of_day.hour())
         }
     }
 
@@ -497,7 +513,7 @@ mod tests {
     fn a_day_is_set_hour_then_minutes_starting_from_today() {
         let mut bench = Bench::new();
         bench.press(Button::Long);
-        assert_eq!(bench.screen.mode, Mode::Settings { row: 5 }, "Saturday");
+        assert_eq!(bench.chosen_row(), "Saturday");
         bench.input(Input::Turn(1));
         bench.press(Button::Long);
         assert_eq!(bench.alarm.schedule().time_on(Weekday::Sunday), TimeOfDay::new(7, 0));
@@ -506,9 +522,9 @@ mod tests {
         bench.input(Input::Turn(-13));
         bench.press(Button::Long);
         assert_eq!(bench.alarm.schedule().time_on(Weekday::Sunday), TimeOfDay::new(9, 47));
-        assert_eq!(bench.screen.mode, Mode::Settings { row: 6 });
+        assert_eq!(bench.chosen_row(), "Sunday");
         bench.press(Button::Yellow);
-        assert_eq!(bench.screen.mode, Mode::Clock);
+        assert!(bench.shows_clock());
         assert!(!bench.alarm.schedule().enabled, "going back is not switching on or off");
     }
 
@@ -523,7 +539,7 @@ mod tests {
         bench.input(Input::Turn(10));
         bench.press(Button::Yellow);
         assert_eq!(bench.alarm.schedule().time_on(Weekday::Saturday), TimeOfDay::new(6, 30));
-        assert_eq!(bench.screen.mode, Mode::Settings { row: 5 });
+        assert_eq!(bench.chosen_row(), "Saturday");
 
         bench.input(Input::Turn(1));
         bench.press(Button::Long);
@@ -542,7 +558,7 @@ mod tests {
         assert_eq!(bench.alarm.schedule().time_on(Weekday::Saturday), TimeOfDay::new(23, 0));
         bench.input(Input::Turn(1));
         bench.press(Button::Long);
-        assert_eq!(bench.screen.mode, Mode::Settings { row: 5 }, "an off day has no minutes to set");
+        assert_eq!(bench.chosen_row(), "Saturday", "an off day has no minutes to set");
     }
 
     #[test]
@@ -550,7 +566,7 @@ mod tests {
         let mut bench = Bench::new();
         bench.press(Button::Long);
         bench.input(Input::Turn(2));
-        assert_eq!(bench.screen.mode, Mode::Settings { row: RINGTONE_ROW }, "after Sunday");
+        assert_eq!(bench.chosen_row(), "Ringtone", "after Sunday");
         bench.press(Button::Long);
         assert_eq!(bench.ringer.playing(), Some(Ringtone::Chime));
         bench.input(Input::Turn(-1));
@@ -559,7 +575,7 @@ mod tests {
         assert_eq!(bench.alarm.ringtone(), zen());
         bench.press(Button::Long);
         assert_eq!((bench.alarm.ringtone(), bench.ringer.playing()), (zen(), None));
-        assert_eq!(bench.screen.mode, Mode::Settings { row: RINGTONE_ROW });
+        assert_eq!(bench.chosen_row(), "Ringtone");
     }
 
     #[test]
@@ -608,7 +624,7 @@ mod tests {
         assert!(matches!(bench.alarm.state(), AlarmState::Snoozed { .. }), "snoozing, only holding both stops");
         bench.input(Input::HoldYellowAndLong);
         assert!(matches!(bench.alarm.state(), AlarmState::Waiting { .. }));
-        assert_eq!(bench.screen.mode, Mode::Clock);
+        assert!(bench.shows_clock());
     }
 
     #[test]
@@ -628,62 +644,75 @@ mod tests {
     #[test]
     fn the_weather_shows_once_forecast_and_the_screen_changes_with_it() {
         let bench = Bench::new();
-        let (version, without) = (AppScreen::<Frame>::version(&bench.screen), bench.render());
+        let (version, before) = (AppScreen::<Frame>::version(&bench.screen), bench.clock_page());
+        assert_eq!((before.today, before.hours.len()), (None, 0));
         bench.weather.refresh_if_due(std::time::Instant::now());
         assert_ne!(AppScreen::<Frame>::version(&bench.screen), version);
-        assert!(bench.render() != without);
+        let after = bench.clock_page();
+        assert_eq!(after.today.map(|today| today.high), Some(Degrees(14)));
+        assert_eq!(after.hours.len(), day_weather::HOURS_SHOWN);
     }
 
     #[test]
     fn the_wheel_moves_through_the_hours_and_stops_at_either_end() {
         let mut bench = Bench::new();
         bench.input(Input::Turn(3));
-        assert_eq!(bench.screen.hours_ahead, 0, "no forecast, nothing to move through");
         bench.weather.refresh_if_due(std::time::Instant::now());
-        let first_hours = bench.render();
+        assert_eq!(bench.first_hour_shown(), Some(7), "no forecast, nothing to move through");
         bench.input(Input::Turn(3));
-        assert_eq!(bench.screen.hours_ahead, 3);
-        assert!(bench.render() != first_hours);
+        assert_eq!(bench.first_hour_shown(), Some(10));
         bench.input(Input::Turn(-10));
-        assert_eq!(bench.screen.hours_ahead, 0);
+        assert_eq!(bench.first_hour_shown(), Some(7));
         bench.input(Input::Turn(100));
-        assert_eq!(bench.screen.hours_ahead, 23 - day_weather::HOURS_SHOWN, "the last hours still fill the column");
+        assert_eq!(bench.first_hour_shown(), Some(23), "the last hours still fill the column");
+        assert_eq!(bench.clock_page().hours.len(), day_weather::HOURS_SHOWN);
         AppScreen::<Frame>::entered(&mut bench.screen);
-        assert_eq!(bench.screen.hours_ahead, 0, "back to the hour under way");
+        assert_eq!(bench.first_hour_shown(), Some(7), "back to the hour under way");
     }
 
     #[test]
     fn the_next_alarm_is_named_by_its_day() {
         let bench = Bench::new();
         bench.alarm.set_time_on(Weekday::Sunday, TimeOfDay::new(8, 30));
-        assert_eq!(bench.screen.alarm_line(bench.clock.now()), "Alarm off");
+        assert_eq!(bench.clock_page().alarm, "Alarm off");
         bench.alarm.switch_on();
-        assert_eq!(bench.screen.alarm_line(bench.clock.now()), "Alarm tomorrow at 08:30");
+        assert_eq!(bench.clock_page().alarm, "Alarm tomorrow at 08:30");
         bench.alarm.set_time_on(Weekday::Sunday, None);
         bench.alarm.set_time_on(Weekday::Tuesday, TimeOfDay::new(6, 5));
-        assert_eq!(bench.screen.alarm_line(bench.clock.now()), "Alarm Tuesday at 06:05");
+        assert_eq!(bench.clock_page().alarm, "Alarm Tuesday at 06:05");
     }
 
     #[test]
-    fn every_mode_draws_within_the_glass() {
+    fn the_part_of_a_value_being_set_is_in_brackets() {
         let mut bench = Bench::new();
-        bench.weather.refresh_if_due(std::time::Instant::now());
-        let mut frames = vec![bench.render()];
-        for _ in 0..3 {
-            bench.press(Button::Long);
-            frames.push(bench.render());
-        }
+        bench.alarm.set_time_on(Weekday::Saturday, TimeOfDay::new(6, 30));
         bench.press(Button::Long);
-        bench.input(Input::Turn(2));
+        assert_eq!(bench.value_of("Saturday"), "06:30");
         bench.press(Button::Long);
-        frames.push(bench.render());
-        for (n, frame) in frames.iter().enumerate() {
-            assert!(frames.iter().skip(n + 1).all(|other| other != frame), "mode {n} looks like a later one");
-            for x in i32::from(VISIBLE_WIDTH)..i32::from(WIDTH) {
-                for y in 0..i32::from(HEIGHT) {
-                    assert!(!frame.is_ink(x, y), "ink at ({x},{y})");
-                }
-            }
-        }
+        assert_eq!(bench.value_of("Saturday"), "[06]:30");
+        bench.press(Button::Long);
+        assert_eq!(bench.value_of("Saturday"), "06:[30]");
+        bench.press(Button::Long);
+        bench.input(Input::Turn(1));
+        bench.press(Button::Long);
+        bench.input(Input::Turn(-8));
+        assert_eq!(bench.value_of("Sunday"), "[off]");
+        bench.press(Button::Long);
+        assert_eq!(bench.value_of("Sunday"), "off");
+        bench.input(Input::Turn(1));
+        bench.press(Button::Long);
+        assert_eq!(bench.value_of("Ringtone"), "[Chime]");
+        assert_eq!(bench.settings_page().title, "Alarm settings (alarm off)");
+    }
+
+    #[test]
+    fn ringing_the_hint_says_how_to_snooze_and_stop() {
+        let bench = Bench::new();
+        assert_eq!(bench.clock_page().hint, "yellow: alarm on/off   long: settings   wheel: hours");
+        bench.alarm.set_time_on(Weekday::Saturday, TimeOfDay::new(7, 1));
+        bench.alarm.switch_on();
+        bench.at(UtcTime::from_unix_seconds(saturday_at_seven().unix_seconds() + 60));
+        assert_eq!(bench.clock_page().hint, format!("long: snooze {} min   hold yellow and long: stop", SNOOZE.as_secs() / 60));
+        assert_eq!(bench.clock_page().alarm, "Good morning!");
     }
 }

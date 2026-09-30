@@ -3,7 +3,8 @@ use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Line, PrimitiveStyle, Rectangle};
 
-use super::ui_state::{Current, Mark, SettingRow, SystemUiState};
+use super::ui_state::{Current, SettingRow, SystemUiState};
+use crate::mark::Mark;
 use crate::text::{self, BODY, HINT, LIST, TITLE};
 
 const NAME: &str = "System";
