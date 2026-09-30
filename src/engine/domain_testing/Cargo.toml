@@ -1,0 +1,12 @@
+[package]
+name = "domain_testing"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "For tests: test doubles of the contracts the domain needs from the outside world, and the checks every implementation of one passes."
+
+[lints]
+workspace = true
+
+[dependencies]
+domain = { path = "../domain" }

@@ -105,6 +105,8 @@ impl FileStorage for DirectoryCard {
 
 #[cfg(test)]
 mod tests {
+    use hal_testing::storage;
+
     use super::*;
 
     fn blank_card(name: &str) -> DirectoryCard {
@@ -114,31 +116,8 @@ mod tests {
     }
 
     #[test]
-    fn a_file_written_under_new_directories_reads_back() {
-        let card = blank_card("round-trip");
-        card.write("cute-display/weather.conf", b"place = Paris\n").unwrap();
-        assert_eq!(card.read("cute-display/weather.conf").unwrap().as_deref(), Some(&b"place = Paris\n"[..]));
-        assert_eq!(card.read_range("cute-display/weather.conf", 8, 3).unwrap().as_deref(), Some(&b"Par"[..]));
-        let entries = card.entries("cute-display").unwrap();
-        assert_eq!(entries, Some(vec![Entry { name: "weather.conf".into(), size_bytes: 14, is_dir: false }]));
-        assert_eq!(card.entries("sounds").unwrap(), None);
-    }
-
-    #[test]
-    fn a_missing_file_is_none_and_removing_it_is_no_fault() {
-        let card = blank_card("missing");
-        assert_eq!(card.read("cute-display/none.conf").unwrap(), None);
-        assert_eq!(card.read_range("cute-display/none.conf", 0, 10).unwrap(), None);
-        assert!(card.remove("cute-display/none.conf").is_ok());
-    }
-
-    #[test]
-    fn a_file_is_copied_under_new_directories() {
-        let card = blank_card("copy");
-        card.write("sounds/alarm/Zen.mp3", b"ID3").unwrap();
-        assert_eq!(card.copy("sounds/alarm/Zen.mp3", "cute-display/apps/alarm/ringtones/Zen.mp3").unwrap(), CopyOutcome::Copied);
-        assert_eq!(card.read("cute-display/apps/alarm/ringtones/Zen.mp3").unwrap().as_deref(), Some(&b"ID3"[..]));
-        assert_eq!(card.copy("sounds/alarm/None.mp3", "cute-display/None.mp3").unwrap(), CopyOutcome::NoSource);
+    fn a_directory_card_keeps_the_contract() {
+        storage::check_contract(&blank_card("contract"));
     }
 
     #[test]

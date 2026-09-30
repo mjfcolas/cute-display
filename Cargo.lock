@@ -23,6 +23,7 @@ version = "0.1.0"
 dependencies = [
  "conf_text",
  "domain",
+ "domain_testing",
  "embedded-graphics",
  "forecast",
  "hal",
@@ -110,8 +111,10 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "domain",
+ "domain_testing",
  "embedded-graphics",
  "hal",
+ "hal_testing",
  "infrastructure",
  "log",
  "ui",
@@ -509,6 +512,13 @@ name = "domain"
 version = "0.1.0"
 
 [[package]]
+name = "domain_testing"
+version = "0.1.0"
+dependencies = [
+ "domain",
+]
+
+[[package]]
 name = "downcast-rs"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -520,6 +530,7 @@ version = "0.1.0"
 dependencies = [
  "esp-idf-svc",
  "hal",
+ "hal_testing",
  "log",
 ]
 
@@ -871,6 +882,7 @@ name = "forecast"
 version = "0.1.0"
 dependencies = [
  "domain",
+ "domain_testing",
  "embedded-graphics",
  "hal",
  "log",
@@ -1041,6 +1053,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "hal_testing"
+version = "0.1.0"
+dependencies = [
+ "hal",
+]
+
+[[package]]
 name = "hash32"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1118,6 +1137,7 @@ version = "0.1.0"
 dependencies = [
  "embedded-graphics",
  "hal",
+ "hal_testing",
  "log",
 ]
 
@@ -1183,7 +1203,9 @@ version = "0.1.0"
 dependencies = [
  "conf_text",
  "domain",
+ "domain_testing",
  "hal",
+ "hal_testing",
  "log",
  "serde",
  "serde_json",
@@ -1344,6 +1366,7 @@ dependencies = [
  "base64 0.22.1",
  "crc32fast",
  "hal",
+ "hal_testing",
 ]
 
 [[package]]
@@ -1621,6 +1644,7 @@ version = "0.1.0"
 dependencies = [
  "conf_text",
  "domain",
+ "domain_testing",
  "embedded-graphics",
  "hal",
  "log",
@@ -1891,11 +1915,13 @@ dependencies = [
  "app",
  "catalog",
  "domain",
+ "domain_testing",
  "drivers",
  "embedded-graphics",
  "env_logger",
  "forecast",
  "hal",
+ "hal_testing",
  "infrastructure",
  "log",
  "maintenance",
@@ -2103,6 +2129,7 @@ name = "ui"
 version = "0.1.0"
 dependencies = [
  "domain",
+ "domain_testing",
  "embedded-graphics",
  "hal",
 ]
@@ -2345,6 +2372,7 @@ name = "weather"
 version = "0.1.0"
 dependencies = [
  "domain",
+ "domain_testing",
  "embedded-graphics",
  "forecast",
  "hal",

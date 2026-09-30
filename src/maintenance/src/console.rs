@@ -221,98 +221,29 @@ fn inserted_card<'a, S>(storage: &'a Result<S, Fault>, id: &str) -> Result<&'a S
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-    use std::sync::{Arc, Mutex};
-
     use base64::engine::general_purpose::STANDARD;
     use base64::Engine;
-    use core::time::Duration;
-    use std::time::Instant;
-
+    use hal::clock::DateTime;
+    use hal::display::{EpaperDisplay, Frame, Redraw, FRAME_BYTES};
     use hal::input::{PushButton, RotaryEncoder};
-    use hal::steady::SteadyClock;
-    use hal::storage::Entry;
+    use hal::light::{Brightness, DimmableLight};
     use hal::Fault;
+    use hal_testing::clock::FakeRtc;
+    use hal_testing::display::StubPanel;
+    use hal_testing::light::FakeLight;
+    use hal_testing::steady::FakeSteadyClock;
+    use hal_testing::storage::FakeFileStorage;
 
     use super::*;
-    use hal::clock::{ClockReading, DateTime};
-    use hal::display::{EpaperDisplay, Frame, Redraw, Refreshed, FRAME_BYTES};
-    use hal::light::{Brightness, DimmableLight};
-
     use crate::remote::ButtonName;
-
-    #[derive(Clone, Default)]
-    struct FakeCard(Arc<Mutex<BTreeMap<String, Vec<u8>>>>);
-
-    impl FileStorage for FakeCard {
-        fn entries(&self, dir: &str) -> Result<Option<Vec<Entry>>, Fault> {
-            let prefix = if dir.is_empty() { String::new() } else { format!("{dir}/") };
-            let entries: Vec<Entry> = self
-                .0
-                .lock()
-                .unwrap()
-                .iter()
-                .filter_map(|(path, contents)| {
-                    let name = path.strip_prefix(&prefix)?;
-                    Some(Entry { name: name.into(), size_bytes: contents.len() as u64, is_dir: false })
-                })
-                .collect();
-            Ok((dir.is_empty() || !entries.is_empty()).then_some(entries))
-        }
-        fn capacity_bytes(&self) -> Result<u64, Fault> {
-            Ok(0)
-        }
-        fn read(&self, path: &str) -> Result<Option<Vec<u8>>, Fault> {
-            Ok(self.0.lock().unwrap().get(path).cloned())
-        }
-        fn write(&self, path: &str, contents: &[u8]) -> Result<(), Fault> {
-            self.0.lock().unwrap().insert(path.into(), contents.to_vec());
-            Ok(())
-        }
-        fn remove(&self, path: &str) -> Result<(), Fault> {
-            self.0.lock().unwrap().remove(path);
-            Ok(())
-        }
-    }
-
-    impl FakeCard {
-        fn with(path: &str, contents: &[u8]) -> Self {
-            let card = Self::default();
-            card.0.lock().unwrap().insert(path.into(), contents.to_vec());
-            card
-        }
-
-        fn file(&self, path: &str) -> Option<Vec<u8>> {
-            self.0.lock().unwrap().get(path).cloned()
-        }
-    }
 
     const MORNING: DateTime = DateTime { year: 2026, month: 9, day: 26, hour: 7, minute: 30, second: 15 };
 
-    struct Stopped(DateTime);
-    impl RealTimeClock for Stopped {
-        fn read(&mut self) -> Result<ClockReading, Fault> {
-            Ok(ClockReading { time: self.0, oscillator_stopped: false, alarm_raised: false })
-        }
-        fn set(&mut self, time: DateTime) -> Result<(), Fault> {
-            self.0 = time;
-            Ok(())
-        }
+    fn console(card: FakeFileStorage) -> MaintenanceConsole<FakeFileStorage> {
+        MaintenanceConsole::new(Ok(card), Remote::new(FakeSteadyClock::default()), Observation::default(), FakeRtc::at(MORNING))
     }
 
-    struct NoWait;
-    impl SteadyClock for NoWait {
-        fn now(&self) -> Instant {
-            Instant::now()
-        }
-        fn sleep(&self, _: Duration) {}
-    }
-
-    fn console(card: FakeCard) -> MaintenanceConsole<FakeCard> {
-        MaintenanceConsole::new(Ok(card), Remote::new(NoWait), Observation::default(), Stopped(MORNING))
-    }
-
-    fn talk(console: &mut MaintenanceConsole<FakeCard>, lines: &[String]) -> Vec<String> {
+    fn talk(console: &mut MaintenanceConsole<FakeFileStorage>, lines: &[String]) -> Vec<String> {
         let mut out = Vec::new();
         for line in lines {
             console.on_line(line, &mut out).unwrap();
@@ -339,7 +270,7 @@ mod tests {
 
     #[test]
     fn a_file_put_comes_back_byte_for_byte() {
-        let card = FakeCard::default();
+        let card = FakeFileStorage::default();
         let mut console = console(card.clone());
         let contents: Vec<u8> = (0..=255u8).cycle().take(1000).collect();
 
@@ -354,7 +285,7 @@ mod tests {
 
     #[test]
     fn a_put_is_answered_line_by_line_so_the_computer_never_outruns_the_console() {
-        let mut console = console(FakeCard::default());
+        let mut console = console(FakeFileStorage::default());
         let lines = put_lines("5", "cute-display/a.conf", b"0123456789abcdefghij", crc32fast::hash(b"0123456789abcdefghij"));
         let mut replies = Vec::new();
         for line in &lines {
@@ -367,7 +298,7 @@ mod tests {
 
     #[test]
     fn a_put_with_the_wrong_crc_writes_nothing() {
-        let card = FakeCard::default();
+        let card = FakeFileStorage::default();
         let mut console = console(card.clone());
         let replies = talk(&mut console, &put_lines("1", "cute-display/a.conf", b"hello", 42));
         assert!(replies[0].starts_with("@@ 1 error"));
@@ -376,7 +307,7 @@ mod tests {
 
     #[test]
     fn nothing_outside_the_devices_directory_is_written_or_removed() {
-        let card = FakeCard::with("sounds/alarm.wav", b"RIFF");
+        let card = FakeFileStorage::with("sounds/alarm.wav", b"RIFF");
         let mut console = console(card.clone());
         let replies = talk(&mut console, &put_lines("1", "sounds/alarm.wav", b"oops", crc32fast::hash(b"oops")));
         assert!(replies[0].starts_with("@@ 1 error"));
@@ -387,7 +318,7 @@ mod tests {
 
     #[test]
     fn anything_may_be_listed_and_read() {
-        let card = FakeCard::with("sounds/alarm.wav", b"RIFF");
+        let card = FakeFileStorage::with("sounds/alarm.wav", b"RIFF");
         let mut console = console(card);
         let replies = talk(&mut console, &["@@ 1 ls sounds".into(), "@@ 2 get 0 sounds/alarm.wav".into()]);
         assert_eq!(replies[0], "@@ 1 entry f 4 alarm.wav");
@@ -397,13 +328,13 @@ mod tests {
 
     #[test]
     fn a_directory_that_is_not_there_is_an_error() {
-        let mut console = console(FakeCard::default());
+        let mut console = console(FakeFileStorage::default());
         assert_eq!(talk(&mut console, &["@@ 1 ls sounds".into()]), ["@@ 1 error no such directory"]);
     }
 
     #[test]
     fn a_file_is_copied_on_the_card_into_the_devices_directory_only() {
-        let card = FakeCard::with("sounds/alarm/Zen.mp3", b"ID3");
+        let card = FakeFileStorage::with("sounds/alarm/Zen.mp3", b"ID3");
         let mut console = console(card.clone());
         let replies = talk(
             &mut console,
@@ -423,7 +354,7 @@ mod tests {
     #[test]
     fn a_large_file_is_read_a_range_at_a_time() {
         let contents: Vec<u8> = (0..=255u8).cycle().take(GET_RANGE_BYTES * 2 + 100).collect();
-        let mut console = console(FakeCard::with("sounds/Snow storm_loop.wav", &contents));
+        let mut console = console(FakeFileStorage::with("sounds/Snow storm_loop.wav", &contents));
         let mut read = Vec::new();
         loop {
             let replies = talk(&mut console, &[format!("@@ 1 get {} sounds/Snow storm_loop.wav", read.len())]);
@@ -439,7 +370,7 @@ mod tests {
 
     #[test]
     fn a_file_is_removed() {
-        let card = FakeCard::with("cute-display/wifi.conf", b"x");
+        let card = FakeFileStorage::with("cute-display/wifi.conf", b"x");
         let mut console = console(card.clone());
         assert_eq!(talk(&mut console, &["@@ 1 rm cute-display/wifi.conf".into()]), ["@@ 1 ok"]);
         assert_eq!(card.file("cute-display/wifi.conf"), None);
@@ -447,14 +378,14 @@ mod tests {
 
     #[test]
     fn a_put_too_large_is_refused_before_any_data() {
-        let mut console = console(FakeCard::default());
+        let mut console = console(FakeFileStorage::default());
         let replies = talk(&mut console, &[format!("@@ 1 put {} 0 cute-display/big", MAX_PUT_BYTES + 1)]);
         assert!(replies[0].starts_with("@@ 1 error"));
     }
 
     #[test]
     fn the_log_between_the_lines_is_ignored() {
-        let card = FakeCard::default();
+        let card = FakeFileStorage::default();
         let mut console = console(card.clone());
         let mut lines = put_lines("1", "cute-display/a.conf", b"hello world", crc32fast::hash(b"hello world"));
         lines.insert(2, "I (1787) app: Cute Display 2026.9.0, build 09-25".into());
@@ -463,7 +394,7 @@ mod tests {
 
     #[test]
     fn a_new_request_abandons_a_put_in_progress() {
-        let card = FakeCard::default();
+        let card = FakeFileStorage::default();
         let mut console = console(card.clone());
         let mut lines = put_lines("1", "cute-display/a.conf", b"hello", crc32fast::hash(b"hello"));
         lines.insert(1, "@@ 2 ls".into());
@@ -474,8 +405,8 @@ mod tests {
 
     #[test]
     fn the_remote_taps_holds_and_turns() {
-        let remote = Remote::new(NoWait);
-        let mut console = MaintenanceConsole::new(Ok(FakeCard::default()), remote.clone(), Observation::default(), Stopped(MORNING));
+        let remote = Remote::new(FakeSteadyClock::default());
+        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), remote.clone(), Observation::default(), FakeRtc::at(MORNING));
         let mut yellow = remote.button(ButtonName::Yellow);
         let mut long = remote.button(ButtonName::Long);
         let mut wheel = remote.wheel();
@@ -487,70 +418,42 @@ mod tests {
 
     #[test]
     fn without_a_card_the_remote_still_answers() {
-        let mut console = MaintenanceConsole::<FakeCard>::new(Err(Fault::new("not inserted")), Remote::new(NoWait), Observation::default(), Stopped(MORNING));
+        let mut console = MaintenanceConsole::<FakeFileStorage>::new(Err(Fault::new("not inserted")), Remote::new(FakeSteadyClock::default()), Observation::default(), FakeRtc::at(MORNING));
         let replies = talk(&mut console, &["@@ 1 ls".into(), "@@ 2 turn 2".into()]);
         assert_eq!(replies, ["@@ 1 error no SD card: not inserted", "@@ 2 ok"]);
-    }
-
-    struct Lamp(Brightness);
-    impl DimmableLight for Lamp {
-        fn set_brightness(&mut self, brightness: Brightness) -> Result<(), Fault> {
-            self.0 = brightness;
-            Ok(())
-        }
-        fn brightness(&self) -> Brightness {
-            self.0
-        }
     }
 
     #[test]
     fn what_is_observed_is_answered() {
         let observation = Observation::default();
-        let mut lamp = observation.light(LightName::ReadingLamp, Lamp(Brightness::OFF));
+        let mut lamp = observation.light(LightName::ReadingLamp, FakeLight::default());
         lamp.set_brightness(Brightness::percent(30)).unwrap();
-        let mut console = MaintenanceConsole::new(Ok(FakeCard::default()), Remote::new(NoWait), observation, Stopped(MORNING));
+        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), Remote::new(FakeSteadyClock::default()), observation, FakeRtc::at(MORNING));
         let replies = talk(&mut console, &["@@ 1 lights".into(), "@@ 2 sound".into()]);
         assert_eq!(replies, ["@@ 1 ok 0 30", "@@ 2 ok silent"]);
     }
 
-    struct Unreadable;
-    impl RealTimeClock for Unreadable {
-        fn read(&mut self) -> Result<ClockReading, Fault> {
-            Err(Fault::new("I2C: no answer"))
-        }
-        fn set(&mut self, _: DateTime) -> Result<(), Fault> {
-            Err(Fault::new("I2C: no answer"))
-        }
-    }
-
     #[test]
     fn the_clock_is_read_from_the_rtc_and_its_fault_said() {
-        let mut console = console(FakeCard::default());
+        let mut console = console(FakeFileStorage::default());
         assert_eq!(talk(&mut console, &["@@ 1 clock".into()]), [format!("@@ 1 ok {}", MORNING.unix_seconds())]);
-        let mut console = MaintenanceConsole::new(Ok(FakeCard::default()), Remote::new(NoWait), Observation::default(), Unreadable);
+        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), Remote::new(FakeSteadyClock::default()), Observation::default(), FakeRtc::unreadable("I2C: no answer"));
         assert_eq!(talk(&mut console, &["@@ 1 clock".into(), "@@ 2 clock set 0".into()]), ["@@ 1 error I2C: no answer", "@@ 2 error I2C: no answer"]);
     }
 
     #[test]
     fn the_clock_set_is_the_clock_read() {
-        let mut console = console(FakeCard::default());
+        let mut console = console(FakeFileStorage::default());
         let replies = talk(&mut console, &["@@ 1 clock set 1790407815".into(), "@@ 2 clock".into()]);
         assert_eq!(replies, ["@@ 1 ok", "@@ 2 ok 1790407815"]);
-    }
-
-    struct Glass;
-    impl EpaperDisplay for Glass {
-        fn show(&mut self, _: &Frame, _: Redraw) -> Result<Refreshed, Fault> {
-            Ok(Refreshed::Nothing)
-        }
     }
 
     #[test]
     fn the_screen_comes_whole_with_the_times_it_was_shown() {
         let observation = Observation::default();
         let last_frame: Box<[u8; FRAME_BYTES]> = vec![0; FRAME_BYTES].into_boxed_slice().try_into().unwrap();
-        let mut panel = observation.panel(Glass, last_frame);
-        let mut console = MaintenanceConsole::new(Ok(FakeCard::default()), Remote::new(NoWait), observation, Stopped(MORNING));
+        let mut panel = observation.panel(StubPanel::default(), last_frame);
+        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), Remote::new(FakeSteadyClock::default()), observation, FakeRtc::at(MORNING));
         assert_eq!(talk(&mut console, &["@@ 1 screen".into()]), ["@@ 1 error nothing shown yet"]);
         let mut frame = Frame::blank();
         frame.set_ink(0, 0, true);

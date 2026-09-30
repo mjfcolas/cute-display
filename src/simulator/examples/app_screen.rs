@@ -11,10 +11,12 @@ use domain::apps::{AppId, Foreground};
 use domain::calendar::{Date, Weekday};
 use domain::clock::{Clock, TimeKeeper, TimeSource, TimeZoneSource};
 use domain::fetch::Unavailable;
-use domain::place::{GeoPoint, Place, PlaceSource};
-use domain::settings::{Settings, SettingsRecord, SettingsStore};
+use domain::place::{GeoPoint, Place};
+use domain::settings::Settings;
 use domain::time::{LocalTime, TimeOfDay, UtcTime};
 use domain::time_zone::TimeZone;
+use domain_testing::place::StubPlace;
+use domain_testing::settings::StubSettingsStore;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 use forecast::{
@@ -28,45 +30,40 @@ use ui::system::{OfferedApp, SystemScreen};
 use ui::{Hosted, Shell};
 use weather::WeatherScreen;
 
-struct Nowhere;
+struct StubAlarmSettingsStore;
 
-impl SettingsStore for Nowhere {
-    fn load(&mut self) -> Option<SettingsRecord> {
-        None
-    }
-    fn save(&mut self, _: &SettingsRecord) {}
-}
+struct StubRinger;
 
 /// Friday 25 September 2026, 21:47 in Paris.
-struct FridayEvening;
+struct StubTimeAtFridayEvening;
 
-impl TimeKeeper for FridayEvening {
+impl TimeKeeper for StubTimeAtFridayEvening {
     fn read(&mut self) -> Option<UtcTime> {
         Some(UtcTime::from_unix_seconds(1_790_365_620))
     }
     fn set(&mut self, _: UtcTime) {}
 }
 
-impl TimeSource for FridayEvening {
+impl TimeSource for StubTimeAtFridayEvening {
     fn fetch(&mut self) -> Result<UtcTime, Unavailable> {
         Err(Unavailable("offline".into()))
     }
 }
 
-impl TimeZoneSource for FridayEvening {
+impl TimeZoneSource for StubTimeAtFridayEvening {
     fn time_zone(&mut self) -> Result<Option<TimeZone>, Unavailable> {
         Ok(None)
     }
 }
 
-impl AlarmSettingsStore for Nowhere {
+impl AlarmSettingsStore for StubAlarmSettingsStore {
     fn load(&mut self) -> Option<AlarmSettings> {
         None
     }
     fn save(&mut self, _: &AlarmSettings) {}
 }
 
-impl Ringer for Nowhere {
+impl Ringer for StubRinger {
     fn recordings(&self) -> Vec<String> {
         Vec::new()
     }
@@ -75,7 +72,7 @@ impl Ringer for Nowhere {
 }
 
 fn alarm_clock(foreground: &Foreground) -> AlarmClock {
-    let alarm = AlarmClock::new(Box::new(Nowhere), Box::new(Nowhere), foreground.clone());
+    let alarm = AlarmClock::new(Box::new(StubAlarmSettingsStore), Box::new(StubRinger), foreground.clone());
     for day in [Weekday::Monday, Weekday::Tuesday, Weekday::Wednesday, Weekday::Thursday, Weekday::Friday] {
         alarm.set_time_on(day, TimeOfDay::new(7, 0));
     }
@@ -85,17 +82,9 @@ fn alarm_clock(foreground: &Foreground) -> AlarmClock {
     alarm
 }
 
-struct Montreal;
+struct StubForecastSource;
 
-impl PlaceSource for Montreal {
-    fn place(&mut self) -> Option<Place> {
-        Some(Place { name: "Montréal".into(), point: GeoPoint { latitude: 45.5, longitude: -73.57 } })
-    }
-}
-
-struct Sample;
-
-impl ForecastSource for Sample {
+impl ForecastSource for StubForecastSource {
     fn fetch(&mut self, _: &Place) -> Result<Forecast, Unavailable> {
         let days = [
             (Sky::PartlyCloudy, 11, 21, 20),
@@ -161,17 +150,9 @@ impl ForecastSource for Sample {
 
 const NOTRE_DAME: GeoPoint = GeoPoint { latitude: 48.8530, longitude: 2.3499 };
 
-struct NotreDame;
+struct StubAirTrafficSource;
 
-impl PlaceSource for NotreDame {
-    fn place(&mut self) -> Option<Place> {
-        Some(Place { name: "Notre-Dame".into(), point: NOTRE_DAME })
-    }
-}
-
-struct Traffic;
-
-impl AirTrafficSource for Traffic {
+impl AirTrafficSource for StubAirTrafficSource {
     fn nearby(&mut self, _: GeoPoint, _: u32) -> Result<Vec<Aircraft>, Unavailable> {
         let flights = [
             ("AFR1234", "F-HEPA", 4.0, 3.0, 12_000, 250.0),
@@ -197,9 +178,9 @@ impl AirTrafficSource for Traffic {
     }
 }
 
-struct AroundParis;
+struct StubAirportSource;
 
-impl AirportSource for AroundParis {
+impl AirportSource for StubAirportSource {
     fn airports(&mut self) -> Vec<Airport> {
         [("LFPG", 49.0097, 2.5479), ("LFPO", 48.7233, 2.3794), ("LFPB", 48.9694, 2.4414)]
             .iter()
@@ -218,11 +199,11 @@ fn main() -> std::io::Result<()> {
     let screen = args.get(2).map_or("system", String::as_str);
 
     let foreground = Foreground::new(weather::ID);
-    let settings = Settings::load(Box::new(Nowhere));
-    let weather = Weather::new(Box::new(Montreal), Box::new(Sample));
+    let settings = Settings::load(Box::new(StubSettingsStore));
+    let weather = Weather::new(Box::new(StubPlace::at(Place { name: "Montréal".into(), point: GeoPoint { latitude: 45.5, longitude: -73.57 } })), Box::new(StubForecastSource));
     weather.refresh_if_due(Instant::now());
-    let radar = Radar::new(Box::new(NotreDame), Box::new(Traffic), Box::new(AroundParis), foreground.clone());
-    let clock = Clock::new(Box::new(FridayEvening), Box::new(FridayEvening), Box::new(FridayEvening));
+    let radar = Radar::new(Box::new(StubPlace::at(Place { name: "Notre-Dame".into(), point: NOTRE_DAME })), Box::new(StubAirTrafficSource), Box::new(StubAirportSource), foreground.clone());
+    let clock = Clock::new(Box::new(StubTimeAtFridayEvening), Box::new(StubTimeAtFridayEvening), Box::new(StubTimeAtFridayEvening));
     clock.tick(Instant::now());
     let alarm = alarm_clock(&foreground);
     if let Some(now) = clock.now() {

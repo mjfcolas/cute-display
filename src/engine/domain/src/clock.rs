@@ -121,9 +121,9 @@ mod tests {
     use crate::time::TimeOfDay;
 
     #[derive(Clone, Default)]
-    struct FakeKeeper(Arc<Mutex<Option<UtcTime>>>);
+    struct FakeTimeKeeper(Arc<Mutex<Option<UtcTime>>>);
 
-    impl TimeKeeper for FakeKeeper {
+    impl TimeKeeper for FakeTimeKeeper {
         fn read(&mut self) -> Option<UtcTime> {
             *self.0.lock().unwrap()
         }
@@ -132,24 +132,24 @@ mod tests {
         }
     }
 
-    struct Scripted(Vec<Result<UtcTime, Unavailable>>);
+    struct StubTimeSource(Vec<Result<UtcTime, Unavailable>>);
 
-    impl TimeSource for Scripted {
+    impl TimeSource for StubTimeSource {
         fn fetch(&mut self) -> Result<UtcTime, Unavailable> {
             self.0.remove(0)
         }
     }
 
     #[derive(Clone)]
-    struct FakeZones(Arc<Mutex<Result<Option<TimeZone>, Unavailable>>>);
+    struct StubTimeZoneSource(Arc<Mutex<Result<Option<TimeZone>, Unavailable>>>);
 
-    impl Default for FakeZones {
+    impl Default for StubTimeZoneSource {
         fn default() -> Self {
             Self(Arc::new(Mutex::new(Ok(None))))
         }
     }
 
-    impl TimeZoneSource for FakeZones {
+    impl TimeZoneSource for StubTimeZoneSource {
         fn time_zone(&mut self) -> Result<Option<TimeZone>, Unavailable> {
             self.0.lock().unwrap().clone()
         }
@@ -158,8 +158,8 @@ mod tests {
     /// 2026-09-26 07:30:15 UTC.
     const MORNING: UtcTime = UtcTime::from_unix_seconds(1_790_407_815);
 
-    fn clock(keeper: &FakeKeeper, answers: Vec<Result<UtcTime, Unavailable>>, zones: &FakeZones) -> Clock {
-        Clock::new(Box::new(keeper.clone()), Box::new(Scripted(answers)), Box::new(zones.clone()))
+    fn clock(keeper: &FakeTimeKeeper, answers: Vec<Result<UtcTime, Unavailable>>, zones: &StubTimeZoneSource) -> Clock {
+        Clock::new(Box::new(keeper.clone()), Box::new(StubTimeSource(answers)), Box::new(zones.clone()))
     }
 
     fn hour(clock: &Clock) -> Option<u8> {
@@ -168,7 +168,7 @@ mod tests {
 
     #[test]
     fn it_knows_when_it_last_ticked_and_nothing_before_it_did() {
-        let clock = clock(&FakeKeeper::default(), vec![], &FakeZones::default());
+        let clock = clock(&FakeTimeKeeper::default(), vec![], &StubTimeZoneSource::default());
         assert_eq!(clock.ticked_at(), None);
         let at = Instant::now() + Duration::from_secs(90);
         clock.tick(at);
@@ -177,8 +177,8 @@ mod tests {
 
     #[test]
     fn nobody_knows_the_time_until_the_keeper_is_read() {
-        let keeper = FakeKeeper::default();
-        let clock = clock(&keeper, vec![], &FakeZones::default());
+        let keeper = FakeTimeKeeper::default();
+        let clock = clock(&keeper, vec![], &StubTimeZoneSource::default());
         clock.tick(Instant::now());
         assert_eq!(clock.now(), None);
         keeper.clone().set(MORNING);
@@ -189,8 +189,8 @@ mod tests {
 
     #[test]
     fn a_sync_sets_the_keeper_and_shows_at_once() {
-        let keeper = FakeKeeper::default();
-        let clock = clock(&keeper, vec![Ok(MORNING)], &FakeZones::default());
+        let keeper = FakeTimeKeeper::default();
+        let clock = clock(&keeper, vec![Ok(MORNING)], &StubTimeZoneSource::default());
         assert_eq!(clock.sync_if_due(Instant::now()), Ok(()));
         assert_eq!(keeper.clone().read(), Some(MORNING));
         assert_eq!(clock.now().map(|now| now.time_of_day), TimeOfDay::new(9, 30));
@@ -199,7 +199,7 @@ mod tests {
     #[test]
     fn syncs_come_daily_and_retries_sooner() {
         let failed = Unavailable("no Wi-Fi".into());
-        let clock = clock(&FakeKeeper::default(), vec![Err(failed.clone()), Ok(MORNING)], &FakeZones::default());
+        let clock = clock(&FakeTimeKeeper::default(), vec![Err(failed.clone()), Ok(MORNING)], &StubTimeZoneSource::default());
         let start = Instant::now();
         assert!(clock.is_sync_due(start));
         assert_eq!(clock.sync_if_due(start), Err(failed));
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn a_new_time_zone_shows_within_a_minute() {
-        let (keeper, zones) = (FakeKeeper::default(), FakeZones::default());
+        let (keeper, zones) = (FakeTimeKeeper::default(), StubTimeZoneSource::default());
         keeper.clone().set(MORNING);
         let clock = clock(&keeper, vec![], &zones);
         let start = Instant::now();
@@ -226,7 +226,7 @@ mod tests {
 
     #[test]
     fn a_zone_that_cannot_be_read_leaves_the_one_in_use_and_none_chosen_is_the_default() {
-        let (keeper, zones) = (FakeKeeper::default(), FakeZones::default());
+        let (keeper, zones) = (FakeTimeKeeper::default(), StubTimeZoneSource::default());
         keeper.clone().set(MORNING);
         *zones.0.lock().unwrap() = Ok(Some(TimeZone::UTC));
         let clock = clock(&keeper, vec![], &zones);

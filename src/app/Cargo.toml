@@ -16,3 +16,7 @@ hal = { path = "../engine/hal" }
 ui = { path = "../engine/ui" }
 embedded-graphics = "0.8"
 log = "0.4"
+
+[dev-dependencies]
+domain_testing = { path = "../engine/domain_testing" }
+hal_testing = { path = "../engine/hal_testing" }

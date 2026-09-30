@@ -283,18 +283,10 @@ impl AppService for Weather {
 
 #[cfg(test)]
 mod tests {
-    use domain::place::GeoPoint;
     use domain::time::TimeOfDay;
+    use domain_testing::place::{self, StubPlace};
 
     use super::*;
-
-    struct Fixed(Option<Place>);
-
-    impl PlaceSource for Fixed {
-        fn place(&mut self) -> Option<Place> {
-            self.0.clone()
-        }
-    }
 
     struct Script {
         answers: Vec<Result<Forecast, Unavailable>>,
@@ -302,9 +294,9 @@ mod tests {
     }
 
     #[derive(Clone)]
-    struct Scripted(Arc<Mutex<Script>>);
+    struct StubForecastSource(Arc<Mutex<Script>>);
 
-    impl ForecastSource for Scripted {
+    impl ForecastSource for StubForecastSource {
         fn fetch(&mut self, _: &Place) -> Result<Forecast, Unavailable> {
             let mut script = self.0.lock().unwrap();
             script.fetches += 1;
@@ -312,17 +304,13 @@ mod tests {
         }
     }
 
-    impl Scripted {
+    impl StubForecastSource {
         fn new(answers: Vec<Result<Forecast, Unavailable>>) -> Self {
             Self(Arc::new(Mutex::new(Script { answers, fetches: 0 })))
         }
         fn fetches(&self) -> u32 {
             self.0.lock().unwrap().fetches
         }
-    }
-
-    fn paris() -> Option<Place> {
-        Some(Place { name: "Paris".into(), point: GeoPoint { latitude: 48.85, longitude: 2.35 } })
     }
 
     fn forecast(now: i16) -> Forecast {
@@ -337,9 +325,9 @@ mod tests {
         Forecast { today, hours: vec![], week: vec![] }
     }
 
-    fn weather(results: Vec<Result<Forecast, Unavailable>>) -> (Weather, Scripted) {
-        let source = Scripted::new(results);
-        (Weather::new(Box::new(Fixed(paris())), Box::new(source.clone())), source)
+    fn weather(results: Vec<Result<Forecast, Unavailable>>) -> (Weather, StubForecastSource) {
+        let source = StubForecastSource::new(results);
+        (Weather::new(Box::new(StubPlace::at(place::paris())), Box::new(source.clone())), source)
     }
 
     #[test]
@@ -384,8 +372,8 @@ mod tests {
 
     #[test]
     fn a_missing_place_is_said_and_nothing_is_fetched() {
-        let source = Scripted::new(vec![]);
-        let weather = Weather::new(Box::new(Fixed(None)), Box::new(source.clone()));
+        let source = StubForecastSource::new(vec![]);
+        let weather = Weather::new(Box::new(StubPlace::nowhere()), Box::new(source.clone()));
         weather.refresh_if_due(Instant::now());
         assert_eq!(weather.report().status, FetchStatus::NoPlace);
         assert_eq!(source.fetches(), 0);

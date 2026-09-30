@@ -243,15 +243,20 @@ impl AppService for Radar {
 #[cfg(test)]
 mod tests {
     use domain::apps::AppId;
+    use domain_testing::place::StubPlace;
 
     use super::*;
 
     const NOTRE_DAME: GeoPoint = GeoPoint { latitude: 48.8530, longitude: 2.3499 };
 
-    #[derive(Clone, Default)]
-    struct Orly(Arc<Mutex<usize>>);
+    fn notre_dame() -> StubPlace {
+        StubPlace::at(Place { name: "Notre-Dame".into(), point: NOTRE_DAME })
+    }
 
-    impl AirportSource for Orly {
+    #[derive(Clone, Default)]
+    struct StubAirportSource(Arc<Mutex<usize>>);
+
+    impl AirportSource for StubAirportSource {
         fn airports(&mut self) -> Vec<Airport> {
             *self.0.lock().unwrap() += 1;
             vec![Airport { code: "LFPO".into(), point: GeoPoint { latitude: 48.7233, longitude: 2.3794 }, labelled: true }]
@@ -259,24 +264,9 @@ mod tests {
     }
 
     #[derive(Clone)]
-    struct Settable(Arc<Mutex<Place>>);
+    struct StubAirTrafficSource(Arc<Mutex<Vec<u32>>>, Vec<Aircraft>);
 
-    impl Settable {
-        fn notre_dame() -> Self {
-            Self(Arc::new(Mutex::new(Place { name: "Notre-Dame".into(), point: NOTRE_DAME })))
-        }
-    }
-
-    impl PlaceSource for Settable {
-        fn place(&mut self) -> Option<Place> {
-            Some(self.0.lock().unwrap().clone())
-        }
-    }
-
-    #[derive(Clone)]
-    struct Sky(Arc<Mutex<Vec<u32>>>, Vec<Aircraft>);
-
-    impl AirTrafficSource for Sky {
+    impl AirTrafficSource for StubAirTrafficSource {
         fn nearby(&mut self, _: GeoPoint, radius_km: u32) -> Result<Vec<Aircraft>, Unavailable> {
             self.0.lock().unwrap().push(radius_km);
             Ok(self.1.clone())
@@ -292,7 +282,7 @@ mod tests {
         let asked = Arc::new(Mutex::new(Vec::new()));
         let foreground = Foreground::new(front);
         let radar =
-            Radar::new(Box::new(Settable::notre_dame()), Box::new(Sky(Arc::clone(&asked), traffic)), Box::new(Orly::default()), foreground.clone());
+            Radar::new(Box::new(notre_dame()), Box::new(StubAirTrafficSource(Arc::clone(&asked), traffic)), Box::new(StubAirportSource::default()), foreground.clone());
         (radar, foreground, asked)
     }
 
@@ -342,15 +332,15 @@ mod tests {
 
     #[test]
     fn airports_are_read_once_per_place() {
-        let (place, orly) = (Settable::notre_dame(), Orly::default());
-        let radar = Radar::new(Box::new(place.clone()), Box::new(Sky(Arc::default(), vec![])), Box::new(orly.clone()), Foreground::new(ID));
+        let (place, orly) = (notre_dame(), StubAirportSource::default());
+        let radar = Radar::new(Box::new(place.clone()), Box::new(StubAirTrafficSource(Arc::default(), vec![])), Box::new(orly.clone()), Foreground::new(ID));
         let start = Instant::now();
         radar.refresh_if_due(start);
         radar.refresh_if_due(start + REFRESH_EVERY);
         assert_eq!(*orly.0.lock().unwrap(), 1);
         assert_eq!(radar.report().airports.len(), 1, "the airports read stay in the report");
 
-        place.0.lock().unwrap().name = "Orly".into();
+        place.move_to(Place { name: "Orly".into(), point: NOTRE_DAME });
         radar.refresh_if_due(start + REFRESH_EVERY * 2);
         assert_eq!(*orly.0.lock().unwrap(), 2);
     }

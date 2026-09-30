@@ -194,11 +194,9 @@ fn sky_of(code: u16) -> Result<Sky, Unavailable> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
-
     use domain::calendar::Weekday;
-    use domain::internet::BodyReader;
     use domain::place::GeoPoint;
+    use domain_testing::internet::StubInternet;
 
     use super::*;
 
@@ -232,15 +230,6 @@ mod tests {
                        "2026-09-29T19:34", "2026-09-30T19:32", "2026-10-01T19:30"]
         }
     }"#;
-
-    struct Canned(Arc<Mutex<Vec<String>>>, Result<Vec<u8>, Unavailable>);
-
-    impl Internet for Canned {
-        fn fetch(&mut self, url: &str, read: &mut BodyReader<'_>) -> Result<(), Unavailable> {
-            self.0.lock().unwrap().push(url.into());
-            read(&mut self.1.clone()?.as_slice())
-        }
-    }
 
     fn paris() -> Place {
         Place { name: "Paris".into(), point: GeoPoint { latitude: 48.8566, longitude: 2.3522 } }
@@ -297,10 +286,10 @@ mod tests {
 
     #[test]
     fn the_request_names_the_place_and_what_is_wanted() {
-        let asked = Arc::new(Mutex::new(Vec::new()));
-        let mut source = OpenMeteo::new(Canned(Arc::clone(&asked), Ok(ANSWER.as_bytes().to_vec())));
+        let internet = StubInternet::answering(ANSWER);
+        let mut source = OpenMeteo::new(internet.clone());
         source.fetch(&paris()).unwrap();
-        let url = asked.lock().unwrap()[0].clone();
+        let url = internet.asked()[0].clone();
         assert!(url.starts_with("https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522"), "{url}");
         for wanted in ["current=temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,pressure_msl,wind_speed_10m,wind_direction_10m", "daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset", "hourly=temperature_2m,weather_code,precipitation_probability,precipitation&forecast_hours=24", "timezone=auto", "forecast_days=7"] {
             assert!(url.contains(wanted), "{url} lacks {wanted}");
@@ -309,7 +298,7 @@ mod tests {
 
     #[test]
     fn no_internet_is_passed_on_as_it_is() {
-        let mut source = OpenMeteo::new(Canned(Arc::default(), Err(Unavailable("no Wi-Fi".into()))));
+        let mut source = OpenMeteo::new(StubInternet::unavailable("no Wi-Fi"));
         assert_eq!(source.fetch(&paris()), Err(Unavailable("no Wi-Fi".into())));
     }
 

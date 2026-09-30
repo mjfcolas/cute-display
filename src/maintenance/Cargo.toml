@@ -12,3 +12,6 @@ workspace = true
 hal = { path = "../engine/hal" }
 base64 = "0.22"
 crc32fast = "1"
+
+[dev-dependencies]
+hal_testing = { path = "../engine/hal_testing" }

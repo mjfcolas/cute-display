@@ -141,21 +141,13 @@ impl<S: Speaker> Speaker for ObservedSpeaker<S> {
 mod tests {
     use std::sync::Mutex;
 
+    use hal_testing::display::StubPanel;
+    use hal_testing::light::FakeLight;
+
     use super::*;
 
-    struct Dimmer(Brightness);
-    impl DimmableLight for Dimmer {
-        fn set_brightness(&mut self, brightness: Brightness) -> Result<(), Fault> {
-            self.0 = brightness;
-            Ok(())
-        }
-        fn brightness(&self) -> Brightness {
-            self.0
-        }
-    }
-
-    struct Broken;
-    impl DimmableLight for Broken {
+    struct StubFailingLight;
+    impl DimmableLight for StubFailingLight {
         fn set_brightness(&mut self, _: Brightness) -> Result<(), Fault> {
             Err(Fault::new("LEDC"))
         }
@@ -167,8 +159,8 @@ mod tests {
     #[test]
     fn each_light_is_seen_at_the_brightness_it_was_set_to() {
         let observation = Observation::default();
-        let mut front = observation.light(LightName::FrontLight, Dimmer(Brightness::percent(10)));
-        let _lamp = observation.light(LightName::ReadingLamp, Dimmer(Brightness::OFF));
+        let mut front = observation.light(LightName::FrontLight, FakeLight::at(Brightness::percent(10)));
+        let _lamp = observation.light(LightName::ReadingLamp, FakeLight::default());
         assert_eq!(observation.brightness(LightName::FrontLight), Brightness::percent(10));
         front.set_brightness(Brightness::percent(40)).unwrap();
         assert_eq!(observation.brightness(LightName::FrontLight), Brightness::percent(40));
@@ -178,20 +170,13 @@ mod tests {
     #[test]
     fn a_light_that_failed_is_seen_as_it_was() {
         let observation = Observation::default();
-        let mut lamp = observation.light(LightName::ReadingLamp, Broken);
+        let mut lamp = observation.light(LightName::ReadingLamp, StubFailingLight);
         assert!(lamp.set_brightness(Brightness::FULL).is_err());
         assert_eq!(observation.brightness(LightName::ReadingLamp), Brightness::OFF);
     }
 
-    struct Glassy;
-    impl EpaperDisplay for Glassy {
-        fn show(&mut self, _: &Frame, _: Redraw) -> Result<Refreshed, Fault> {
-            Ok(Refreshed::Nothing)
-        }
-    }
-
-    struct Cracked;
-    impl EpaperDisplay for Cracked {
+    struct StubFailingPanel;
+    impl EpaperDisplay for StubFailingPanel {
         fn show(&mut self, _: &Frame, _: Redraw) -> Result<Refreshed, Fault> {
             Err(Fault::new("the panel stayed busy"))
         }
@@ -204,7 +189,7 @@ mod tests {
     #[test]
     fn the_last_frame_shown_is_copied_a_part_at_a_time_and_counted() {
         let observation = Observation::default();
-        let mut panel = observation.panel(Glassy, last_frame());
+        let mut panel = observation.panel(StubPanel::default(), last_frame());
         let mut part = [0; 8];
         assert_eq!(observation.copy_screen(0, &mut part), None);
         let mut frame = Frame::blank();
@@ -219,13 +204,13 @@ mod tests {
     #[test]
     fn a_frame_the_panel_did_not_show_is_not_seen() {
         let observation = Observation::default();
-        let mut panel = observation.panel(Cracked, last_frame());
+        let mut panel = observation.panel(StubFailingPanel, last_frame());
         assert!(panel.show(&Frame::blank(), Redraw::Whole).is_err());
         assert_eq!(observation.copy_screen(0, &mut [0; 8]), None);
     }
 
-    struct Listening(Observation, Arc<Mutex<Vec<bool>>>);
-    impl Speaker for Listening {
+    struct StubPlayingSpeaker(Observation, Arc<Mutex<Vec<bool>>>);
+    impl Speaker for StubPlayingSpeaker {
         fn sample_rate_hz(&self) -> u32 {
             8000
         }
@@ -240,7 +225,7 @@ mod tests {
     fn the_speaker_is_playing_only_while_it_plays() {
         let observation = Observation::default();
         let heard = Arc::new(Mutex::new(Vec::new()));
-        let mut speaker = observation.speaker(Listening(observation.clone(), heard.clone()));
+        let mut speaker = observation.speaker(StubPlayingSpeaker(observation.clone(), heard.clone()));
         speaker.play(&mut [1, 2, 3].into_iter()).unwrap();
         assert_eq!(*heard.lock().unwrap(), [true]);
         assert!(!observation.is_playing());

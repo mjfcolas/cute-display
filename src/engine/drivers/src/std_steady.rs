@@ -16,3 +16,15 @@ impl SteadyClock for StdSteadyClock {
         thread::sleep(duration);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use hal_testing::steady;
+
+    use super::*;
+
+    #[test]
+    fn the_computers_clock_keeps_the_contract() {
+        steady::check_contract(&StdSteadyClock);
+    }
+}

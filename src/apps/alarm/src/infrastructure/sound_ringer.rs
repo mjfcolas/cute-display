@@ -106,17 +106,18 @@ impl Iterator for AtVolume {
 
 #[cfg(test)]
 mod tests {
+    use domain_testing::files::FakeFiles;
+
     use super::*;
     use crate::infrastructure::chime::tests::{phrase_samples, RATE};
-    use crate::infrastructure::memory_files::MemoryFiles;
 
     #[derive(Clone, Default)]
-    struct FakeSound {
+    struct StubSound {
         asked: Arc<Mutex<Vec<&'static str>>>,
         playing: Arc<Mutex<Option<Samples>>>,
     }
 
-    impl Sound for FakeSound {
+    impl Sound for StubSound {
         fn sample_rate_hz(&self) -> u32 {
             RATE
         }
@@ -129,7 +130,7 @@ mod tests {
         }
     }
 
-    impl FakeSound {
+    impl StubSound {
         fn peak(&self) -> i16 {
             self.playing.lock().unwrap().as_mut().unwrap().take(phrase_samples()).map(|s| s.abs()).max().unwrap()
         }
@@ -141,8 +142,8 @@ mod tests {
 
     #[test]
     fn ringing_louder_plays_once_and_the_sound_follows_the_volume() {
-        let sound = FakeSound::default();
-        let mut ringer = SoundRinger::new(Box::new(sound.clone()), Box::new(MemoryFiles::default()));
+        let sound = StubSound::default();
+        let mut ringer = SoundRinger::new(Box::new(sound.clone()), Box::new(FakeFiles::default()));
         ringer.ring(&Ringtone::Chime, Volume::percent(50));
         let half = sound.peak();
         ringer.ring(&Ringtone::Chime, Volume::percent(100));
@@ -154,8 +155,8 @@ mod tests {
 
     #[test]
     fn another_ringtone_plays_in_place_of_the_one_ringing() {
-        let sound = FakeSound::default();
-        let mut ringer = SoundRinger::new(Box::new(sound.clone()), Box::new(MemoryFiles::default()));
+        let sound = StubSound::default();
+        let mut ringer = SoundRinger::new(Box::new(sound.clone()), Box::new(FakeFiles::default()));
         ringer.ring(&Ringtone::Chime, Volume::percent(30));
         ringer.ring(&zen(), Volume::percent(30));
         ringer.ring(&zen(), Volume::percent(30));
@@ -164,8 +165,8 @@ mod tests {
 
     #[test]
     fn a_ringtone_that_cannot_be_played_rings_the_chime() {
-        let sound = FakeSound::default();
-        let mut ringer = SoundRinger::new(Box::new(sound.clone()), Box::new(MemoryFiles::default()));
+        let sound = StubSound::default();
+        let mut ringer = SoundRinger::new(Box::new(sound.clone()), Box::new(FakeFiles::default()));
         ringer.ring(&zen(), Volume::percent(100));
         let chime: Vec<i16> = Chime::new(RATE).take(phrase_samples()).collect();
         let played: Vec<i16> = sound.playing.lock().unwrap().as_mut().unwrap().take(phrase_samples()).collect();
@@ -174,11 +175,11 @@ mod tests {
 
     #[test]
     fn the_recordings_are_the_mp3_files_in_their_directory() {
-        let files = MemoryFiles::default();
+        let files = FakeFiles::default();
         for name in ["ringtones/Zen.mp3", "ringtones/Default.MP3", "ringtones/notes.txt", "alarm.conf"] {
             files.put(name, b"");
         }
-        let ringer = SoundRinger::new(Box::new(FakeSound::default()), Box::new(files));
+        let ringer = SoundRinger::new(Box::new(StubSound::default()), Box::new(files));
         assert_eq!(ringer.recordings(), ["Default.MP3", "Zen.mp3"]);
     }
 }

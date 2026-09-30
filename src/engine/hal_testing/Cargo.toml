@@ -1,0 +1,12 @@
+[package]
+name = "hal_testing"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "For tests: test doubles of the HAL's contracts, and the checks every implementation of one passes."
+
+[lints]
+workspace = true
+
+[dependencies]
+hal = { path = "../hal" }

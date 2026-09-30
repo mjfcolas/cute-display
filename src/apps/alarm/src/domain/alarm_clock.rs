@@ -328,9 +328,9 @@ mod tests {
     const RADAR: AppId = AppId::new("radar");
 
     #[derive(Clone, Default)]
-    struct FakeStore(Arc<Mutex<Option<AlarmSettings>>>);
+    struct FakeAlarmSettingsStore(Arc<Mutex<Option<AlarmSettings>>>);
 
-    impl AlarmSettingsStore for FakeStore {
+    impl AlarmSettingsStore for FakeAlarmSettingsStore {
         fn load(&mut self) -> Option<AlarmSettings> {
             self.0.lock().unwrap().clone()
         }
@@ -340,9 +340,9 @@ mod tests {
     }
 
     #[derive(Clone, Default)]
-    struct FakeRinger(Arc<Mutex<Option<(Ringtone, u8)>>>);
+    struct StubRinger(Arc<Mutex<Option<(Ringtone, u8)>>>);
 
-    impl Ringer for FakeRinger {
+    impl Ringer for StubRinger {
         fn recordings(&self) -> Vec<String> {
             vec!["Zen.mp3".into()]
         }
@@ -354,7 +354,7 @@ mod tests {
         }
     }
 
-    impl FakeRinger {
+    impl StubRinger {
         fn volume(&self) -> Option<u8> {
             self.0.lock().unwrap().as_ref().map(|(_, volume)| *volume)
         }
@@ -378,9 +378,9 @@ mod tests {
         TimeOfDay::new(7, 30)
     }
 
-    fn alarm_clock() -> (AlarmClock, FakeRinger, Foreground) {
-        let (ringer, foreground) = (FakeRinger::default(), Foreground::new(WEATHER));
-        let alarm = AlarmClock::new(Box::new(FakeStore::default()), Box::new(ringer.clone()), foreground.clone());
+    fn alarm_clock() -> (AlarmClock, StubRinger, Foreground) {
+        let (ringer, foreground) = (StubRinger::default(), Foreground::new(WEATHER));
+        let alarm = AlarmClock::new(Box::new(FakeAlarmSettingsStore::default()), Box::new(ringer.clone()), foreground.clone());
         alarm.set_time_on(Weekday::Saturday, seven_thirty());
         alarm.set_time_on(Weekday::Sunday, seven_thirty());
         alarm.switch_on();
@@ -489,7 +489,7 @@ mod tests {
 
     #[test]
     fn an_alarm_passed_while_the_device_was_off_stays_silent() {
-        let alarm = AlarmClock::new(Box::new(FakeStore::default()), Box::new(FakeRinger::default()), Foreground::new(WEATHER));
+        let alarm = AlarmClock::new(Box::new(FakeAlarmSettingsStore::default()), Box::new(StubRinger::default()), Foreground::new(WEATHER));
         alarm.set_time_on(Weekday::Saturday, seven_thirty());
         alarm.switch_on();
         assert_eq!(alarm.sunrise(), Level::OFF, "before any reading, the time is unknown");
@@ -598,13 +598,13 @@ mod tests {
 
     #[test]
     fn the_settings_are_kept_on_every_change_and_come_back() {
-        let store = FakeStore::default();
+        let store = FakeAlarmSettingsStore::default();
         let foreground = Foreground::new(WEATHER);
-        let alarm = AlarmClock::new(Box::new(store.clone()), Box::new(FakeRinger::default()), foreground.clone());
+        let alarm = AlarmClock::new(Box::new(store.clone()), Box::new(StubRinger::default()), foreground.clone());
         alarm.set_time_on(Weekday::Tuesday, TimeOfDay::new(6, 0));
         alarm.switch_on();
         alarm.set_ringtone(zen());
-        let again = AlarmClock::new(Box::new(store), Box::new(FakeRinger::default()), foreground);
+        let again = AlarmClock::new(Box::new(store), Box::new(StubRinger::default()), foreground);
         assert_eq!(again.schedule(), alarm.schedule());
         assert!(again.schedule().enabled);
         assert_eq!(again.ringtone(), zen());

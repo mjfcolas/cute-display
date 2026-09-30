@@ -243,63 +243,25 @@ fn set(light: &mut dyn DimmableLight, brightness: Brightness) -> Result<Brightne
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
-
-    use hal::clock::DateTime;
-    use hal::display::{Frame, Redraw, Refreshed};
+    use hal::display::Redraw;
     use hal::radio::AccessPoint;
+    use hal_testing::audio::StubSpeaker;
+    use hal_testing::clock::FakeRtc;
+    use hal_testing::display::StubPanel;
+    use hal_testing::input::{FakeButton, FakeWheel};
+    use hal_testing::light::FakeLight;
 
     use super::*;
 
-    type Shared<T> = Arc<Mutex<T>>;
-
-    struct FakeWheel(Shared<i32>);
-    impl RotaryEncoder for FakeWheel {
-        fn take_detents(&mut self) -> i32 {
-            core::mem::take(&mut *self.0.lock().unwrap())
-        }
-    }
-
-    struct FakeButton(Shared<u32>);
-    impl PushButton for FakeButton {
-        fn take_presses(&mut self) -> u32 {
-            core::mem::take(&mut *self.0.lock().unwrap())
-        }
-        fn is_held(&self) -> bool {
-            false
-        }
-    }
-
-    struct FakeLight(Shared<Brightness>);
-    impl DimmableLight for FakeLight {
-        fn set_brightness(&mut self, brightness: Brightness) -> Result<(), Fault> {
-            *self.0.lock().unwrap() = brightness;
-            Ok(())
-        }
-        fn brightness(&self) -> Brightness {
-            *self.0.lock().unwrap()
-        }
-    }
-
-    struct AbsentClock;
-    impl RealTimeClock for AbsentClock {
-        fn read(&mut self) -> Result<ClockReading, Fault> {
-            Err(Fault::new("absent"))
-        }
-        fn set(&mut self, _: DateTime) -> Result<(), Fault> {
-            Err(Fault::new("absent"))
-        }
-    }
-
-    struct FakeThermometer;
-    impl Thermometer for FakeThermometer {
+    struct StubThermometer;
+    impl Thermometer for StubThermometer {
         fn temperature(&mut self) -> Result<Temperature, Fault> {
             Ok(Temperature { quarter_degrees_celsius: 90 })
         }
     }
 
-    struct FakePower;
-    impl PowerMonitor for FakePower {
+    struct StubPowerMonitor;
+    impl PowerMonitor for StubPowerMonitor {
         fn on_external_power(&self) -> bool {
             true
         }
@@ -308,8 +270,8 @@ mod tests {
         }
     }
 
-    struct FakeSystem;
-    impl SystemMonitor for FakeSystem {
+    struct StubSystemMonitor;
+    impl SystemMonitor for StubSystemMonitor {
         fn free_heap_bytes(&self) -> u32 {
             200 * 1024
         }
@@ -318,28 +280,8 @@ mod tests {
         }
     }
 
-    struct FakeDisplay(Shared<Vec<(Redraw, bool)>>);
-    impl EpaperDisplay for FakeDisplay {
-        fn show(&mut self, frame: &Frame, redraw: Redraw) -> Result<Refreshed, Fault> {
-            self.0.lock().unwrap().push((redraw, frame.is_ink(5, 5)));
-            Ok(Refreshed::Nothing)
-        }
-    }
-
-    struct FakeSpeaker(Shared<u32>);
-    impl Speaker for FakeSpeaker {
-        fn sample_rate_hz(&self) -> u32 {
-            8_000
-        }
-        fn play(&mut self, samples: &mut dyn Iterator<Item = i16>) -> Result<(), Fault> {
-            samples.for_each(drop);
-            *self.0.lock().unwrap() += 1;
-            Ok(())
-        }
-    }
-
-    struct QuietAir;
-    impl WifiScanner for QuietAir {
+    struct StubWifiScanner;
+    impl WifiScanner for StubWifiScanner {
         fn scan(&mut self) -> Result<Vec<AccessPoint>, Fault> {
             Ok(vec![])
         }
@@ -347,41 +289,47 @@ mod tests {
 
     #[derive(Default)]
     struct Hands {
-        detents: Shared<i32>,
-        wheel_presses: Shared<u32>,
-        yellow_presses: Shared<u32>,
-        long_presses: Shared<u32>,
-        front: Shared<Brightness>,
-        lamp: Shared<Brightness>,
-        frames: Shared<Vec<(Redraw, bool)>>,
-        chimes: Shared<u32>,
+        wheel: FakeWheel,
+        wheel_button: FakeButton,
+        yellow_button: FakeButton,
+        long_button: FakeButton,
+        front: FakeLight,
+        lamp: FakeLight,
+        panel: StubPanel,
+        speaker: StubSpeaker,
+    }
+
+    #[derive(Debug, PartialEq)]
+    enum Seen {
+        Report,
+        Pattern,
+    }
+
+    impl Hands {
+        fn last_shown(&self) -> Option<(Redraw, Seen)> {
+            // The pattern's top-left square is ink, where the report leaves a margin.
+            self.panel.last_shown().map(|(redraw, frame)| (redraw, if frame.is_ink(5, 5) { Seen::Pattern } else { Seen::Report }))
+        }
     }
 
     fn bench() -> (Bench, Hands) {
         let hands = Hands::default();
         let controls = Controls {
-            wheel: Box::new(FakeWheel(hands.detents.clone())),
-            wheel_button: Box::new(FakeButton(hands.wheel_presses.clone())),
-            yellow_button: Box::new(FakeButton(hands.yellow_presses.clone())),
-            long_button: Box::new(FakeButton(hands.long_presses.clone())),
+            wheel: Box::new(hands.wheel.clone()),
+            wheel_button: Box::new(hands.wheel_button.clone()),
+            yellow_button: Box::new(hands.yellow_button.clone()),
+            long_button: Box::new(hands.long_button.clone()),
         };
-        let lights = Lights {
-            front: Box::new(FakeLight(hands.front.clone())),
-            reading_lamp: Box::new(FakeLight(hands.lamp.clone())),
-        };
+        let lights = Lights { front: Box::new(hands.front.clone()), reading_lamp: Box::new(hands.lamp.clone()) };
         let sensors = Sensors {
-            clock: Box::new(AbsentClock),
-            thermometer: Box::new(FakeThermometer),
+            clock: Box::new(FakeRtc::unreadable("absent")),
+            thermometer: Box::new(StubThermometer),
             i2c_devices: vec![RTC_ADDRESS],
             storage: Err(Fault::new("no card")),
-            power: Box::new(FakePower),
-            system: Box::new(FakeSystem),
+            power: Box::new(StubPowerMonitor),
+            system: Box::new(StubSystemMonitor),
         };
-        let blocking = Blocking {
-            display: FakeDisplay(hands.frames.clone()),
-            speaker: FakeSpeaker(hands.chimes.clone()),
-            wifi: QuietAir,
-        };
+        let blocking = Blocking { display: hands.panel.clone(), speaker: hands.speaker.clone(), wifi: StubWifiScanner };
         (Bench::start(controls, lights, sensors, blocking, "test").unwrap(), hands)
     }
 
@@ -395,44 +343,44 @@ mod tests {
     #[test]
     fn the_wheel_steers_the_front_light() {
         let (mut bench, hands) = bench();
-        assert_eq!(*hands.front.lock().unwrap(), FRONT_LIGHT_AT_START);
-        *hands.detents.lock().unwrap() = 3;
+        assert_eq!(hands.front.brightness(), FRONT_LIGHT_AT_START);
+        hands.wheel.turn(3);
         bench.step();
-        assert_eq!(hands.front.lock().unwrap().as_percent(), 50);
-        *hands.detents.lock().unwrap() = -9;
+        assert_eq!(hands.front.brightness().as_percent(), 50);
+        hands.wheel.turn(-9);
         bench.step();
-        assert_eq!(*hands.front.lock().unwrap(), Brightness::OFF);
+        assert_eq!(hands.front.brightness(), Brightness::OFF);
     }
 
     #[test]
     fn the_yellow_button_cycles_the_reading_lamp() {
         let (mut bench, hands) = bench();
-        *hands.yellow_presses.lock().unwrap() = 2;
+        (0..2).for_each(|_| hands.yellow_button.press());
         bench.step();
-        assert_eq!(hands.lamp.lock().unwrap().as_percent(), 50);
-        *hands.yellow_presses.lock().unwrap() = 3;
+        assert_eq!(hands.lamp.brightness().as_percent(), 50);
+        (0..3).for_each(|_| hands.yellow_button.press());
         bench.step();
-        assert_eq!(hands.lamp.lock().unwrap().as_percent(), 10);
+        assert_eq!(hands.lamp.brightness().as_percent(), 10);
     }
 
     #[test]
     fn a_wheel_press_rings_a_chime_after_the_one_at_start() {
         let (mut bench, hands) = bench();
-        *hands.wheel_presses.lock().unwrap() = 1;
+        hands.wheel_button.press();
         bench.step();
-        assert!(eventually(|| *hands.chimes.lock().unwrap() == 2));
+        assert!(eventually(|| hands.speaker.sounds_played() == 2));
     }
 
     #[test]
     fn the_long_button_swaps_the_report_for_the_pattern_with_a_whole_redraw() {
         let (mut bench, hands) = bench();
         bench.step();
-        assert!(eventually(|| !hands.frames.lock().unwrap().is_empty()));
-        *hands.long_presses.lock().unwrap() = 1;
+        assert!(eventually(|| hands.panel.times_shown() > 0));
+        hands.long_button.press();
         bench.step();
-        assert!(eventually(|| hands.frames.lock().unwrap().last() == Some(&(Redraw::Whole, true))));
-        *hands.long_presses.lock().unwrap() = 1;
+        assert!(eventually(|| hands.last_shown() == Some((Redraw::Whole, Seen::Pattern))));
+        hands.long_button.press();
         bench.step();
-        assert!(eventually(|| hands.frames.lock().unwrap().last() == Some(&(Redraw::Whole, false))));
+        assert!(eventually(|| hands.last_shown() == Some((Redraw::Whole, Seen::Report))));
     }
 }

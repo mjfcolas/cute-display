@@ -57,6 +57,8 @@ impl RotaryEncoder for ScrollWheel {
 
 #[cfg(test)]
 mod tests {
+    use hal_testing::input;
+
     use super::*;
 
     #[test]
@@ -74,24 +76,18 @@ mod tests {
     }
 
     #[test]
-    fn presses_made_while_nobody_reads_are_all_counted() {
+    fn a_key_button_keeps_the_contract() {
         let window = KeyButton::default();
-        let mut app = window.clone();
-        for _ in 0..3 {
+        input::check_presses(&mut window.clone(), || {
             window.set_down(true);
             window.set_down(false);
-        }
-        assert_eq!(app.take_presses(), 3);
+        });
+        input::check_holding(&mut window.clone(), |held| window.set_down(held));
     }
 
     #[test]
-    fn detents_add_up_until_taken() {
+    fn a_scroll_wheel_keeps_the_contract() {
         let window = ScrollWheel::default();
-        let mut app = window.clone();
-        window.turn(1);
-        window.turn(1);
-        window.turn(-3);
-        assert_eq!(app.take_detents(), -1);
-        assert_eq!(app.take_detents(), 0);
+        input::check_detents(&mut window.clone(), |detents| window.turn(detents));
     }
 }

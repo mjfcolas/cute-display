@@ -174,8 +174,9 @@ fn id3_tag_length(start: &[u8]) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use domain_testing::files::FakeFiles;
+
     use super::*;
-    use crate::infrastructure::memory_files::MemoryFiles;
 
     const STEREO_440_HZ: &[u8] = include_bytes!("../../testdata/a440-stereo-44100.mp3");
     const MONO_1000_HZ_AT_22050: &[u8] = include_bytes!("../../testdata/a1000-mono-22050.mp3");
@@ -184,7 +185,7 @@ mod tests {
     const SINE_PEAK: i16 = 2752;
 
     fn recording_of(contents: Option<&[u8]>) -> Recording {
-        let files = MemoryFiles::default();
+        let files = FakeFiles::default();
         if let Some(contents) = contents {
             files.put("ringtones/tone.mp3", contents);
         }

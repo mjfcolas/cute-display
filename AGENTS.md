@@ -37,9 +37,14 @@ is a design change and goes through DESIGN.md first.
   and tests with a stock toolchain: `just test`.
 - Logic inside a driver that does not touch a peripheral (a memory layout, a register
   decoder, a debouncer) is written so it compiles on the host and is tested there.
-- Code that consumes a HAL contract is tested against fakes of that contract.
+- Code that consumes a HAL contract is tested against test doubles of that contract.
 - Each test goes in the lowest tier of [the pyramid](docs/testing/README.md) that can
   fail for the right reason.
+- A test double is named for its kind in Martin Fowler's terms, then for what it stands
+  in for: a `Dummy` is passed and never used, a `Stub` gives answers set in advance, and
+  a `Fake` works, cut short (`StubInternet`, `FakeFileStorage`). A stub that also keeps
+  how it was called, Fowler's spy, is still a `Stub`. When the kind is not enough, a word
+  between says what sets it apart: `StubFailingLight`.
 
 ### 4. No panics on the device
 

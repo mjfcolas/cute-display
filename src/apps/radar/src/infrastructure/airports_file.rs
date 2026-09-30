@@ -60,42 +60,14 @@ fn airport(line: &str) -> Option<Airport> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-    use std::sync::{Arc, Mutex};
-
-    use domain::fetch::Unavailable;
+    use domain_testing::files::FakeFiles;
 
     use super::*;
-
-    #[derive(Clone, Default)]
-    struct MemoryFiles(Arc<Mutex<BTreeMap<String, String>>>);
-
-    impl Files for MemoryFiles {
-        fn read(&self, name: &str) -> Result<Option<String>, Unavailable> {
-            Ok(self.0.lock().unwrap().get(name).cloned())
-        }
-        fn write(&self, name: &str, text: &str) -> Result<(), Unavailable> {
-            self.0.lock().unwrap().insert(name.into(), text.into());
-            Ok(())
-        }
-        fn read_bytes(&self, name: &str, _: u64, _: usize) -> Result<Option<Vec<u8>>, Unavailable> {
-            Ok(self.read(name)?.map(String::into_bytes))
-        }
-        fn names_in(&self, _: &str) -> Result<Vec<String>, Unavailable> {
-            Ok(vec![])
-        }
-    }
-
-    fn with(name: &str, text: &str) -> MemoryFiles {
-        let files = MemoryFiles::default();
-        files.write(name, text).unwrap();
-        files
-    }
 
     #[test]
     fn airports_are_read_one_a_line_and_bad_lines_skipped() {
         let text = "# around Notre-Dame\nLFPG 49.0097 2.5479 Paris Charles de Gaulle Airport\nLFPO 48.7233 2.3794\nnonsense\nLFXX north 2\n";
-        let airports = AirportsFile::new(Box::new(with(AIRPORTS_FILE, text))).airports();
+        let airports = AirportsFile::new(Box::new(FakeFiles::with(AIRPORTS_FILE, text))).airports();
         let codes: Vec<&str> = airports.iter().map(|a| a.code.as_str()).collect();
         assert_eq!(codes, ["LFPG", "LFPO"]);
         assert_eq!(airports[0].point, GeoPoint { latitude: 49.0097, longitude: 2.5479 });
@@ -103,7 +75,7 @@ mod tests {
 
     #[test]
     fn the_radar_names_the_airports_it_lists() {
-        let files = with(AIRPORTS_FILE, "LFPG 49.0097 2.5479\nLFPO 48.7233 2.3794\nLFPB 48.9694 2.4414\n");
+        let files = FakeFiles::with(AIRPORTS_FILE, "LFPG 49.0097 2.5479\nLFPO 48.7233 2.3794\nLFPB 48.9694 2.4414\n");
         files.write(RADAR_FILE, "airport_labels = LFPG,lfpo\n").unwrap();
         let labelled: Vec<(String, bool)> = AirportsFile::new(Box::new(files)).airports().into_iter().map(|a| (a.code, a.labelled)).collect();
         assert_eq!(labelled, [("LFPG".into(), true), ("LFPO".into(), true), ("LFPB".into(), false)]);
@@ -111,6 +83,6 @@ mod tests {
 
     #[test]
     fn no_file_is_no_airports() {
-        assert!(AirportsFile::new(Box::new(MemoryFiles::default())).airports().is_empty());
+        assert!(AirportsFile::new(Box::new(FakeFiles::default())).airports().is_empty());
     }
 }

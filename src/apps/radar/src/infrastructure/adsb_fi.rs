@@ -167,9 +167,8 @@ impl<'de> Visitor<'de> for Nearest {
 #[cfg(test)]
 mod tests {
     use std::io;
-    use std::sync::{Arc, Mutex};
 
-    use domain::internet::BodyReader;
+    use domain_testing::internet::StubInternet;
 
     use super::*;
 
@@ -217,9 +216,9 @@ mod tests {
         assert_eq!(aircraft[0].callsign.as_deref(), Some("F499"));
     }
 
-    struct Trickle<'a>(&'a [u8]);
+    struct StubTricklingReader<'a>(&'a [u8]);
 
-    impl Read for Trickle<'_> {
+    impl Read for StubTricklingReader<'_> {
         fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
             let Some((&first, rest)) = self.0.split_first() else { return Ok(0) };
             if let Some(slot) = buf.first_mut() {
@@ -233,7 +232,7 @@ mod tests {
 
     #[test]
     fn an_answer_arriving_byte_by_byte_reads_the_same() {
-        let trickled = read_nearest(&mut Trickle(ANSWER.as_bytes()), NOTRE_DAME, 60).unwrap();
+        let trickled = read_nearest(&mut StubTricklingReader(ANSWER.as_bytes()), NOTRE_DAME, 60).unwrap();
         assert_eq!(trickled, read(ANSWER).unwrap());
     }
 
@@ -255,20 +254,11 @@ mod tests {
         assert!(url(NOTRE_DAME, 0).ends_with("/dist/1"));
     }
 
-    struct Canned(Arc<Mutex<Vec<String>>>);
-
-    impl Internet for Canned {
-        fn fetch(&mut self, url: &str, read: &mut BodyReader<'_>) -> Result<(), Unavailable> {
-            self.0.lock().unwrap().push(url.into());
-            read(&mut ANSWER.as_bytes())
-        }
-    }
-
     #[test]
     fn nearby_asks_the_feed_and_reads_its_answer() {
-        let asked = Arc::new(Mutex::new(Vec::new()));
-        let aircraft = AdsbFi::new(Canned(Arc::clone(&asked))).nearby(NOTRE_DAME, 10).unwrap();
+        let internet = StubInternet::answering(ANSWER);
+        let aircraft = AdsbFi::new(internet.clone()).nearby(NOTRE_DAME, 10).unwrap();
         assert_eq!(aircraft.len(), 3);
-        assert!(asked.lock().unwrap()[0].ends_with("/dist/6"));
+        assert!(internet.asked()[0].ends_with("/dist/6"));
     }
 }

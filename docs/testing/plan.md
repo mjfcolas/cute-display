@@ -1,17 +1,14 @@
 # Testing plan
 
-> **Not done yet.** Step 1 is done; **step 2 is the current one**. This file is updated
-> as each step lands, and goes once the last one has: the [pyramid](README.md) and the
-> code are then the reference.
+> **Not done yet.** Steps 1 and 2 are done; **step 3 is the current one**. This file
+> is updated as each step lands, and goes once the last one has: the
+> [pyramid](README.md) and the code are then the reference.
 
 ## Where we start
 
 - About 335 Rust tests, mostly unit, some of components (the alarm's `Bench`, the `Shell`
   with the `SystemScreen`), and about 160 Python tests of the tools; `just test` runs them.
 - Nothing tests `app::run`, its threads or `network::start`.
-- The fakes are private to each crate and written two to four times over
-  (`MemoryStorage`, `Stopped`, `NoWait`, `Paris`, `Canned`…); nothing checks them against
-  the implementations they stand for.
 - A screen draws from its private state: it can only be checked by its pixels, or by
   strings built beside the drawing (`status_line`, `day_line`).
 - The simulator needs a window, uses the real Internet (open-meteo, adsb.fi, NTP), starts
@@ -58,17 +55,19 @@
   request answers `text` lines then `ok <times_shown>`; `remote describe` in `tools/link`.
 - `docs/maintenance/DESIGN.md`: the console sees what a person reads, never the domain.
 
-### C. Shared fakes and their contracts
+### C. Shared test doubles and their contracts — done
 
-- A crate, `hal_fakes` for instance, a dev-dependency, first in DESIGN.md:
-  `MemoryStorage`, `ManualClock`, buttons and wheel, a recording panel, light, RTC,
-  speaker, Wi-Fi; `CannedWeb`, an `HttpClient` answering recorded responses by URL;
-  `NtpAt`, a `UdpClient` answering SNTP with a given time.
-- Contract suites, `contract::file_storage(make)`, `real_time_clock`, `steady_clock`…,
-  run on the fakes, on the simulator's `DirectoryCard`, `HostClock` and `ScaledClock`, and
-  on the host half of the drivers.
-- The domain's fakes written several times over (`Nowhere`, `Paris`, `Canned`,
-  `StoppedAt`…) in a test module of `domain`, behind a `testing` feature.
+- `hal_testing` and `domain_testing` hold the test doubles, and a `check_*` for each
+  contract whose behaviour a double must keep: storage, steady clock, RTC, button,
+  wheel, light; an app's files, the time keeper. Each runs on the doubles and on every
+  host implementation.
+- The other contracts have no check: what they promise (a panel may redraw more than
+  asked, a speaker plays, a place or an answer is given) leaves a double nothing to
+  keep.
+- Still to come, with the step that first needs them (5 and 6): `StubHttpClient`,
+  answering recorded responses by URL, and `StubUdpClient`, answering SNTP with a given
+  time.
+- `domain`'s own tests keep their doubles: a crate cannot use one built on itself.
 
 ### D. Virtual time, and the app image in a test
 
@@ -76,18 +75,18 @@
   the sleepers one at a time, earliest first, each until it parks again: serial and
   deterministic. Dropped, it leaves the threads parked, so `app::run` keeps returning
   `Infallible`.
-- To try first: the speaker's thread waits on a channel, not on `sleep`. Either the fake
+- To try first: the speaker's thread waits on a channel, not on `sleep`. Either the stub
   speaker sleeps on the virtual clock for the length of the sound, or sound is asserted
   as "eventually".
-- `TestHardware`, an `app::Hardware` in `src/app/tests/`: the fakes of C, driven by
+- `TestHardware`, an `app::Hardware` in `src/app/tests/`: the doubles of C, driven by
   `maintenance::Remote`, observed by `maintenance::Observation` and the `ScreenText`,
   with the apps of `catalog`.
 
 ### E. A deterministic simulator
 
 - `--headless`: no window; the controls are the console's alone.
-- `--time <unix>`: the RTC starts there, and NTP answers that time (`NtpAt`).
-- `--web <dir>`: HTTP answered from recorded responses (`CannedWeb`); `--record <dir>`
+- `--time <unix>`: the RTC starts there, and NTP answers that time (`StubUdpClient`).
+- `--web <dir>`: HTTP answered from recorded responses (`StubHttpClient`); `--record <dir>`
   records them from the real Internet; `--offline`: no network.
 
 ### F. Synchronising with the console
@@ -123,9 +122,8 @@ still true.
 
 1. **Done.** The strategy: [the pyramid](README.md), this plan, linked from
    `docs/development.md` and AGENTS.md.
-2. **Current.** Shared fakes and contracts (C): DESIGN.md first, then the duplicates
-   removed and the contract suites run on the simulator's implementations.
-3. The view model (A): `SystemScreen`, alarm, weather, radar; rendering references in
+2. **Done.** Shared test doubles and contracts (C).
+3. **Current.** The view model (A): `SystemScreen`, alarm, weather, radar; rendering references in
    Rust, `<name>.seen.png` beside them on a difference, `BLESS=1` to take them anew.
 4. The description to the console (B): `describe`, `remote describe`; the `drive` skill
    reads the screen as text.

@@ -15,7 +15,7 @@ look for:
   DESIGN.md's graph; a `hal` type in `domain`; hardware in `ui`; a pin outside
   `firmware`.
 - **Host tests** (rule 3): logic in `drivers` or `firmware` that touches no peripheral
-  and has no host test; a HAL consumer tested without a fake; new logic without a test.
+  and has no host test; a HAL consumer tested without a test double; new logic without a test.
 - **Panics** (rule 4): `unwrap`, `expect`, `[i]`, `panic!` outside tests, or an
   `#[allow]` that silences them. A hardware failure that is not a `hal::Fault`.
 - **The SD card** (rule 6): a write or a removal outside `cute-display/`.

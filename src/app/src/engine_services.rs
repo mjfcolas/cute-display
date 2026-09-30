@@ -86,60 +86,24 @@ fn files_on<S: FileStorage + Clone + Send + 'static>(card: &Result<S, Fault>, ap
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-    use std::sync::{Arc, Mutex};
-
-    use domain::fetch::Unavailable;
-    use domain::internet::BodyReader;
-    use hal::storage::Entry;
+    use domain_testing::internet::StubInternet;
+    use hal_testing::storage::FakeFileStorage;
 
     use super::*;
 
-    #[derive(Clone, Default)]
-    struct Card(Arc<Mutex<BTreeMap<String, Vec<u8>>>>);
-
-    impl FileStorage for Card {
-        fn entries(&self, _: &str) -> Result<Option<Vec<Entry>>, Fault> {
-            Ok(None)
-        }
-        fn capacity_bytes(&self) -> Result<u64, Fault> {
-            Ok(0)
-        }
-        fn read(&self, path: &str) -> Result<Option<Vec<u8>>, Fault> {
-            Ok(self.0.lock().unwrap().get(path).cloned())
-        }
-        fn write(&self, path: &str, contents: &[u8]) -> Result<(), Fault> {
-            self.0.lock().unwrap().insert(path.into(), contents.to_vec());
-            Ok(())
-        }
-        fn remove(&self, path: &str) -> Result<(), Fault> {
-            self.0.lock().unwrap().remove(path);
-            Ok(())
-        }
-    }
-
-    #[derive(Clone)]
-    struct Online;
-
-    impl Internet for Online {
-        fn fetch(&mut self, _: &str, _: &mut BodyReader<'_>) -> Result<(), Unavailable> {
-            Ok(())
-        }
-    }
-
     #[test]
     fn on_a_card_an_app_keeps_its_files_in_its_own_directory() {
-        let card = Card::default();
+        let card = FakeFileStorage::default();
         let files = files_on(&Ok(card.clone()), AppId::new("alarm"));
         files.write("alarm.conf", "enabled = yes").unwrap();
-        assert!(card.0.lock().unwrap().contains_key("cute-display/apps/alarm/alarm.conf"));
+        assert!(card.contains("cute-display/apps/alarm/alarm.conf"));
     }
 
     #[test]
     fn without_the_card_files_say_so_and_there_is_no_internet() {
-        let files = files_on(&Err::<Card, _>(Fault::new("not mounted")), AppId::new("alarm"));
+        let files = files_on(&Err::<FakeFileStorage, _>(Fault::new("not mounted")), AppId::new("alarm"));
         assert!(files.read("alarm.conf").is_err());
-        assert!(internet_through(None::<&Online>).get("https://example.com").is_err());
-        assert!(internet_through(Some(&Online)).get("https://example.com").is_ok());
+        assert!(internet_through(None::<&StubInternet>).get("https://example.com").is_err());
+        assert!(internet_through(Some(&StubInternet::answering(""))).get("https://example.com").is_ok());
     }
 }

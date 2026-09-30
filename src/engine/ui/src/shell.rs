@@ -102,7 +102,8 @@ mod tests {
     use std::cell::RefCell;
     use std::rc::Rc;
 
-    use domain::settings::{Settings, SettingsRecord, SettingsStore};
+    use domain::settings::Settings;
+    use domain_testing::settings::StubSettingsStore;
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
 
     use super::*;
@@ -114,7 +115,7 @@ mod tests {
     const RADAR: AppId = AppId::new("radar");
 
     #[derive(Clone)]
-    struct Probe {
+    struct StubScreen {
         app: AppId,
         inputs: Rc<RefCell<Vec<Input>>>,
         visits: Rc<RefCell<Vec<&'static str>>>,
@@ -122,13 +123,13 @@ mod tests {
         version: Rc<RefCell<u64>>,
     }
 
-    impl Probe {
+    impl StubScreen {
         fn new(app: AppId) -> Self {
             Self { app, inputs: Rc::default(), visits: Rc::default(), text: Rc::new(RefCell::new("probe".into())), version: Rc::default() }
         }
     }
 
-    impl AppScreen<Frame> for Probe {
+    impl AppScreen<Frame> for StubScreen {
         fn entered(&mut self) {
             self.visits.borrow_mut().push("entered");
         }
@@ -144,15 +145,6 @@ mod tests {
         fn draw(&self, target: &mut Frame, area: Rectangle) {
             text::write(target, &self.text.borrow(), area.top_left, area.size.width, &BODY);
         }
-    }
-
-    struct Nowhere;
-
-    impl SettingsStore for Nowhere {
-        fn load(&mut self) -> Option<SettingsRecord> {
-            None
-        }
-        fn save(&mut self, _: &SettingsRecord) {}
     }
 
     fn turn(detents: i32) -> ControlsSample {
@@ -178,15 +170,15 @@ mod tests {
         frame
     }
 
-    fn shell(foreground: &Foreground) -> (Shell<Frame>, Probe, Probe) {
-        let (weather, radar) = (Probe::new(WEATHER), Probe::new(RADAR));
+    fn shell(foreground: &Foreground) -> (Shell<Frame>, StubScreen, StubScreen) {
+        let (weather, radar) = (StubScreen::new(WEATHER), StubScreen::new(RADAR));
         let offered = [&weather, &radar].map(|probe| OfferedApp { app: probe.app, title: probe.app.name() }).into();
         let screens: Vec<Hosted<Frame>> = vec![
             Hosted { app: WEATHER, screen: Box::new(weather.clone()) },
             Hosted { app: RADAR, screen: Box::new(radar.clone()) },
             Hosted {
                 app: AppId::SYSTEM,
-                screen: Box::new(SystemScreen::new(foreground.clone(), Settings::load(Box::new(Nowhere)), "2026.9.0", offered)),
+                screen: Box::new(SystemScreen::new(foreground.clone(), Settings::load(Box::new(StubSettingsStore)), "2026.9.0", offered)),
             },
         ];
         (Shell::new(foreground.clone(), screens).unwrap(), weather, radar)

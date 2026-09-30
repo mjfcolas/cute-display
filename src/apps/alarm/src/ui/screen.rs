@@ -345,11 +345,12 @@ mod tests {
 
     use domain::apps::Foreground;
     use domain::calendar::Date;
-    use domain::clock::{TimeKeeper, TimeSource, TimeZoneSource};
+    use domain::clock::TimeKeeper;
     use domain::fetch::Unavailable;
-    use domain::place::{GeoPoint, Place, PlaceSource};
+    use domain::place::Place;
     use domain::time::UtcTime;
-    use domain::time_zone::TimeZone;
+    use domain_testing::place::{paris, StubPlace};
+    use domain_testing::time::FakeTimeKeeper;
     use forecast::{
         CompassPoint, DayForecast, Degrees, Forecast, ForecastSource, Hectopascals, HourForecast, KilometresPerHour, Millimetres, Percent, Sky,
         Today, Wind,
@@ -359,8 +360,8 @@ mod tests {
     use super::*;
     use crate::domain::alarm_clock::{AlarmSettings, AlarmSettingsStore, Ringer, Volume};
 
-    struct Nowhere;
-    impl AlarmSettingsStore for Nowhere {
+    struct StubAlarmSettingsStore;
+    impl AlarmSettingsStore for StubAlarmSettingsStore {
         fn load(&mut self) -> Option<AlarmSettings> {
             None
         }
@@ -368,8 +369,8 @@ mod tests {
     }
 
     #[derive(Clone, Default)]
-    struct Speaker(Arc<Mutex<Option<Ringtone>>>);
-    impl Ringer for Speaker {
+    struct StubRinger(Arc<Mutex<Option<Ringtone>>>);
+    impl Ringer for StubRinger {
         fn recordings(&self) -> Vec<String> {
             vec!["Zen.mp3".into(), "Lost Ark.mp3".into()]
         }
@@ -381,7 +382,7 @@ mod tests {
         }
     }
 
-    impl Speaker {
+    impl StubRinger {
         fn playing(&self) -> Option<Ringtone> {
             self.0.lock().unwrap().clone()
         }
@@ -395,40 +396,8 @@ mod tests {
         Ringtone::Recorded("Lost Ark.mp3".into())
     }
 
-    #[derive(Clone, Default)]
-    struct StoppedKeeper(Arc<Mutex<Option<UtcTime>>>);
-    impl TimeKeeper for StoppedKeeper {
-        fn read(&mut self) -> Option<UtcTime> {
-            *self.0.lock().unwrap()
-        }
-        fn set(&mut self, time: UtcTime) {
-            *self.0.lock().unwrap() = Some(time);
-        }
-    }
-
-    struct Offline;
-    impl TimeSource for Offline {
-        fn fetch(&mut self) -> Result<UtcTime, Unavailable> {
-            Err(Unavailable("offline".into()))
-        }
-    }
-
-    struct Utc;
-    impl TimeZoneSource for Utc {
-        fn time_zone(&mut self) -> Result<Option<TimeZone>, Unavailable> {
-            Ok(Some(TimeZone::UTC))
-        }
-    }
-
-    struct Paris;
-    impl PlaceSource for Paris {
-        fn place(&mut self) -> Option<Place> {
-            Some(Place { name: "Paris".into(), point: GeoPoint { latitude: 48.85, longitude: 2.35 } })
-        }
-    }
-
-    struct Rainy;
-    impl ForecastSource for Rainy {
+    struct StubForecastSource;
+    impl ForecastSource for StubForecastSource {
         fn fetch(&mut self, _: &Place) -> Result<Forecast, Unavailable> {
             let saturday = Date::new(2026, 9, 26).unwrap();
             let six = LocalTime { date: saturday, time_of_day: TimeOfDay::new(6, 0).unwrap(), second: 0 }.seconds_since_epoch();
@@ -472,20 +441,20 @@ mod tests {
         alarm: AlarmClock,
         clock: Clock,
         weather: Weather,
-        keeper: StoppedKeeper,
-        speaker: Speaker,
+        keeper: FakeTimeKeeper,
+        ringer: StubRinger,
     }
 
     impl Bench {
         fn new() -> Self {
-            let keeper = StoppedKeeper::default();
-            let clock = Clock::new(Box::new(keeper.clone()), Box::new(Offline), Box::new(Utc));
-            let speaker = Speaker::default();
-            let alarm = AlarmClock::new(Box::new(Nowhere), Box::new(speaker.clone()), Foreground::new(crate::ID));
-            let weather = Weather::new(Box::new(Paris), Box::new(Rainy));
+            let keeper = FakeTimeKeeper::default();
+            let clock = keeper.offline_clock();
+            let ringer = StubRinger::default();
+            let alarm = AlarmClock::new(Box::new(StubAlarmSettingsStore), Box::new(ringer.clone()), Foreground::new(crate::ID));
+            let weather = Weather::new(Box::new(StubPlace::at(paris())), Box::new(StubForecastSource));
             let mut screen = AlarmScreen::new(alarm.clone(), clock.clone(), weather.clone());
             AppScreen::<Frame>::entered(&mut screen);
-            let bench = Self { screen, alarm, clock, weather, keeper, speaker };
+            let bench = Self { screen, alarm, clock, weather, keeper, ringer };
             bench.at(saturday_at_seven());
             bench
         }
@@ -583,13 +552,13 @@ mod tests {
         bench.input(Input::Turn(2));
         assert_eq!(bench.screen.mode, Mode::Settings { row: RINGTONE_ROW }, "after Sunday");
         bench.press(Button::Long);
-        assert_eq!(bench.speaker.playing(), Some(Ringtone::Chime));
+        assert_eq!(bench.ringer.playing(), Some(Ringtone::Chime));
         bench.input(Input::Turn(-1));
-        assert_eq!((bench.alarm.ringtone(), bench.speaker.playing()), (lost_ark(), Some(lost_ark())));
+        assert_eq!((bench.alarm.ringtone(), bench.ringer.playing()), (lost_ark(), Some(lost_ark())));
         bench.input(Input::Turn(2));
         assert_eq!(bench.alarm.ringtone(), zen());
         bench.press(Button::Long);
-        assert_eq!((bench.alarm.ringtone(), bench.speaker.playing()), (zen(), None));
+        assert_eq!((bench.alarm.ringtone(), bench.ringer.playing()), (zen(), None));
         assert_eq!(bench.screen.mode, Mode::Settings { row: RINGTONE_ROW });
     }
 
@@ -601,7 +570,7 @@ mod tests {
         bench.press(Button::Long);
         bench.input(Input::Turn(1));
         bench.press(Button::Yellow);
-        assert_eq!((bench.alarm.ringtone(), bench.speaker.playing()), (Ringtone::Chime, None));
+        assert_eq!((bench.alarm.ringtone(), bench.ringer.playing()), (Ringtone::Chime, None));
     }
 
     #[test]
@@ -612,7 +581,7 @@ mod tests {
         bench.press(Button::Long);
         bench.input(Input::Turn(1));
         AppScreen::<Frame>::left(&mut bench.screen);
-        assert_eq!((bench.alarm.ringtone(), bench.speaker.playing()), (zen(), None));
+        assert_eq!((bench.alarm.ringtone(), bench.ringer.playing()), (zen(), None));
     }
 
     #[test]

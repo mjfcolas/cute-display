@@ -67,12 +67,14 @@ impl Files for UnreachableCard {
 
 #[cfg(test)]
 mod tests {
+    use domain_testing::files;
+    use hal_testing::storage::FakeFileStorage;
+
     use super::*;
-    use crate::test_storage::MemoryStorage;
 
     #[test]
     fn an_app_reads_and_writes_its_files_in_its_own_directory() {
-        let storage = MemoryStorage::with("cute-display/apps/alarm/alarm.conf", "enabled = yes\n");
+        let storage = FakeFileStorage::with("cute-display/apps/alarm/alarm.conf", "enabled = yes\n");
         let files = CardFiles::new(storage.clone(), AppId::new("alarm"));
         assert_eq!(files.read("alarm.conf").unwrap().as_deref(), Some("enabled = yes\n"));
         assert_eq!(files.read("notes.txt").unwrap(), None);
@@ -81,17 +83,8 @@ mod tests {
     }
 
     #[test]
-    fn an_app_lists_a_directory_of_its_own_and_reads_its_files_a_part_at_a_time() {
-        let storage = MemoryStorage::default();
-        storage.put("cute-display/apps/alarm/ringtones/Zen.mp3", b"0123456789");
-        storage.put("cute-display/apps/alarm/ringtones/Default.mp3", b"");
-        storage.put("cute-display/apps/alarm/ringtones/old/Harp.mp3", b"");
-        storage.put("sounds/alarm/Lost Ark.mp3", b"");
-        let files = CardFiles::new(storage, AppId::new("alarm"));
-        assert_eq!(files.names_in("ringtones").unwrap(), ["Default.mp3", "Zen.mp3"]);
-        assert_eq!(files.names_in("songs").unwrap(), Vec::<String>::new());
-        assert_eq!(files.read_bytes("ringtones/Zen.mp3", 8, 4).unwrap().as_deref(), Some(&b"89"[..]));
-        assert_eq!(files.read_bytes("ringtones/Harp.mp3", 0, 4).unwrap(), None);
+    fn an_apps_files_on_the_card_keep_the_contract() {
+        files::check_contract(&CardFiles::new(FakeFileStorage::default(), AppId::new("alarm")));
     }
 
     #[test]

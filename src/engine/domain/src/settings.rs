@@ -117,11 +117,11 @@ mod tests {
     use super::*;
 
     #[derive(Clone, Default)]
-    struct FakeStore {
+    struct FakeSettingsStore {
         kept: Arc<Mutex<Option<SettingsRecord>>>,
     }
 
-    impl SettingsStore for FakeStore {
+    impl SettingsStore for FakeSettingsStore {
         fn load(&mut self) -> Option<SettingsRecord> {
             *self.kept.lock().unwrap()
         }
@@ -132,14 +132,14 @@ mod tests {
 
     #[test]
     fn a_device_that_kept_nothing_starts_on_the_defaults() {
-        let settings = Settings::load(Box::new(FakeStore::default()));
+        let settings = Settings::load(Box::new(FakeSettingsStore::default()));
         assert_eq!(settings.backlight(), BacklightDuration::TenSeconds);
         assert_eq!(settings.reading_lamp(), ReadingLamp::Off);
     }
 
     #[test]
     fn every_change_is_kept_and_comes_back_on_the_next_load() {
-        let store = FakeStore::default();
+        let store = FakeSettingsStore::default();
         let settings = Settings::load(Box::new(store.clone()));
         settings.choose_next_backlight();
         settings.choose_next_reading_lamp();

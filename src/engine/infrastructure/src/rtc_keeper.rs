@@ -74,51 +74,38 @@ fn utc(time: DateTime) -> Option<UtcTime> {
 
 #[cfg(test)]
 mod tests {
-    use hal::clock::ClockReading;
+    use domain_testing::time;
+    use hal_testing::clock::FakeRtc;
 
     use super::*;
 
-    #[derive(Default)]
-    struct FakeRtc {
-        time: Option<DateTime>,
-        failing: bool,
-    }
-
-    impl RealTimeClock for FakeRtc {
-        fn read(&mut self) -> Result<ClockReading, Fault> {
-            if self.failing {
-                return Err(Fault::new("I2C read"));
-            }
-            let time = self.time.unwrap_or(DateTime { year: 2000, month: 1, day: 1, hour: 0, minute: 0, second: 0 });
-            Ok(ClockReading { time, oscillator_stopped: self.time.is_none(), alarm_raised: false })
-        }
-        fn set(&mut self, time: DateTime) -> Result<(), Fault> {
-            self.time = Some(time);
-            Ok(())
-        }
+    #[test]
+    fn a_keeper_on_the_rtc_keeps_the_contract() {
+        time::check_keeper_contract(&mut RtcKeeper::new(FakeRtc::stopped()));
     }
 
     #[test]
     fn what_is_set_is_read_back_as_utc() {
-        let mut keeper = RtcKeeper::new(FakeRtc::default());
+        let rtc = FakeRtc::stopped();
+        let mut keeper = RtcKeeper::new(rtc.clone());
         let morning = UtcTime::from_unix_seconds(1_790_407_815);
         keeper.set(morning);
-        assert_eq!(keeper.clock.time, Some(DateTime { year: 2026, month: 9, day: 26, hour: 7, minute: 30, second: 15 }));
+        assert_eq!(rtc.time(), Some(DateTime { year: 2026, month: 9, day: 26, hour: 7, minute: 30, second: 15 }));
         assert_eq!(keeper.read(), Some(morning));
     }
 
     #[test]
     fn an_impossible_time_is_no_time() {
-        let mut keeper = RtcKeeper::new(FakeRtc::default());
-        keeper.clock.time = Some(DateTime { year: 2026, month: 4, day: 31, hour: 7, minute: 0, second: 0 });
+        let mut keeper = RtcKeeper::new(FakeRtc::at(DateTime { year: 2026, month: 4, day: 31, hour: 7, minute: 0, second: 0 }));
         assert_eq!(keeper.read(), None);
     }
 
     #[test]
     fn a_stopped_or_unreadable_clock_does_not_know_the_time() {
-        let mut keeper = RtcKeeper::new(FakeRtc::default());
+        let rtc = FakeRtc::stopped();
+        let mut keeper = RtcKeeper::new(rtc.clone());
         assert_eq!(keeper.read(), None);
-        keeper.clock.failing = true;
+        rtc.fail_with("I2C read");
         assert_eq!(keeper.read(), None);
         assert_eq!(keeper.fault, Some(Fault::new("I2C read")));
     }

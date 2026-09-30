@@ -88,12 +88,13 @@ fn decode(conf: &ConfText) -> SettingsRecord {
 
 #[cfg(test)]
 mod tests {
+    use hal_testing::storage::FakeFileStorage;
+
     use super::*;
-    use crate::test_storage::MemoryStorage;
 
     #[test]
     fn every_record_comes_back_as_it_was_saved() {
-        let mut file = SettingsFile::new(MemoryStorage::default());
+        let mut file = SettingsFile::new(FakeFileStorage::default());
         for (backlight, _) in BACKLIGHT_VALUES {
             for (reading_lamp, _) in READING_LAMP_VALUES {
                 let record = SettingsRecord { backlight, reading_lamp };
@@ -105,19 +106,19 @@ mod tests {
 
     #[test]
     fn the_file_lives_in_the_devices_own_directory() {
-        let storage = MemoryStorage::default();
+        let storage = FakeFileStorage::default();
         SettingsFile::new(storage.clone()).save(&SettingsRecord::default());
         assert!(storage.contains("cute-display/settings.conf"));
     }
 
     #[test]
     fn no_file_is_no_record() {
-        assert_eq!(SettingsFile::new(MemoryStorage::default()).load(), None);
+        assert_eq!(SettingsFile::new(FakeFileStorage::default()).load(), None);
     }
 
     #[test]
     fn a_damaged_line_loses_only_its_own_setting() {
-        let storage = MemoryStorage::with(FILE_NAME, "backlight = forever\n# a comment\nreading_lamp = 50%\nvolume = 11\n");
+        let storage = FakeFileStorage::with(FILE_NAME, "backlight = forever\n# a comment\nreading_lamp = 50%\nvolume = 11\n");
         let record = SettingsFile::new(storage).load();
         assert_eq!(record, Some(SettingsRecord { backlight: BacklightDuration::default(), reading_lamp: ReadingLamp::FiftyPercent }));
     }

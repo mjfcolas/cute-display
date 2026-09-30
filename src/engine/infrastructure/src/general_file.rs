@@ -83,11 +83,12 @@ impl PlaceSource for NoGeneralFile {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::test_storage::MemoryStorage;
+    use hal_testing::storage::FakeFileStorage;
 
-    fn general(text: &str) -> GeneralFile<MemoryStorage> {
-        GeneralFile::new(MemoryStorage::with(GENERAL_FILE, text))
+    use super::*;
+
+    fn general(text: &str) -> GeneralFile<FakeFileStorage> {
+        GeneralFile::new(FakeFileStorage::with(GENERAL_FILE, text))
     }
 
     #[test]
@@ -97,7 +98,7 @@ mod tests {
 
     #[test]
     fn no_file_or_no_line_is_none_chosen_and_nonsense_cannot_be_read() {
-        assert_eq!(GeneralFile::new(MemoryStorage::default()).time_zone(), Ok(None));
+        assert_eq!(GeneralFile::new(FakeFileStorage::default()).time_zone(), Ok(None));
         assert_eq!(general("# nothing\n").time_zone(), Ok(None));
         assert!(general("time_zone = Europe/Paris\n").time_zone().is_err());
     }
@@ -113,7 +114,7 @@ mod tests {
         assert_eq!(general("place = Paris\n").place(), None);
         assert_eq!(general("latitude = 95\nlongitude = 2\n").place(), None);
         assert_eq!(general("latitude = north\nlongitude = 2\n").place(), None);
-        assert_eq!(GeneralFile::new(MemoryStorage::default()).place(), None);
+        assert_eq!(GeneralFile::new(FakeFileStorage::default()).place(), None);
     }
 
     #[test]
@@ -133,6 +134,6 @@ mod tests {
         assert_eq!(general("apps = alarm, radar weather\n").apps(), Some(vec!["alarm".into(), "radar".into(), "weather".into()]));
         assert_eq!(general("apps =\n").apps(), Some(vec![]));
         assert_eq!(general("time_zone = UTC0\n").apps(), None);
-        assert_eq!(GeneralFile::new(MemoryStorage::default()).apps(), None);
+        assert_eq!(GeneralFile::new(FakeFileStorage::default()).apps(), None);
     }
 }

@@ -19,3 +19,15 @@ impl DimmableLight for SimulatedLight {
         Brightness::percent(self.percent.load(Ordering::Relaxed))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use hal_testing::light;
+
+    use super::*;
+
+    #[test]
+    fn a_simulated_light_keeps_the_contract() {
+        light::check_contract(&mut SimulatedLight::default());
+    }
+}

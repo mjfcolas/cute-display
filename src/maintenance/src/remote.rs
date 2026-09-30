@@ -134,15 +134,17 @@ mod tests {
     use std::sync::Mutex;
     use std::time::Instant;
 
+    use hal_testing::input;
+
     use super::*;
 
     #[derive(Default)]
-    struct HeldDuringSleep {
+    struct StubSteadyClock {
         held: Arc<Mutex<Vec<bool>>>,
         watched: Arc<RemoteButtonState>,
     }
 
-    impl SteadyClock for HeldDuringSleep {
+    impl SteadyClock for StubSteadyClock {
         fn now(&self) -> Instant {
             Instant::now()
         }
@@ -153,7 +155,7 @@ mod tests {
 
     #[test]
     fn taps_are_taken_once_each_button_its_own() {
-        let remote = Remote::new(HeldDuringSleep::default());
+        let remote = Remote::new(StubSteadyClock::default());
         let mut yellow = remote.button(ButtonName::Yellow);
         let mut long = remote.button(ButtonName::Long);
         remote.tap(ButtonName::Yellow);
@@ -166,8 +168,8 @@ mod tests {
 
     #[test]
     fn a_hold_keeps_its_buttons_down_for_its_duration_then_releases_them() {
-        let remote = Remote::new(HeldDuringSleep::default());
-        let clock = HeldDuringSleep { held: Arc::default(), watched: remote.long_button.clone() };
+        let remote = Remote::new(StubSteadyClock::default());
+        let clock = StubSteadyClock { held: Arc::default(), watched: remote.long_button.clone() };
         let held = clock.held.clone();
         let remote = Remote { hold_clock: Arc::new(clock), ..remote };
         let mut long = remote.button(ButtonName::Long);
@@ -184,12 +186,9 @@ mod tests {
     }
 
     #[test]
-    fn detents_add_up_until_taken() {
-        let remote = Remote::new(HeldDuringSleep::default());
-        let mut wheel = remote.wheel();
-        remote.turn(2);
-        remote.turn(-3);
-        assert_eq!(wheel.take_detents(), -1);
-        assert_eq!(wheel.take_detents(), 0);
+    fn the_remote_buttons_and_wheel_keep_the_contract() {
+        let remote = Remote::new(StubSteadyClock::default());
+        input::check_presses(&mut remote.button(ButtonName::Yellow), || remote.tap(ButtonName::Yellow));
+        input::check_detents(&mut remote.wheel(), |detents| remote.turn(detents));
     }
 }

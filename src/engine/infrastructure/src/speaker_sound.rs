@@ -77,39 +77,20 @@ impl Iterator for Playing<'_> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Mutex;
     use std::thread;
 
-    use hal::Fault;
+    use hal_testing::audio::StubSpeaker;
 
     use super::*;
 
-    const RATE: u32 = 8_000;
-
-    #[derive(Clone, Default)]
-    struct FakeSpeaker(Arc<Mutex<Vec<i16>>>);
-
-    impl Speaker for FakeSpeaker {
-        fn sample_rate_hz(&self) -> u32 {
-            RATE
-        }
-        fn play(&mut self, samples: &mut dyn Iterator<Item = i16>) -> Result<(), Fault> {
-            for sample in samples {
-                self.0.lock().unwrap().push(sample);
-            }
-            Ok(())
-        }
-    }
-
     fn played_after(ask: impl FnOnce(&mut SpeakerSound)) -> Vec<i16> {
-        let speaker = FakeSpeaker::default();
+        let speaker = StubSpeaker::default();
         let (mut sound, player) = sound(speaker.clone());
-        assert_eq!(sound.sample_rate_hz(), RATE);
+        assert_eq!(sound.sample_rate_hz(), StubSpeaker::SAMPLE_RATE_HZ);
         ask(&mut sound);
         drop(sound);
         player.run();
-        let played = speaker.0.lock().unwrap().clone();
-        played
+        speaker.samples()
     }
 
     #[test]
@@ -130,11 +111,11 @@ mod tests {
 
     #[test]
     fn a_sound_stopped_while_it_plays_ends() {
-        let speaker = FakeSpeaker::default();
+        let speaker = StubSpeaker::default();
         let (mut sound, player) = sound(speaker.clone());
         let playing = thread::spawn(move || player.run());
         sound.play(Box::new(std::iter::repeat(1000)));
-        while speaker.0.lock().unwrap().len() < 1000 {
+        while speaker.samples_played() < 1000 {
             thread::yield_now();
         }
         sound.stop();

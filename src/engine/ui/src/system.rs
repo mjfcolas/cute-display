@@ -214,7 +214,7 @@ impl<D: DrawTarget<Color = BinaryColor>> AppScreen<D> for SystemScreen {
 
 #[cfg(test)]
 mod tests {
-    use domain::settings::{SettingsRecord, SettingsStore};
+    use domain_testing::settings::StubSettingsStore;
     use hal::display::{Frame, HEIGHT, WIDTH};
 
     use super::*;
@@ -224,18 +224,9 @@ mod tests {
     const RADAR: OfferedApp = OfferedApp { app: AppId::new("radar"), title: "Radar" };
     const OFFERED: [OfferedApp; 3] = [ALARM, WEATHER, RADAR];
 
-    struct Nowhere;
-
-    impl SettingsStore for Nowhere {
-        fn load(&mut self) -> Option<SettingsRecord> {
-            None
-        }
-        fn save(&mut self, _: &SettingsRecord) {}
-    }
-
     fn opened_from(app: OfferedApp) -> (SystemScreen, Foreground, Settings) {
         let foreground = Foreground::new(app.app);
-        let settings = Settings::load(Box::new(Nowhere));
+        let settings = Settings::load(Box::new(StubSettingsStore));
         foreground.open_system();
         let mut screen = SystemScreen::new(foreground.clone(), settings.clone(), "2026.9.0", OFFERED.into());
         AppScreen::<Frame>::entered(&mut screen);

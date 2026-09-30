@@ -93,8 +93,9 @@ fn time_of_day(text: &str) -> Option<TimeOfDay> {
 
 #[cfg(test)]
 mod tests {
+    use domain_testing::files::FakeFiles;
+
     use super::*;
-    use crate::infrastructure::memory_files::MemoryFiles;
 
     fn weekdays_at_seven() -> AlarmSettings {
         let mut schedule = AlarmSchedule::default();
@@ -108,7 +109,7 @@ mod tests {
 
     #[test]
     fn settings_come_back_as_they_were_saved() {
-        let files = MemoryFiles::default();
+        let files = FakeFiles::default();
         let mut file = AlarmFile::new(Box::new(files.clone()));
         file.save(&weekdays_at_seven());
         assert_eq!(file.load(), Some(weekdays_at_seven()));
@@ -127,7 +128,7 @@ mod tests {
 
     #[test]
     fn a_damaged_line_loses_only_its_own_day() {
-        let files = MemoryFiles::default();
+        let files = FakeFiles::default();
         files.write(ALARM_FILE, "enabled = yes\nmonday = 25:00\ntuesday = 6:30\nwednesday = soon\n").unwrap();
         let settings = AlarmFile::new(Box::new(files)).load().unwrap();
         assert!(settings.schedule.enabled);
@@ -139,6 +140,6 @@ mod tests {
 
     #[test]
     fn no_file_is_no_settings() {
-        assert_eq!(AlarmFile::new(Box::new(MemoryFiles::default())).load(), None);
+        assert_eq!(AlarmFile::new(Box::new(FakeFiles::default())).load(), None);
     }
 }

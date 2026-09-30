@@ -28,6 +28,8 @@ minifb = "0.28"
 ureq = "3"
 
 [dev-dependencies]
+domain_testing = { path = "../engine/domain_testing" }
+hal_testing = { path = "../engine/hal_testing" }
 domain = { path = "../engine/domain" }
 ui = { path = "../engine/ui" }
 forecast = { path = "../libs/forecast" }

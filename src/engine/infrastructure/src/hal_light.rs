@@ -21,22 +21,9 @@ impl<L: DimmableLight + Send> Light for HalLight<L> {
 
 #[cfg(test)]
 mod tests {
-    use hal::Fault;
+    use hal_testing::light::FakeLight;
 
     use super::*;
-
-    #[derive(Default)]
-    struct FakeLight(Brightness);
-
-    impl DimmableLight for FakeLight {
-        fn set_brightness(&mut self, brightness: Brightness) -> Result<(), Fault> {
-            self.0 = brightness;
-            Ok(())
-        }
-        fn brightness(&self) -> Brightness {
-            self.0
-        }
-    }
 
     #[test]
     fn a_level_is_the_same_percentage_of_brightness() {

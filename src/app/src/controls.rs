@@ -22,36 +22,22 @@ impl<E: RotaryEncoder, B: PushButton> Controls<E, B> {
 
 #[cfg(test)]
 mod tests {
+    use hal_testing::input::{FakeButton, FakeWheel};
+
     use super::*;
-
-    struct FakeWheel(i32);
-    impl RotaryEncoder for FakeWheel {
-        fn take_detents(&mut self) -> i32 {
-            std::mem::take(&mut self.0)
-        }
-    }
-
-    struct FakeButton {
-        presses: u32,
-        held: bool,
-    }
-    impl PushButton for FakeButton {
-        fn take_presses(&mut self) -> u32 {
-            std::mem::take(&mut self.presses)
-        }
-        fn is_held(&self) -> bool {
-            self.held
-        }
-    }
 
     #[test]
     fn a_sample_takes_what_each_control_did_and_leaves_nothing_for_the_next() {
         let mut controls = Controls {
-            wheel: FakeWheel(-2),
-            wheel_button: FakeButton { presses: 1, held: false },
-            yellow_button: FakeButton { presses: 3, held: false },
-            long_button: FakeButton { presses: 0, held: true },
+            wheel: FakeWheel::default(),
+            wheel_button: FakeButton::default(),
+            yellow_button: FakeButton::default(),
+            long_button: FakeButton::default(),
         };
+        controls.wheel.turn(-2);
+        controls.wheel_button.press();
+        (0..3).for_each(|_| controls.yellow_button.press());
+        controls.long_button.set_held(true);
         assert_eq!(
             controls.sample(),
             ControlsSample {

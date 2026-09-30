@@ -91,32 +91,32 @@ mod tests {
     use crate::settings::{SettingsRecord, SettingsStore};
 
     #[derive(Clone, Default)]
-    struct FakeLight(Arc<Mutex<Vec<u8>>>);
+    struct StubLight(Arc<Mutex<Vec<u8>>>);
 
-    impl Light for FakeLight {
+    impl Light for StubLight {
         fn shine(&mut self, level: Level) {
             self.0.lock().unwrap().push(level.as_percent());
         }
     }
 
-    impl FakeLight {
+    impl StubLight {
         fn levels(&self) -> Vec<u8> {
             self.0.lock().unwrap().clone()
         }
     }
 
-    struct Nowhere;
+    struct StubSettingsStore;
 
-    impl SettingsStore for Nowhere {
+    impl SettingsStore for StubSettingsStore {
         fn load(&mut self) -> Option<SettingsRecord> {
             None
         }
         fn save(&mut self, _: &SettingsRecord) {}
     }
 
-    fn lighting() -> (Lighting, Settings, FakeLight, FakeLight) {
-        let settings = Settings::load(Box::new(Nowhere));
-        let (backlight, lamp) = (FakeLight::default(), FakeLight::default());
+    fn lighting() -> (Lighting, Settings, StubLight, StubLight) {
+        let settings = Settings::load(Box::new(StubSettingsStore));
+        let (backlight, lamp) = (StubLight::default(), StubLight::default());
         let lighting = Lighting::new(Box::new(backlight.clone()), Box::new(lamp.clone()), settings.clone());
         (lighting, settings, backlight, lamp)
     }

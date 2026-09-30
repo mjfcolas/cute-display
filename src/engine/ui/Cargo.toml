@@ -13,4 +13,5 @@ domain = { path = "../domain" }
 embedded-graphics = "0.8"
 
 [dev-dependencies]
+domain_testing = { path = "../domain_testing" }
 hal = { path = "../hal" }

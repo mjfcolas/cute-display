@@ -99,12 +99,12 @@ mod tests {
         assert!(decode(&answer(VERSION_4_SERVER, 2, MORNING, 0)[..47]).is_err(), "cut short");
     }
 
-    struct Recorded {
+    struct StubDatagrams {
         answer: Vec<u8>,
         request: Option<(String, u16, Vec<u8>)>,
     }
 
-    impl Datagrams for Recorded {
+    impl Datagrams for StubDatagrams {
         fn exchange(&mut self, host: &str, port: u16, request: &[u8], answer: &mut [u8]) -> Result<usize, Unavailable> {
             self.request = Some((host.into(), port, request.to_vec()));
             answer[..self.answer.len()].copy_from_slice(&self.answer);
@@ -114,7 +114,7 @@ mod tests {
 
     #[test]
     fn asks_as_a_version_4_client() {
-        let mut server = NtpServer::new(Recorded { answer: answer(VERSION_4_SERVER, 1, MORNING, 0), request: None });
+        let mut server = NtpServer::new(StubDatagrams { answer: answer(VERSION_4_SERVER, 1, MORNING, 0), request: None });
         assert_eq!(server.fetch(), Ok(UtcTime::from_unix_seconds(MORNING)));
         let (host, port, request) = server.network.request.unwrap();
         assert_eq!((host.as_str(), port), (SERVER, PORT));

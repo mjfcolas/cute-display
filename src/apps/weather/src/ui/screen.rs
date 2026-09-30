@@ -276,51 +276,22 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use domain::calendar::Date;
-    use domain::clock::{TimeKeeper, TimeSource, TimeZoneSource};
     use domain::fetch::Unavailable;
-    use domain::place::{GeoPoint, Place, PlaceSource};
+    use domain::place::Place;
     use domain::time::{LocalTime, UtcTime};
-    use domain::time_zone::TimeZone;
+    use domain_testing::place::{paris, StubPlace};
+    use domain_testing::time::FakeTimeKeeper;
     use forecast::{CompassPoint, Degrees, ForecastSource, Hectopascals, KilometresPerHour, Percent, Today, Wind};
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
 
     use super::*;
 
-    struct Paris;
-
-    impl PlaceSource for Paris {
-        fn place(&mut self) -> Option<Place> {
-            Some(Place { name: "Paris".into(), point: GeoPoint { latitude: 48.85, longitude: 2.35 } })
-        }
-    }
-
     #[derive(Clone, Default)]
-    struct Answers(Arc<Mutex<Vec<Result<Forecast, Unavailable>>>>);
+    struct StubForecastSource(Arc<Mutex<Vec<Result<Forecast, Unavailable>>>>);
 
-    impl ForecastSource for Answers {
+    impl ForecastSource for StubForecastSource {
         fn fetch(&mut self, _: &Place) -> Result<Forecast, Unavailable> {
             self.0.lock().unwrap().remove(0)
-        }
-    }
-
-    struct StoppedAt(Option<UtcTime>);
-
-    impl TimeKeeper for StoppedAt {
-        fn read(&mut self) -> Option<UtcTime> {
-            self.0
-        }
-        fn set(&mut self, _: UtcTime) {}
-    }
-
-    impl TimeSource for StoppedAt {
-        fn fetch(&mut self) -> Result<UtcTime, Unavailable> {
-            Err(Unavailable("offline".into()))
-        }
-    }
-
-    impl TimeZoneSource for StoppedAt {
-        fn time_zone(&mut self) -> Result<Option<TimeZone>, Unavailable> {
-            Ok(Some(TimeZone::UTC))
         }
     }
 
@@ -330,7 +301,7 @@ mod tests {
 
     fn clock_at(hour: Option<i64>) -> Clock {
         let time = hour.map(|hour| UtcTime::from_unix_seconds(friday().days_since_epoch() * 86_400 + hour * 3600 + 600));
-        let clock = Clock::new(Box::new(StoppedAt(time)), Box::new(StoppedAt(None)), Box::new(StoppedAt(None)));
+        let clock = time.map_or_else(FakeTimeKeeper::default, FakeTimeKeeper::at).offline_clock();
         clock.tick(Instant::now());
         clock
     }
@@ -372,7 +343,7 @@ mod tests {
     }
 
     fn weather(answers: Vec<Result<Forecast, Unavailable>>) -> Weather {
-        Weather::new(Box::new(Paris), Box::new(Answers(Arc::new(Mutex::new(answers)))))
+        Weather::new(Box::new(StubPlace::at(paris())), Box::new(StubForecastSource(Arc::new(Mutex::new(answers)))))
     }
 
     #[test]
@@ -383,7 +354,7 @@ mod tests {
         let clock = clock_at(Some(17));
         clock.tick(fetched_at + Duration::from_secs(12 * 60 + 30));
         assert!(status_line(&weather.report(), &clock).starts_with("updated 12 min ago"));
-        let untold = Clock::new(Box::new(StoppedAt(None)), Box::new(StoppedAt(None)), Box::new(StoppedAt(None)));
+        let untold = FakeTimeKeeper::default().offline_clock();
         assert!(status_line(&weather.report(), &untold).starts_with("updated just now"));
     }
 

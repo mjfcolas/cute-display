@@ -11,6 +11,9 @@ workspace = true
 [dependencies]
 hal = { path = "../hal" }
 
+[dev-dependencies]
+hal_testing = { path = "../hal_testing" }
+
 [target.'cfg(target_os = "espidf")'.dependencies]
 esp-idf-svc = "0.52.1"
 log = "0.4"

@@ -178,23 +178,23 @@ fn light_wanted(services: &[Service]) -> Level {
 mod tests {
     use super::*;
 
-    struct Lamp(Level);
+    struct StubAppService(Level);
 
-    impl AppService for Lamp {
+    impl AppService for StubAppService {
         fn light(&self) -> Level {
             self.0
         }
     }
 
-    struct Blank;
+    struct DummyScreen;
 
-    impl ui::AppScreen<Frame> for Blank {
+    impl ui::AppScreen<Frame> for DummyScreen {
         fn on_input(&mut self, _: ui::controls::Input) {}
         fn draw(&self, _: &mut Frame, _: embedded_graphics::primitives::Rectangle) {}
     }
 
     fn install(_: &dyn domain::apps::Services) -> ui::InstalledApp<Frame> {
-        ui::InstalledApp { service: Arc::new(Lamp(Level::OFF)), screen: Box::new(Blank) }
+        ui::InstalledApp { service: Arc::new(StubAppService(Level::OFF)), screen: Box::new(DummyScreen) }
     }
 
     fn installable(name: &'static str) -> Installable<Frame> {
@@ -211,7 +211,7 @@ mod tests {
     }
 
     fn service(name: &'static str, light: u8) -> Service {
-        (AppId::new(name), Arc::new(Lamp(Level::percent(light))))
+        (AppId::new(name), Arc::new(StubAppService(Level::percent(light))))
     }
 
     #[test]

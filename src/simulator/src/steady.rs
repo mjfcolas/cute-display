@@ -35,7 +35,16 @@ impl SteadyClock for ScaledClock {
 
 #[cfg(test)]
 mod tests {
+    use hal_testing::steady;
+
     use super::*;
+
+    #[test]
+    fn a_scaled_clock_keeps_the_contract_at_any_speed() {
+        for speed in [1, 50] {
+            steady::check_contract(&ScaledClock::new(NonZeroU32::new(speed).unwrap()));
+        }
+    }
 
     #[test]
     fn a_faster_clock_sleeps_less_and_moves_on_more() {

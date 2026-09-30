@@ -202,9 +202,10 @@ mod tests {
     use std::io::Read;
 
     use domain::internet::MAX_HELD_BYTES;
+    use hal_testing::steady::FakeSteadyClock;
+    use hal_testing::storage::FakeFileStorage;
 
     use super::*;
-    use crate::test_storage::MemoryStorage;
 
     #[derive(Clone, Default)]
     struct Journal(Arc<Mutex<Vec<String>>>);
@@ -218,76 +219,61 @@ mod tests {
         }
     }
 
-    struct FakeWifi(Journal, bool);
+    struct StubWifiStation {
+        journal: Journal,
+        joins: bool,
+    }
 
-    impl WifiStation for FakeWifi {
+    impl WifiStation for StubWifiStation {
         fn connect(&mut self, ssid: &str, password: &str) -> Result<(), Fault> {
-            self.0.note(format!("connect {ssid} {password}"));
-            if self.1 { Ok(()) } else { Err(Fault::new("no such network")) }
+            self.journal.note(format!("connect {ssid} {password}"));
+            if self.joins { Ok(()) } else { Err(Fault::new("no such network")) }
         }
         fn disconnect(&mut self) -> Result<(), Fault> {
-            self.0.note("disconnect".into());
+            self.journal.note("disconnect".into());
             Ok(())
         }
     }
 
-    struct FakeHttp(Journal, Result<Vec<u8>, Fault>);
+    struct StubHttpClient {
+        journal: Journal,
+        answer: Result<Vec<u8>, Fault>,
+    }
 
-    impl HttpClient for FakeHttp {
+    impl HttpClient for StubHttpClient {
         fn fetch(&mut self, url: &str, read: &mut dyn FnMut(&mut dyn Read) -> Result<(), Fault>) -> Result<(), Fault> {
-            self.0.note(format!("get {url}"));
-            let body = self.1.clone()?;
+            self.journal.note(format!("get {url}"));
+            let body = self.answer.clone()?;
             read(&mut body.as_slice())
         }
     }
 
-    struct FakeUdp(Journal, Result<Vec<u8>, Fault>);
+    struct StubUdpClient {
+        journal: Journal,
+        answer: Result<Vec<u8>, Fault>,
+    }
 
-    impl UdpClient for FakeUdp {
+    impl UdpClient for StubUdpClient {
         fn exchange(&mut self, host: &str, port: u16, _: &[u8], answer: &mut [u8], _: Duration) -> Result<usize, Fault> {
-            self.0.note(format!("udp {host}:{port}"));
-            let datagram = self.1.clone()?;
+            self.journal.note(format!("udp {host}:{port}"));
+            let datagram = self.answer.clone()?;
             answer[..datagram.len()].copy_from_slice(&datagram);
             Ok(datagram.len())
         }
     }
 
-    /// Moves on only when a test says so.
-    #[derive(Clone)]
-    struct Manual(Arc<Mutex<Instant>>);
-
-    impl Default for Manual {
-        fn default() -> Self {
-            Self(Arc::new(Mutex::new(Instant::now())))
-        }
-    }
-
-    impl Manual {
-        fn advance(&self, by: Duration) {
-            *self.0.lock().unwrap() += by;
-        }
-    }
-
-    impl SteadyClock for Manual {
-        fn now(&self) -> Instant {
-            *self.0.lock().unwrap()
-        }
-        fn sleep(&self, by: Duration) {
-            self.advance(by);
-        }
-    }
-
-    type TestInternet = OnDemandInternet<FakeWifi, FakeHttp, FakeUdp, MemoryStorage>;
+    type TestInternet = OnDemandInternet<StubWifiStation, StubHttpClient, StubUdpClient, FakeFileStorage>;
 
     fn internet(joins: bool, answer: Result<Vec<u8>, Fault>) -> (TestInternet, Journal) {
-        internet_on(Manual::default(), joins, answer)
+        internet_on(FakeSteadyClock::default(), joins, answer)
     }
 
-    fn internet_on(clock: Manual, joins: bool, answer: Result<Vec<u8>, Fault>) -> (TestInternet, Journal) {
+    fn internet_on(clock: FakeSteadyClock, joins: bool, answer: Result<Vec<u8>, Fault>) -> (TestInternet, Journal) {
         let journal = Journal::default();
-        let storage = MemoryStorage::with(WIFI_FILE, "ssid = Home\npassword = s3cret\n");
-        let (http, udp) = (FakeHttp(journal.clone(), answer.clone()), FakeUdp(journal.clone(), answer));
-        (OnDemandInternet::new(FakeWifi(journal.clone(), joins), http, udp, storage, clock), journal)
+        let storage = FakeFileStorage::with(WIFI_FILE, "ssid = Home\npassword = s3cret\n");
+        let http = StubHttpClient { journal: journal.clone(), answer: answer.clone() };
+        let udp = StubUdpClient { journal: journal.clone(), answer };
+        (OnDemandInternet::new(StubWifiStation { journal: journal.clone(), joins }, http, udp, storage, clock), journal)
     }
 
     #[test]
@@ -300,7 +286,7 @@ mod tests {
 
     #[test]
     fn the_network_is_left_a_minute_after_the_last_request() {
-        let clock = Manual::default();
+        let clock = FakeSteadyClock::default();
         let (mut internet, journal) = internet_on(clock.clone(), true, Ok(vec![]));
         internet.get("https://a").unwrap();
         clock.advance(LINGER - Duration::from_secs(2));
@@ -337,11 +323,11 @@ mod tests {
     fn without_wifi_conf_it_says_what_to_do_and_leaves_the_radio_off() {
         let journal = Journal::default();
         let mut internet = OnDemandInternet::new(
-            FakeWifi(journal.clone(), true),
-            FakeHttp(journal.clone(), Ok(vec![])),
-            FakeUdp(journal.clone(), Ok(vec![])),
-            MemoryStorage::default(),
-            Manual::default(),
+            StubWifiStation { journal: journal.clone(), joins: true },
+            StubHttpClient { journal: journal.clone(), answer: Ok(vec![]) },
+            StubUdpClient { journal: journal.clone(), answer: Ok(vec![]) },
+            FakeFileStorage::default(),
+            FakeSteadyClock::default(),
         );
         assert_eq!(internet.get("https://x"), Err(Unavailable(format!("no Wi-Fi: put {WIFI_FILE}"))));
         assert!(journal.entries().is_empty());
@@ -362,7 +348,7 @@ mod tests {
 
     fn internet_failing_udp() -> (TestInternet, Journal) {
         let (internet, journal) = internet(true, Ok(vec![]));
-        let udp = FakeUdp(journal.clone(), Err(Fault::new("no answer")));
+        let udp = StubUdpClient { journal: journal.clone(), answer: Err(Fault::new("no answer")) };
         (OnDemandInternet { udp, ..internet }, journal)
     }
 
@@ -374,7 +360,7 @@ mod tests {
 
     #[test]
     fn clones_of_a_shared_internet_use_the_same_connection() {
-        let clock = Manual::default();
+        let clock = FakeSteadyClock::default();
         let (internet, journal) = internet_on(clock.clone(), true, Ok(vec![]));
         let shared = SharedInternet::new(internet);
         let mut weather = shared.clone();

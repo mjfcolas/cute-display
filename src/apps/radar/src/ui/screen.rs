@@ -204,7 +204,8 @@ mod tests {
 
     use domain::apps::Foreground;
     use domain::fetch::Unavailable;
-    use domain::place::{Place, PlaceSource};
+    use domain::place::Place;
+    use domain_testing::place::StubPlace;
     use hal::display::{Frame, HEIGHT, VISIBLE_WIDTH, WIDTH};
 
     use super::*;
@@ -212,26 +213,10 @@ mod tests {
 
     const NOTRE_DAME: GeoPoint = GeoPoint { latitude: 48.8530, longitude: 2.3499 };
 
-    struct Nowhere;
-
-    impl PlaceSource for Nowhere {
-        fn place(&mut self) -> Option<Place> {
-            None
-        }
-    }
-
-    struct NotreDame;
-
-    impl PlaceSource for NotreDame {
-        fn place(&mut self) -> Option<Place> {
-            Some(Place { name: "Notre-Dame".into(), point: NOTRE_DAME })
-        }
-    }
-
     #[derive(Clone)]
-    struct Traffic(Arc<Mutex<Vec<Aircraft>>>);
+    struct StubAirTrafficSource(Arc<Mutex<Vec<Aircraft>>>);
 
-    impl AirTrafficSource for Traffic {
+    impl AirTrafficSource for StubAirTrafficSource {
         fn nearby(&mut self, _: GeoPoint, _: u32) -> Result<Vec<Aircraft>, Unavailable> {
             Ok(self.0.lock().unwrap().clone())
         }
@@ -258,17 +243,17 @@ mod tests {
         Aircraft { callsign: None, registration: None, ..aircraft }
     }
 
-    struct Airports(Vec<Airport>);
+    struct StubAirportSource(Vec<Airport>);
 
-    impl AirportSource for Airports {
+    impl AirportSource for StubAirportSource {
         fn airports(&mut self) -> Vec<Airport> {
             self.0.clone()
         }
     }
 
     fn radar_with_airports(traffic: Vec<Aircraft>, airports: Vec<Airport>) -> Radar {
-        let traffic = Box::new(Traffic(Arc::new(Mutex::new(traffic))));
-        let radar = Radar::new(Box::new(NotreDame), traffic, Box::new(Airports(airports)), Foreground::new(crate::ID));
+        let traffic = Box::new(StubAirTrafficSource(Arc::new(Mutex::new(traffic))));
+        let radar = Radar::new(Box::new(StubPlace::at(Place { name: "Notre-Dame".into(), point: NOTRE_DAME })), traffic, Box::new(StubAirportSource(airports)), Foreground::new(crate::ID));
         radar.refresh_if_due(Instant::now());
         radar
     }
@@ -378,9 +363,9 @@ mod tests {
     #[test]
     fn trouble_is_said_above_the_controls_in_lines_that_fit() {
         let no_place = Radar::new(
-            Box::new(Nowhere),
-            Box::new(Traffic(Arc::default())),
-            Box::new(Airports(vec![])),
+            Box::new(StubPlace::nowhere()),
+            Box::new(StubAirTrafficSource(Arc::default())),
+            Box::new(StubAirportSource(vec![])),
             Foreground::new(crate::ID),
         );
         no_place.refresh_if_due(Instant::now());

@@ -30,22 +30,18 @@ impl<C: RealTimeClock> RealTimeClock for SharedRtc<C> {
 
 #[cfg(test)]
 mod tests {
+    use hal_testing::clock::{self, FakeRtc};
+
     use super::*;
 
-    struct Stopped(DateTime);
-    impl RealTimeClock for Stopped {
-        fn read(&mut self) -> Result<ClockReading, Fault> {
-            Ok(ClockReading { time: self.0, oscillator_stopped: false, alarm_raised: false })
-        }
-        fn set(&mut self, time: DateTime) -> Result<(), Fault> {
-            self.0 = time;
-            Ok(())
-        }
+    #[test]
+    fn a_shared_rtc_keeps_the_contract() {
+        clock::check_contract(&mut SharedRtc::new(FakeRtc::stopped()));
     }
 
     #[test]
     fn every_clone_reads_what_another_set() {
-        let mut app = SharedRtc::new(Stopped(DateTime::from_unix_seconds(0)));
+        let mut app = SharedRtc::new(FakeRtc::stopped());
         let mut console = app.clone();
         let later = DateTime::from_unix_seconds(1_790_407_815);
         app.set(later).unwrap();

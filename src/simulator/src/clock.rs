@@ -40,16 +40,15 @@ impl RealTimeClock for HostClock {
 mod tests {
     use core::num::NonZeroU32;
 
+    use hal_testing::clock;
+
     use super::*;
 
     const SET: DateTime = DateTime { year: 2031, month: 1, day: 2, hour: 3, minute: 4, second: 5 };
 
     #[test]
-    fn runs_on_from_the_time_it_was_set() {
-        let mut clock = HostClock::new(ScaledClock::new(NonZeroU32::MIN)).unwrap();
-        clock.set(SET).unwrap();
-        let read = clock.read().unwrap().time.unix_seconds();
-        assert!((SET.unix_seconds()..=SET.unix_seconds() + 2).contains(&read));
+    fn a_host_clock_keeps_the_contract() {
+        clock::check_contract(&mut HostClock::new(ScaledClock::new(NonZeroU32::MIN)).unwrap());
     }
 
     #[test]
