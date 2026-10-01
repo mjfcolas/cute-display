@@ -1,5 +1,5 @@
-"""The app image on this computer, headless, on a card of its own and at a time given,
-its console on a Unix socket (docs/simulator/README.md)."""
+"""The app image on this computer, on a card of its own and at a time given, its console
+on a Unix socket (docs/simulator/README.md)."""
 import subprocess
 import threading
 import time
@@ -14,9 +14,11 @@ ENDING_TIMEOUT_S = 5
 
 
 class Simulator:
-    def __init__(self, binary, card, console, *, time_s, speed, web=None):
-        arguments = [str(binary), str(card), '--headless', '--console', str(console), '--time', str(time_s), '--speed', str(speed)]
+    def __init__(self, binary, card, console, *, time_s, speed, web=None, window=False):
+        arguments = [str(binary), str(card), '--console', str(console), '--time', str(time_s), '--speed', str(speed)]
         arguments += ['--web', str(web)] if web else ['--offline']
+        if not window:
+            arguments.append('--headless')
         self.log = Log()
         self.process = subprocess.Popen(arguments, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, errors='replace')
         self._log_reader = threading.Thread(target=self._read_log, daemon=True)

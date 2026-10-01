@@ -1,5 +1,6 @@
-"""Each scenario on a simulator of its own: headless, on a copy of cards/standard/, the
-web answered from web/, its time AT_THE_RECORDING unless it gives one."""
+"""Each scenario on a simulator of its own: headless but with `--window`, on a copy of
+cards/standard/, the web answered from web/, its time AT_THE_RECORDING unless it gives
+one."""
 import shutil
 import subprocess
 import tempfile
@@ -20,6 +21,10 @@ AT_THE_RECORDING = datetime(2026, 10, 1, 12, 12, tzinfo=timezone.utc)
 SPEED = 10
 
 
+def pytest_addoption(parser):
+    parser.addoption('--window', action='store_true', help="each simulator in its window, to watch what the scenario does")
+
+
 @pytest.fixture(scope='session')
 def simulator_binary():
     subprocess.run(['cargo', 'build', '--quiet', '-p', 'simulator'], cwd=REPOSITORY, check=True)
@@ -28,8 +33,9 @@ def simulator_binary():
 
 class SimulatedClock:
 
-    def __init__(self, binary, root):
+    def __init__(self, binary, root, window):
         self.binary = binary
+        self.window = window
         self.card = root / 'card'
         self.console = root / 'console.sock'
         self.simulators = []
@@ -42,7 +48,7 @@ class SimulatedClock:
     def start(self, speed=SPEED, at=AT_THE_RECORDING):
         if self.simulators:
             self.simulators[-1].close()
-        simulator = Simulator(self.binary, self.card, self.console, time_s=int(at.timestamp()), speed=speed, web=E2E / 'web')
+        simulator = Simulator(self.binary, self.card, self.console, time_s=int(at.timestamp()), speed=speed, web=E2E / 'web', window=self.window)
         self.simulators.append(simulator)
         return Display(simulator.link)
 
@@ -58,10 +64,10 @@ class SimulatedClock:
 
 
 @pytest.fixture
-def clock(simulator_binary):
+def clock(request, simulator_binary):
     # A Unix socket's path is short: not under pytest's own temporary directory.
     with tempfile.TemporaryDirectory(prefix='cute-display-') as root:
-        simulated = SimulatedClock(simulator_binary, Path(root))
+        simulated = SimulatedClock(simulator_binary, Path(root), request.config.getoption('--window'))
         yield simulated
         simulated.check_and_close()
 

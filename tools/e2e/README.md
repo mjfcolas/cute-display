@@ -7,6 +7,8 @@ lights, the speaker, the clock and the card. Where they stand among the tests:
 
 - `just e2e`: every scenario, each on a simulator of its own; `just e2e -k alarm` for
   some.
+- `just e2e --window`: each simulator in its window, to watch what a scenario does; the
+  keyboard and the mouse are best left alone meanwhile.
 - A scenario fails on what the glass said last, and the simulator's log comes with it; a
   panic in the log fails it too.
 - `cards/standard/`: the card each starts on, a copy of it.
