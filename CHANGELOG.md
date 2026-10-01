@@ -3,6 +3,13 @@
 What changes from one release to the next, for whoever owns the clock.
 [Releasing](docs/releasing.md) says how one is made.
 
+## Unreleased
+
+- [Zen](docs/apps/zen/README.md): a sound to relax or fall asleep to, for 1 to 12 hours,
+  every day at a time or whenever you start it, the lights dimming; brown noise, or
+  Habity's sleep sounds, which the setup offers to copy.
+- Alarm ringtones may be WAV files too.
+
 ## 2026.10.0
 
 - Alarm ringtones: Habity's own beside the chime, chosen in the alarm's settings, each

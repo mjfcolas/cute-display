@@ -3,43 +3,7 @@ use mbop3::{Decoder, MAX_SAMPLES_PER_FRAME};
 
 /// What the decoder wants ahead of it to decode a frame whole.
 const AHEAD_BYTES: usize = 16 * 1024;
-/// Reading the card stops the samples meanwhile, and the speaker holds about 30 ms of them:
-/// 16 KB took 16 ms on the device, 4 KB leave room for decoding a frame beside.
-const READ_BYTES: usize = 4 * 1024;
 const ID3_HEADER_BYTES: usize = 10;
-
-/// An MP3 file of the alarm's, round and round, in mono at the speaker's rate and at full
-/// scale, decoded as it plays. Ends when the file cannot be read or holds no MP3.
-pub struct Recording {
-    samples: Mp3Samples,
-    sample_rate_hz: u32,
-    /// Where the next sample falls between `before` and `after`, two of the file's.
-    phase: f32,
-    before: f32,
-    after: f32,
-}
-
-impl Recording {
-    /// Reads nothing yet: the file is read as it plays, where it plays.
-    pub fn new(files: Box<dyn Files>, name: String, sample_rate_hz: u32) -> Self {
-        Self { samples: Mp3Samples::new(files, name), sample_rate_hz, phase: 1.0, before: 0.0, after: 0.0 }
-    }
-}
-
-impl Iterator for Recording {
-    type Item = i16;
-
-    fn next(&mut self) -> Option<i16> {
-        while self.phase >= 1.0 {
-            self.before = self.after;
-            self.after = self.samples.next()?;
-            self.phase -= 1.0;
-        }
-        let sample = self.before + (self.after - self.before) * self.phase;
-        self.phase += self.samples.frame.sample_rate_hz as f32 / self.sample_rate_hz.max(1) as f32;
-        Some((sample.clamp(-1.0, 1.0) * f32::from(i16::MAX)) as i16)
-    }
-}
 
 #[derive(Clone, Copy, Default)]
 struct FrameFormat {
@@ -49,7 +13,7 @@ struct FrameFormat {
 }
 
 /// The file's samples, its channels mixed, at its own rate.
-struct Mp3Samples {
+pub(crate) struct Mp3Samples {
     files: Box<dyn Files>,
     name: String,
     decoder: Box<Decoder>,
@@ -66,7 +30,7 @@ struct Mp3Samples {
 }
 
 impl Mp3Samples {
-    fn new(files: Box<dyn Files>, name: String) -> Self {
+    pub(crate) fn new(files: Box<dyn Files>, name: String) -> Self {
         Self {
             files,
             name,
@@ -81,19 +45,6 @@ impl Mp3Samples {
             frame: FrameFormat::default(),
             next_sample: 0,
         }
-    }
-
-    fn next(&mut self) -> Option<f32> {
-        while self.next_sample >= self.frame.samples {
-            if let Err(reason) = self.decode_frame() {
-                log::warn!("alarm: {}: {reason}", self.name);
-                return None;
-            }
-        }
-        let at = self.next_sample * self.frame.channels;
-        let channels = self.pcm.get(at..at + self.frame.channels)?;
-        self.next_sample += 1;
-        Some(channels.iter().sum::<f32>() / self.frame.channels as f32)
     }
 
     fn decode_frame(&mut self) -> Result<(), String> {
@@ -133,9 +84,9 @@ impl Mp3Samples {
     fn read_more(&mut self) -> Result<(), String> {
         self.mp3.drain(..self.used);
         self.used = 0;
-        let bytes = self.files.read_bytes(&self.name, self.read_to, READ_BYTES).map_err(|unavailable| unavailable.0)?;
+        let bytes = self.files.read_bytes(&self.name, self.read_to, crate::READ_BYTES).map_err(|unavailable| unavailable.0)?;
         let bytes = bytes.ok_or("not there")?;
-        self.read_whole = bytes.len() < READ_BYTES;
+        self.read_whole = bytes.len() < crate::READ_BYTES;
         self.read_to += bytes.len() as u64;
         self.mp3.extend_from_slice(&bytes);
         if self.start.is_none() {
@@ -162,6 +113,26 @@ impl Mp3Samples {
     }
 }
 
+impl Mp3Samples {
+    /// From -1 to 1; `None` once the file cannot be read or holds no MP3.
+    pub(crate) fn next_sample(&mut self) -> Option<f32> {
+        while self.next_sample >= self.frame.samples {
+            if let Err(reason) = self.decode_frame() {
+                log::warn!("sound: {}: {reason}", self.name);
+                return None;
+            }
+        }
+        let at = self.next_sample * self.frame.channels;
+        let channels = self.pcm.get(at..at + self.frame.channels)?;
+        self.next_sample += 1;
+        Some(channels.iter().sum::<f32>() / self.frame.channels as f32)
+    }
+
+    pub(crate) fn sample_rate_hz(&self) -> u32 {
+        self.frame.sample_rate_hz
+    }
+}
+
 /// An ID3v2 tag's length, header and footer included; 0 without a tag.
 fn id3_tag_length(start: &[u8]) -> u64 {
     let Some(&[b'I', b'D', b'3', _, _, flags, s0, s1, s2, s3]) = start.get(..ID3_HEADER_BYTES) else {
@@ -177,9 +148,10 @@ mod tests {
     use domain_testing::files::FakeFiles;
 
     use super::*;
+    use crate::Recording;
 
-    const STEREO_440_HZ: &[u8] = include_bytes!("../../testdata/a440-stereo-44100.mp3");
-    const MONO_1000_HZ_AT_22050: &[u8] = include_bytes!("../../testdata/a1000-mono-22050.mp3");
+    const STEREO_440_HZ: &[u8] = include_bytes!("../testdata/a440-stereo-44100.mp3");
+    const MONO_1000_HZ_AT_22050: &[u8] = include_bytes!("../testdata/a1000-mono-22050.mp3");
     const RATE: u32 = 44_100;
     /// The fixture's loudest sample, as ffmpeg decodes it.
     const SINE_PEAK: i16 = 2752;
@@ -187,9 +159,9 @@ mod tests {
     fn recording_of(contents: Option<&[u8]>) -> Recording {
         let files = FakeFiles::default();
         if let Some(contents) = contents {
-            files.put("ringtones/tone.mp3", contents);
+            files.put("sounds/tone.mp3", contents);
         }
-        Recording::new(Box::new(files), "ringtones/tone.mp3".into(), RATE)
+        Recording::new(Box::new(files), "sounds/tone.mp3".into(), RATE)
     }
 
     /// How many times a second the samples cross zero going up.

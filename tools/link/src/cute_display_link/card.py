@@ -10,6 +10,9 @@ from .console import ConsoleError, Request
 CHUNK_BYTES = 240
 # A copy is made on the device, which answers once it is whole: seconds a megabyte.
 COPY_TIMEOUT_S = 120
+# Generous, as a sound of Habity's is up to 30 megabytes.
+COPY_SECONDS_PER_MEGABYTE = 10
+MEGABYTE = 1024 * 1024
 # The console drops output nobody reads in time: a range that arrives damaged is asked again.
 RANGE_ATTEMPTS = 5
 
@@ -63,7 +66,13 @@ def write_file(link, path, contents):
 
 def copy(link, source, destination):
     """On the device, from anywhere on the card into cute-display/."""
-    Request(link, f'cp {source}\t{destination}', COPY_TIMEOUT_S).expect('ok')
+    directory, _, name = source.rpartition('/')
+    size = next((e.size for e in entries(link, directory) if not e.is_directory and e.name == name), 0)
+    Request(link, f'cp {source}\t{destination}', copy_timeout_s(size)).expect('ok')
+
+
+def copy_timeout_s(size):
+    return max(COPY_TIMEOUT_S, size / MEGABYTE * COPY_SECONDS_PER_MEGABYTE)
 
 
 def remove(link, path):

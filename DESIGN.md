@@ -26,11 +26,11 @@ The engine, what the apps run on:
 The apps, on it, listed by `catalog`, which the composition roots share:
 
 ```
-   apps/alarm, apps/weather ──▶ libs/forecast        apps/radar
-            │                        │                   │
-            └────────────────────────┼───────────────────┘
-                                     ▼
-     engine: domain (what it lends an app), ui (the shell, the toolkit), conf_text
+   apps/weather ──▶ libs/forecast ◀── apps/alarm ──▶ libs/sound_files ◀── apps/zen     apps/radar
+        │                │                 │                 │                │            │
+        └────────────────┴─────────────────┴────────┬────────┴────────────────┴────────────┘
+                                                    ▼
+                    engine: domain (what it lends an app), ui (the shell, the toolkit), conf_text
 ```
 
 `maintenance` and `hwtest`, beside the diagrams, depend on `hal` alone.
@@ -131,8 +131,8 @@ src/            the sources, one crate per directory
                     world, and the checks each implementation passes
     drivers/        ESP32-S3 implementations of hal; chip logic that needs no ESP32 is
                     host-tested
-  libs/           what apps share: forecasts
-  apps/           one crate per app: the alarm clock, the weather, the radar
+  libs/           what apps share: forecasts, sound files
+  apps/           one crate per app: the alarm clock, the weather, the radar, zen
   catalog/        the apps an image can hold, the same for the board and the computer
   maintenance/    the console on the USB cable (a Unix socket on the simulator): the SD
                   card, and the remote for tests
@@ -170,7 +170,7 @@ that run and their order.
 - **Apps are independent**: none depends on another. What several share is a `libs`
   crate, and each has its own instance of it.
 - **Which app is in front is the domain's**: `Foreground` says which. Anything may
-  bring an app forward, not only the controls: an app's `tick` may (the alarm does).
+  bring an app forward, not only the controls: an app's `tick` may (the alarm and Zen do).
 - **Fetching**: on the network thread, one app after another, each says whether a fetch
   is due and then fetches. Only one fetch runs at a time, so an app keeps its requests
   bounded and rare; the engine brings the Wi-Fi up for a fetch and down once idle.

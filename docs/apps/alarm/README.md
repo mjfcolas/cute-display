@@ -41,8 +41,8 @@ when the device starts.
 
 ## Ringtones
 
-- The chime, always there, and the MP3 files in `cute-display/apps/alarm/ringtones/`,
-  named by their file names without `.mp3`.
+- The chime, always there, and the MP3 and WAV files in `cute-display/apps/alarm/ringtones/`,
+  named by their file names without their extension.
 - The [setup](../../install.md#run-the-setup) offers to copy Habity's own there.
 
 ## Configuration

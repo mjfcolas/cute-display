@@ -1,7 +1,7 @@
 """What the setup asks, from what the card already holds to the files it writes back."""
 from dataclasses import dataclass, field
 
-from ..config import airports, apps, general, place, radar, ringtones, wifi
+from ..config import airports, apps, general, habity_sounds, place, radar, wifi
 from ..config.place import Place
 from ..config.wifi import Wifi
 
@@ -17,13 +17,14 @@ class Answers:
     time_zone: str | None = None
     labels: list[str] = field(default_factory=list)
     apps: list[str] = field(default_factory=lambda: list(apps.TITLES))
-    habity_ringtones: list[str] = field(default_factory=list)
-    copy_ringtones: bool = False
+    # Habity's sounds each app lacks, by app, and the apps that are to have theirs copied.
+    habity_sounds: dict[str, list[str]] = field(default_factory=dict)
+    copied: set[str] = field(default_factory=set)
 
     @classmethod
-    def from_card(cls, texts, habity_ringtones=()):
+    def from_card(cls, texts, habity_sounds=None):
         """From the files CARD_FILES, each one's text or None when the card lacks it, and
-        Habity's alarm ringtones the alarm has no copy of."""
+        Habity's sounds each app has no copy of, by app."""
         def text(path):
             return texts.get(path) or ''
 
@@ -34,16 +35,21 @@ class Answers:
             time_zone=general.time_zone_of(text(general.FILE)),
             labels=radar.labels(text(radar.FILE)),
             apps=list(apps.TITLES) if chosen is None else [name for name in chosen if name in apps.TITLES],
-            habity_ringtones=list(habity_ringtones),
+            habity_sounds=dict(habity_sounds or {}),
         )
 
-    def offers_ringtones(self):
-        """Whether the alarm runs and Habity has ringtones it has no copy of."""
-        return 'alarm' in self.apps and bool(self.habity_ringtones)
+    def offers(self, sounds):
+        """Whether the app of Habity's `sounds` runs and Habity has some it has no copy of."""
+        return sounds.app in self.apps and bool(self.habity_sounds.get(sounds.app))
+
+    def copied_sounds(self):
+        """The HabitySounds copied, each with Habity's names of them."""
+        return [(sounds, self.habity_sounds[sounds.app])
+                for sounds in habity_sounds.EVERY if sounds.app in self.copied and self.offers(sounds)]
 
     def copies(self):
         """Every file the setup copies on the card, as {source: destination}."""
-        return ringtones.copies(self.habity_ringtones) if self.copy_ringtones and self.offers_ringtones() else {}
+        return {source: destination for sounds, names in self.copied_sounds() for source, destination in sounds.copies(names).items()}
 
     def files(self, airports_found):
         """Every file the setup writes: the radar's too when it is chosen, `airports_found`

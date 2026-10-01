@@ -29,6 +29,7 @@ use ui::controls::{ButtonSample, ControlsSample};
 use ui::system::{OfferedApp, SystemScreen};
 use ui::{Hosted, Shell};
 use weather::WeatherScreen;
+use zen::{Player, SessionLength, Soundscape, ZenScreen, ZenSessions, ZenSettings, ZenSettingsStore};
 
 struct StubAlarmSettingsStore;
 
@@ -80,6 +81,33 @@ fn alarm_clock(foreground: &Foreground) -> AlarmClock {
     alarm.set_ringtone(Ringtone::Recorded("Singing Bowl.mp3".into()));
     alarm.switch_on();
     alarm
+}
+
+struct StubZenSettingsStore;
+
+struct StubPlayer;
+
+impl ZenSettingsStore for StubZenSettingsStore {
+    fn load(&mut self) -> Option<ZenSettings> {
+        None
+    }
+    fn save(&mut self, _: &ZenSettings) {}
+}
+
+impl Player for StubPlayer {
+    fn recordings(&self) -> Vec<String> {
+        Vec::new()
+    }
+    fn play(&mut self, _: &Soundscape, _: zen::Volume) {}
+    fn silence(&mut self) {}
+}
+
+fn zen_sessions(foreground: &Foreground) -> ZenSessions {
+    let zen = ZenSessions::new(Box::new(StubZenSettingsStore), Box::new(StubPlayer), foreground.clone());
+    zen.set_start(TimeOfDay::new(22, 30));
+    zen.set_length(SessionLength::hours(8).unwrap_or_default());
+    zen.set_soundscape(Soundscape::Recorded("Norwegian fjell.wav".into()));
+    zen
 }
 
 struct StubForecastSource;
@@ -206,13 +234,16 @@ fn main() -> std::io::Result<()> {
     let clock = Clock::new(Box::new(StubTimeAtFridayEvening), Box::new(StubTimeAtFridayEvening), Box::new(StubTimeAtFridayEvening));
     clock.tick(Instant::now());
     let alarm = alarm_clock(&foreground);
+    let zen = zen_sessions(&foreground);
     if let Some(now) = clock.now() {
         alarm.tick(now);
+        zen.tick(Instant::now(), Some(now));
     }
     let mut screens: Vec<Hosted<Frame>> = vec![
         Hosted { app: alarm::ID, screen: Box::new(AlarmScreen::new(alarm, clock.clone(), weather.clone())) },
-        Hosted { app: weather::ID, screen: Box::new(WeatherScreen::new(weather, clock)) },
+        Hosted { app: weather::ID, screen: Box::new(WeatherScreen::new(weather, clock.clone())) },
         Hosted { app: radar::ID, screen: Box::new(RadarScreen::new(radar.clone())) },
+        Hosted { app: zen::ID, screen: Box::new(ZenScreen::new(zen.clone(), clock)) },
     ];
     let offered = catalog::APPS.iter().map(|app| OfferedApp { app: app.id, title: app.title }).collect();
     let system = SystemScreen::new(foreground.clone(), settings, "2026.9.0", offered);
@@ -237,6 +268,15 @@ fn main() -> std::io::Result<()> {
         "weather-week" => {
             foreground.bring_to_front(weather::ID);
             shell.on_sample(&ControlsSample { detents: 1, ..Default::default() }, core::time::Duration::ZERO);
+        }
+        "zen" => {
+            foreground.bring_to_front(zen::ID);
+            zen.start();
+        }
+        "zen-settings" => {
+            foreground.bring_to_front(zen::ID);
+            let press = ButtonSample { presses: 1, held: false };
+            shell.on_sample(&ControlsSample { long: press, ..Default::default() }, core::time::Duration::ZERO);
         }
         "system-settings" => {
             foreground.open_system();

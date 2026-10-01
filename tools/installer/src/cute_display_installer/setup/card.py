@@ -1,6 +1,6 @@
 """The setup's files on the card, through the maintenance console."""
 from cute_display_link import card
-from ..config import ringtones
+from ..config import habity_sounds
 
 
 class _Listings:
@@ -29,12 +29,15 @@ def read_texts(link, paths):
     return {path: card.read_file(link, path).decode(errors='replace') if present(path) else None for path in paths}
 
 
-def habity_ringtones_missing(link):
-    """Habity's alarm ringtones the alarm has no copy of, by name."""
+def habity_sounds_missing(link):
+    """Habity's sounds each app has no copy of, by app, by Habity's names."""
     entries = _Listings(link)
-    ours = {e.name for e in entries(ringtones.DIRECTORY)}
-    return [e.name for e in entries(ringtones.HABITY_DIRECTORY)
-            if not e.is_directory and ringtones.is_ringtone(e.name) and e.name not in ours]
+    missing = {}
+    for sounds in habity_sounds.EVERY:
+        ours = {e.name for e in entries(sounds.directory)}
+        missing[sounds.app] = [e.name for e in entries(sounds.habity_directory)
+                               if not e.is_directory and habity_sounds.is_playable(e.name) and sounds.copy_name(e.name) not in ours]
+    return missing
 
 
 def write(link, files, copies):

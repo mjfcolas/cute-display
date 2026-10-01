@@ -41,9 +41,15 @@ class SimulatedClock:
         self.simulators = []
         shutil.copytree(E2E / 'cards' / 'standard', self.card)
 
-    def put_before_start(self, path, text):
+    def put_before_start(self, path, contents):
         (self.card / path).parent.mkdir(parents=True, exist_ok=True)
-        (self.card / path).write_text(text)
+        if isinstance(contents, bytes):
+            (self.card / path).write_bytes(contents)
+        else:
+            (self.card / path).write_text(contents)
+
+    def logs(self):
+        return [line for simulator in self.simulators for line in simulator.log.lines()]
 
     def start(self, speed=SPEED, at=AT_THE_RECORDING):
         if self.simulators:
@@ -53,7 +59,7 @@ class SimulatedClock:
         return Display(simulator.link)
 
     def check_and_close(self):
-        logs = [line for simulator in self.simulators for line in simulator.log.lines()]
+        logs = self.logs()
         print('\n'.join(logs))
         crashes = [crash for simulator in self.simulators for crash in simulator.log.crashes()]
         ended = self.simulators and self.simulators[-1].has_ended()

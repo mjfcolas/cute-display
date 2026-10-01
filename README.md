@@ -1,7 +1,8 @@
 # Cute Display
 
 Another firmware for the [Habity bedside clock](https://habity.design/products/bedside-clock):
-an alarm clock with the weather and the planes overhead, on its e-paper screen. It goes
+an alarm clock with the weather and the planes overhead, and sounds to fall asleep to, on
+its e-paper screen. It goes
 beside Habity's own firmware, which one command brings back.
 
 | | |
@@ -15,6 +16,7 @@ beside Habity's own firmware, which one command brings back.
   before it.
 - [Weather](docs/apps/weather/README.md): today, the coming hours, the week.
 - [Radar](docs/apps/radar/README.md): the aircraft around you.
+- [Zen](docs/apps/zen/README.md): a sound to fall asleep to, the lights dimming.
 - [System](docs/apps/system/README.md): the other apps, and the settings.
 
 ## Install

@@ -20,7 +20,7 @@ dependencies = [
  "embedded-graphics",
  "forecast",
  "log",
- "mbop3",
+ "sound_files",
  "ui",
 ]
 
@@ -201,6 +201,7 @@ dependencies = [
  "radar",
  "ui",
  "weather",
+ "zen",
 ]
 
 [[package]]
@@ -1409,6 +1410,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
+name = "sound_files"
+version = "0.1.0"
+dependencies = [
+ "domain",
+ "log",
+ "mbop3",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1857,6 +1867,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b97319f7b8343df12cc98938e5c3eb436064524c8d2b4e30a1d3a36eecdf81"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "zen"
+version = "0.1.0"
+dependencies = [
+ "conf_text",
+ "domain",
+ "embedded-graphics",
+ "log",
+ "sound_files",
+ "ui",
 ]
 
 [[package]]

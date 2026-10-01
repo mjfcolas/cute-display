@@ -28,7 +28,7 @@ dependencies = [
  "forecast",
  "hal",
  "log",
- "mbop3",
+ "sound_files",
  "ui",
  "ui_testing",
 ]
@@ -275,6 +275,7 @@ dependencies = [
  "radar",
  "ui",
  "weather",
+ "zen",
 ]
 
 [[package]]
@@ -1933,6 +1934,7 @@ dependencies = [
  "ui",
  "ureq",
  "weather",
+ "zen",
 ]
 
 [[package]]
@@ -1946,6 +1948,16 @@ name = "smallvec"
 version = "1.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9395f0f0eee849a9b707b2f06bb92a6a422090e2123bb2ef8e87a0e61892a8e"
+
+[[package]]
+name = "sound_files"
+version = "0.1.0"
+dependencies = [
+ "domain",
+ "domain_testing",
+ "log",
+ "mbop3",
+]
 
 [[package]]
 name = "stable_deref_trait"
@@ -2634,6 +2646,21 @@ name = "xml-rs"
 version = "0.8.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
+
+[[package]]
+name = "zen"
+version = "0.1.0"
+dependencies = [
+ "conf_text",
+ "domain",
+ "domain_testing",
+ "embedded-graphics",
+ "hal",
+ "log",
+ "sound_files",
+ "ui",
+ "ui_testing",
+]
 
 [[package]]
 name = "zerocopy"

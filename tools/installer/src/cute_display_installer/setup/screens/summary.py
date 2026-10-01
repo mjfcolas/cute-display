@@ -13,8 +13,8 @@ class SummaryScreen(Screen):
         labels = ', '.join(answers.labels) or 'none'
         chosen = ', '.join(apps.TITLES[name] for name in answers.apps) or 'none'
         radar = [f'Radar       {len(self.app.airports_found)} airports, codes on {labels}'] if 'radar' in answers.apps else []
-        copies = answers.copies()
-        ringtones = [f"Ringtones   Habity's {len(copies)} copied for the alarm"] if copies else []
+        copied = [f"{sounds.title:<12}Habity's {len(names)} copied for {apps.TITLES[sounds.app]}"
+                  for sounds, names in answers.copied_sounds()]
         yield Header()
         with Vertical(classes='step'):
             yield Static('What goes onto the device:', classes='question')
@@ -23,7 +23,7 @@ class SummaryScreen(Screen):
                 f'Place       {answers.place.name} ({answers.place.latitude:.4f}, {answers.place.longitude:.4f})',
                 f'Time zone   {answers.time_zone}',
                 f'Apps        {chosen}',
-                *ringtones,
+                *copied,
                 *radar,
             ]))
             yield Message()
@@ -32,7 +32,7 @@ class SummaryScreen(Screen):
 
     def on_button_pressed(self, event):
         event.button.disabled = True
-        copying = ', and copying the ringtones: a minute' if self.app.answers.copies() else ''
+        copying = ", and copying Habity's sounds: a few minutes" if self.app.answers.copies() else ''
         self.query_one(Message).say(f'Writing{copying}...')
         self.run_worker(self._write, thread=True, exclusive=True)
 

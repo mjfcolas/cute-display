@@ -5,6 +5,11 @@ changes for whoever owns the clock, not all it changes, which is the
 [changelog](CHANGELOG.md)'s. The installer shows the entries after the installed version
 up to the one it installs, before it updates.
 
+## Unreleased
+
+- Zen, a new app, runs only once chosen among the apps: answer the setup's question
+  again, if you chose your apps before.
+
 ## 2026.10.0
 
 - The alarm's wake-up times, and whether it is on, are lost: set them again on the clock.

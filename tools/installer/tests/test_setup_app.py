@@ -18,7 +18,7 @@ from cute_display_installer.setup.screens.done import DoneScreen
 from cute_display_installer.setup.screens.install import InstallScreen
 from cute_display_installer.setup.screens.message import Message, Tone
 from cute_display_installer.setup.screens.place import PlaceScreen
-from cute_display_installer.setup.screens.ringtones import RingtonesScreen
+from cute_display_installer.setup.screens.habity_sounds import RingtonesScreen, ZenSoundsScreen
 from cute_display_installer.setup.screens.state import StateScreen
 from cute_display_installer.setup.screens.summary import SummaryScreen
 from cute_display_installer.setup.screens.time_zone import TimeZoneScreen
@@ -204,7 +204,7 @@ class Questions(unittest.IsolatedAsyncioTestCase):
 
             await pilot.click(Button)
             self.assertIsInstance(app.screen, AppsScreen)
-            self.assertEqual(app.screen.query_one(SelectionList).selected, ['alarm', 'weather', 'radar'])
+            self.assertEqual(app.screen.query_one(SelectionList).selected, ['alarm', 'weather', 'radar', 'zen'])
 
             await pilot.click(Button)
             self.assertIsInstance(app.screen, AirportsScreen)
@@ -255,11 +255,11 @@ class Questions(unittest.IsolatedAsyncioTestCase):
             await settle(pilot)
             self.assertIsInstance(app.screen, DoneScreen)
 
-        self.assertEqual(app.answers.apps, ['alarm', 'weather'])
+        self.assertEqual(app.answers.apps, ['alarm', 'weather', 'zen'])
         self.assertEqual(sorted(clock.written[0]), ['cute-display/general.conf', 'cute-display/wifi.conf'])
 
     async def test_habitys_ringtones_are_offered_after_the_apps_and_copied(self):
-        known = Answers(Wifi('Home', 's3cret'), LYON.place, 'Europe/Paris', ['LFLY'], ['alarm'], ['Zen.mp3', 'Default.mp3'])
+        known = Answers(Wifi('Home', 's3cret'), LYON.place, 'Europe/Paris', ['LFLY'], ['alarm'], {'alarm': ['Zen.mp3', 'Default.mp3']})
         clock = FakeClock(answers=known)
         app = setup_app(clock)
         async with app.run_test() as pilot:
@@ -279,7 +279,7 @@ class Questions(unittest.IsolatedAsyncioTestCase):
                                          'sounds/alarm/Default.mp3': 'cute-display/apps/alarm/ringtones/Default.mp3'}])
 
     async def test_habitys_ringtones_declined_are_not_copied(self):
-        known = Answers(Wifi('Home', 's3cret'), LYON.place, 'Europe/Paris', ['LFLY'], ['alarm'], ['Zen.mp3'])
+        known = Answers(Wifi('Home', 's3cret'), LYON.place, 'Europe/Paris', ['LFLY'], ['alarm'], {'alarm': ['Zen.mp3']})
         clock = FakeClock(answers=known)
         app = setup_app(clock)
         async with app.run_test() as pilot:
@@ -292,6 +292,27 @@ class Questions(unittest.IsolatedAsyncioTestCase):
             await pilot.click(Button)
             await settle(pilot)
         self.assertEqual(clock.copied, [{}])
+
+    async def test_habitys_sleep_sounds_are_offered_after_the_ringtones_and_copied_without_their_loop(self):
+        habity = {'alarm': ['Zen.mp3'], 'zen': ['Rain_loop.wav']}
+        known = Answers(Wifi('Home', 's3cret'), LYON.place, 'Europe/Paris', ['LFLY'], ['alarm', 'zen'], habity)
+        clock = FakeClock(answers=known)
+        app = setup_app(clock)
+        async with app.run_test() as pilot:
+            await to_the_questions(pilot)
+            await type_into(pilot, '#password', 's3cret')
+            await pilot.click(Button)
+            await pilot.click(Button)
+            await pilot.click(Button)
+            self.assertIsInstance(app.screen, RingtonesScreen)
+            await press(pilot, 'no')
+            self.assertIsInstance(app.screen, ZenSoundsScreen)
+            self.assertIn('Rain:', str(app.screen.query_one('#body').render()))
+            await press(pilot, 'copy')
+            self.assertIsInstance(app.screen, SummaryScreen)
+            await pilot.click(Button)
+            await settle(pilot)
+        self.assertEqual(clock.copied, [{'sounds/sleep/Rain_loop.wav': 'cute-display/apps/zen/sounds/Rain.wav'}])
 
     async def test_a_wifi_the_device_cannot_keep_is_refused_on_the_spot(self):
         app = setup_app(FakeClock())
@@ -335,7 +356,7 @@ class Questions(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(app.screen.query_one(SelectionList).selected, ['LFLY'])
             await pilot.press('escape')
             self.assertIsInstance(app.screen, AppsScreen)
-            self.assertEqual(app.screen.query_one(SelectionList).selected, ['alarm', 'weather', 'radar'])
+            self.assertEqual(app.screen.query_one(SelectionList).selected, ['alarm', 'weather', 'radar', 'zen'])
             await pilot.press('escape')
             self.assertIsInstance(app.screen, TimeZoneScreen)
             self.assertEqual(len(app.screen.query_one(OptionList).options), 1)

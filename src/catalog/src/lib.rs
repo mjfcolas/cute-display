@@ -8,9 +8,11 @@ pub const APPS: &[Installable<Frame>] = &[
     weather::app(),
     #[cfg(feature = "radar")]
     radar::app(),
+    #[cfg(feature = "zen")]
+    zen::app(),
 ];
 
-#[cfg(all(test, feature = "alarm", feature = "weather", feature = "radar"))]
+#[cfg(all(test, feature = "alarm", feature = "weather", feature = "radar", feature = "zen"))]
 mod tests {
     use super::*;
 

@@ -1,6 +1,6 @@
 import unittest
 
-from cute_display_link.card import Entry, copy, entries, read_file, remove, write_file
+from cute_display_link.card import COPY_TIMEOUT_S, MEGABYTE, Entry, copy, copy_timeout_s, entries, read_file, remove, write_file
 from cute_display_link.console import ConsoleError
 from cute_display_link_testing.fake_card import FakeCard
 from cute_display_link_testing.fake_console import FakeConsole
@@ -37,6 +37,10 @@ class CardFiles(unittest.TestCase):
         self.assertEqual(card.files['cute-display/apps/alarm/ringtones/Lost Ark.mp3'], b'ID3')
         with self.assertRaisesRegex(ConsoleError, 'only cute-display'):
             copy(device, 'sounds/alarm/Lost Ark.mp3', 'sounds/Lost Ark.mp3')
+
+    def test_a_large_copy_is_waited_for_longer(self):
+        self.assertEqual(copy_timeout_s(3 * MEGABYTE), COPY_TIMEOUT_S)
+        self.assertGreater(copy_timeout_s(30 * MEGABYTE), COPY_TIMEOUT_S)
 
     def test_a_file_is_removed(self):
         card = FakeCard({'cute-display/old.conf': b''})

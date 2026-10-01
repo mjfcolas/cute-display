@@ -299,7 +299,7 @@ fn wake_up_time(time: Option<TimeOfDay>, field: Option<Field>) -> String {
 fn ringtone_name(ringtone: &Ringtone) -> &str {
     match ringtone {
         Ringtone::Chime => "Chime",
-        Ringtone::Recorded(name) => name.rsplit_once('.').map_or(name.as_str(), |(stem, _)| stem),
+        Ringtone::Recorded(name) => sound_files::title(name),
     }
 }
 

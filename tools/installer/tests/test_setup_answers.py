@@ -31,11 +31,13 @@ class FromTheCard(unittest.TestCase):
     def test_an_empty_card_answers_nothing(self):
         self.assertEqual(Answers.from_card(dict.fromkeys(CARD_FILES)), Answers())
 
-    def test_habitys_ringtones_are_offered_those_the_alarm_lacks(self):
+    def test_habitys_sounds_are_offered_those_each_app_lacks(self):
         device = FakeConsole(FakeCard({'sounds/alarm/Zen.mp3': b'', 'sounds/alarm/Default.mp3': b'', 'sounds/alarm/notes.txt': b'',
-                                       'cute-display/apps/alarm/ringtones/Zen.mp3': b''}))
-        self.assertEqual(card.habity_ringtones_missing(device), ['Default.mp3'])
-        self.assertEqual(card.habity_ringtones_missing(FakeConsole(FakeCard({'cute-display/wifi.conf': b''}))), [])
+                                       'cute-display/apps/alarm/ringtones/Zen.mp3': b'',
+                                       'sounds/sleep/Rain_loop.wav': b'', 'sounds/sleep/Ocean_loop.wav': b'',
+                                       'cute-display/apps/zen/sounds/Rain.wav': b''}))
+        self.assertEqual(card.habity_sounds_missing(device), {'alarm': ['Default.mp3'], 'zen': ['Ocean_loop.wav']})
+        self.assertEqual(card.habity_sounds_missing(FakeConsole(FakeCard({'cute-display/wifi.conf': b''}))), {'alarm': [], 'zen': []})
 
 
 class ToTheCard(unittest.TestCase):
@@ -57,14 +59,17 @@ class ToTheCard(unittest.TestCase):
         card.write(device, {'cute-display/general.conf': 'time_zone = JST-9\n'}, {})
         self.assertEqual(sd_card.files['cute-display/general.conf'], b'time_zone = JST-9\n')
 
-    def test_habitys_ringtones_are_copied_when_asked_and_the_alarm_runs(self):
-        answers = Answers(habity_ringtones=['Zen.mp3'], copy_ringtones=True)
-        self.assertEqual(answers.copies(), {'sounds/alarm/Zen.mp3': 'cute-display/apps/alarm/ringtones/Zen.mp3'})
-        sd_card = FakeCard({'sounds/alarm/Zen.mp3': b'ID3'})
+    def test_habitys_sounds_are_copied_for_the_apps_asked_that_run(self):
+        habity = {'alarm': ['Zen.mp3'], 'zen': ['Rain_loop.wav']}
+        answers = Answers(habity_sounds=habity, copied={'alarm', 'zen'})
+        self.assertEqual(answers.copies(), {'sounds/alarm/Zen.mp3': 'cute-display/apps/alarm/ringtones/Zen.mp3',
+                                            'sounds/sleep/Rain_loop.wav': 'cute-display/apps/zen/sounds/Rain.wav'})
+        sd_card = FakeCard({'sounds/alarm/Zen.mp3': b'ID3', 'sounds/sleep/Rain_loop.wav': b'RIFF'})
         card.write(FakeConsole(sd_card), {}, answers.copies())
         self.assertEqual(sd_card.files['cute-display/apps/alarm/ringtones/Zen.mp3'], b'ID3')
-        self.assertEqual(Answers(habity_ringtones=['Zen.mp3']).copies(), {})
-        self.assertEqual(Answers(apps=['radar'], habity_ringtones=['Zen.mp3'], copy_ringtones=True).copies(), {})
+        self.assertEqual(sd_card.files['cute-display/apps/zen/sounds/Rain.wav'], b'RIFF')
+        self.assertEqual(Answers(habity_sounds=habity).copies(), {})
+        self.assertEqual(Answers(apps=['radar', 'zen'], habity_sounds=habity, copied={'alarm'}).copies(), {})
 
     def test_a_file_in_a_directory_the_card_lacks_is_not_there(self):
         texts = card.read_texts(FakeConsole(FakeCard({'cute-display/wifi.conf': b''})), CARD_FILES)

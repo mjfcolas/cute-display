@@ -1,8 +1,8 @@
-use crate::bench::{Image, Setup, SETTINGS_CONF};
+use crate::bench::{Image, Setup, GENERAL_CONF, SETTINGS_CONF};
 
 #[test]
 fn a_setting_changed_with_the_controls_is_kept_on_the_card_and_after_a_restart() {
-    let image = Image::start(Setup::default());
+    let image = Image::start(Setup::default().with_file(GENERAL_CONF, "time_zone = UTC0\napps = alarm, weather, radar\n"));
     image.click_wheel();
     assert_eq!(image.screen_line("front").as_deref(), Some("front system"));
     assert_eq!(image.screen_line("setting").as_deref(), Some("setting Backlight 10 s"));

@@ -13,9 +13,9 @@ conf_text = { path = "../../engine/conf_text" }
 domain = { path = "../../engine/domain" }
 ui = { path = "../../engine/ui" }
 forecast = { path = "../../libs/forecast" }
+sound_files = { path = "../../libs/sound_files" }
 embedded-graphics = "0.8"
 log = "0.4"
-mbop3 = { version = "0.1", features = ["alloc"] }
 
 [dev-dependencies]
 ui_testing = { path = "../../engine/ui_testing" }

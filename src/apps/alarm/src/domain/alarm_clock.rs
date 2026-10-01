@@ -10,6 +10,7 @@ use domain::apps::Foreground;
 use domain::calendar::Weekday;
 use domain::lighting::Level;
 use domain::time::{LocalTime, TimeOfDay};
+pub use domain::sound::Volume;
 
 use crate::ID;
 
@@ -20,19 +21,6 @@ pub const RING_FOR: Duration = Duration::from_secs(15 * 60);
 pub const VOLUME_RISES_OVER: Duration = Duration::from_secs(60);
 const FIRST_VOLUME: Volume = Volume::percent(10);
 const PREVIEW_VOLUME: Volume = Volume::percent(30);
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Volume(u8);
-
-impl Volume {
-    pub const fn percent(percent: u8) -> Self {
-        Self(if percent > 100 { 100 } else { percent })
-    }
-
-    pub fn as_percent(self) -> u8 {
-        self.0
-    }
-}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AlarmSchedule {

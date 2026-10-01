@@ -1,27 +1,22 @@
-use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::{Arc, Mutex};
-
-use domain::fetch::Unavailable;
 use domain::files::Files;
 use domain::sound::{Samples, Sound};
+use sound_files::{sound_files_in, Recording, SharedFiles, VolumeKnob};
 
 use crate::domain::alarm_clock::{Ringer, Ringtone, Volume};
 use crate::infrastructure::chime::Chime;
-use crate::infrastructure::recording::Recording;
 
 const RINGTONES_DIRECTORY: &str = "ringtones";
-const RECORDING_EXTENSION: &str = ".mp3";
 
 pub struct SoundRinger {
     sound: Box<dyn Sound>,
     files: SharedFiles,
-    volume: Arc<AtomicU8>,
+    volume: VolumeKnob,
     ringing: Option<Ringtone>,
 }
 
 impl SoundRinger {
     pub fn new(sound: Box<dyn Sound>, files: Box<dyn Files>) -> Self {
-        Self { sound, files: SharedFiles(Arc::new(Mutex::new(files))), volume: Arc::default(), ringing: None }
+        Self { sound, files: SharedFiles::new(files), volume: VolumeKnob::default(), ringing: None }
     }
 
     /// A recording that cannot be played gives way to the chime: the alarm rings anyway.
@@ -34,21 +29,20 @@ impl SoundRinger {
                 Box::new(recording.chain(Chime::new(rate)))
             }
         };
-        Box::new(AtVolume { samples, volume: Arc::clone(&self.volume) })
+        self.volume.applied_to(samples)
     }
 }
 
 impl Ringer for SoundRinger {
     fn recordings(&self) -> Vec<String> {
-        let names = self.files.names_in(RINGTONES_DIRECTORY).unwrap_or_else(|unavailable| {
+        sound_files_in(&self.files, RINGTONES_DIRECTORY).unwrap_or_else(|unavailable| {
             log::warn!("alarm: {unavailable}; the chime alone");
             Vec::new()
-        });
-        names.into_iter().filter(|name| name.to_lowercase().ends_with(RECORDING_EXTENSION)).collect()
+        })
     }
 
     fn ring(&mut self, ringtone: &Ringtone, volume: Volume) {
-        self.volume.store(volume.as_percent(), Ordering::Relaxed);
+        self.volume.turn_to(volume);
         if self.ringing.as_ref() != Some(ringtone) {
             self.sound.play(self.samples_of(ringtone));
             self.ringing = Some(ringtone.clone());
@@ -62,50 +56,10 @@ impl Ringer for SoundRinger {
     }
 }
 
-/// The alarm's files, for the ringer and for the recording playing on the speaker's thread.
-#[derive(Clone)]
-struct SharedFiles(Arc<Mutex<Box<dyn Files>>>);
-
-impl SharedFiles {
-    fn with<T>(&self, use_files: impl FnOnce(&dyn Files) -> T) -> T {
-        use_files(self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner()).as_ref())
-    }
-}
-
-impl Files for SharedFiles {
-    fn read(&self, name: &str) -> Result<Option<String>, Unavailable> {
-        self.with(|files| files.read(name))
-    }
-
-    fn write(&self, name: &str, text: &str) -> Result<(), Unavailable> {
-        self.with(|files| files.write(name, text))
-    }
-
-    fn read_bytes(&self, name: &str, offset: u64, max_bytes: usize) -> Result<Option<Vec<u8>>, Unavailable> {
-        self.with(|files| files.read_bytes(name, offset, max_bytes))
-    }
-
-    fn names_in(&self, directory: &str) -> Result<Vec<String>, Unavailable> {
-        self.with(|files| files.names_in(directory))
-    }
-}
-
-struct AtVolume {
-    samples: Samples,
-    volume: Arc<AtomicU8>,
-}
-
-impl Iterator for AtVolume {
-    type Item = i16;
-
-    fn next(&mut self) -> Option<i16> {
-        let volume = i32::from(self.volume.load(Ordering::Relaxed));
-        self.samples.next().map(|sample| i16::try_from(i32::from(sample) * volume / 100).unwrap_or(sample))
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use std::sync::{Arc, Mutex};
+
     use domain_testing::files::FakeFiles;
 
     use super::*;
@@ -174,12 +128,12 @@ mod tests {
     }
 
     #[test]
-    fn the_recordings_are_the_mp3_files_in_their_directory() {
+    fn the_recordings_are_the_sound_files_in_their_directory() {
         let files = FakeFiles::default();
-        for name in ["ringtones/Zen.mp3", "ringtones/Default.MP3", "ringtones/notes.txt", "alarm.conf"] {
+        for name in ["ringtones/Zen.mp3", "ringtones/Rain.wav", "ringtones/notes.txt", "alarm.conf"] {
             files.put(name, b"");
         }
         let ringer = SoundRinger::new(Box::new(StubSound::default()), Box::new(files));
-        assert_eq!(ringer.recordings(), ["Default.MP3", "Zen.mp3"]);
+        assert_eq!(ringer.recordings(), ["Rain.wav", "Zen.mp3"]);
     }
 }

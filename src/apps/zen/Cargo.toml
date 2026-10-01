@@ -1,0 +1,22 @@
+[package]
+name = "zen"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "The zen app: a sound to relax or fall asleep to, for whole hours, every day at a time or at once, the lights dimming."
+
+[lints]
+workspace = true
+
+[dependencies]
+conf_text = { path = "../../engine/conf_text" }
+domain = { path = "../../engine/domain" }
+ui = { path = "../../engine/ui" }
+sound_files = { path = "../../libs/sound_files" }
+embedded-graphics = "0.8"
+log = "0.4"
+
+[dev-dependencies]
+ui_testing = { path = "../../engine/ui_testing" }
+domain_testing = { path = "../../engine/domain_testing" }
+hal = { path = "../../engine/hal" }
