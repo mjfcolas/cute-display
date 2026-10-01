@@ -36,8 +36,8 @@ preview screen="system" zoom="2":
     xdg-open /tmp/cute-display.png >/dev/null 2>&1 &
 
 # run the app image on this computer, the SD card being a directory, its console for `just remote-sim`; flags in docs/simulator/README.md
-sim card="sim-sd" *flags:
-    cargo run --quiet -p simulator -- {{card}} --console {{sim_console}} {{flags}}
+sim *args:
+    cargo run --quiet -p simulator -- --console {{sim_console}} {{args}}
 
 # the same on the simulator `just sim` started
 remote-sim *args:
