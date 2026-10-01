@@ -61,11 +61,11 @@ mod tests {
 
     use super::*;
     use crate::card::DirectoryCard;
-    use crate::clock::HostClock;
+    use crate::clock::{HostClock, TrueTime};
     use crate::steady::ScaledClock;
 
     fn rtc() -> HostClock {
-        HostClock::new(ScaledClock::new(core::num::NonZeroU32::MIN)).unwrap()
+        HostClock::new(TrueTime::from_the_computer(ScaledClock::new(core::num::NonZeroU32::MIN)).unwrap())
     }
 
     fn directory(name: &str) -> std::path::PathBuf {
@@ -85,10 +85,12 @@ mod tests {
 
         let mut stream = UnixStream::connect(&path).unwrap();
         stream.write_all(b"@@ 1 tap yellow\n").unwrap();
+        while yellow.take_presses() == 0 {
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
         let mut reply = String::new();
         BufReader::new(&stream).read_line(&mut reply).unwrap();
         assert_eq!(reply, "@@ 1 ok\n");
-        assert_eq!(yellow.take_presses(), 1);
         std::fs::remove_dir_all(&root).unwrap();
     }
 

@@ -66,12 +66,15 @@ impl<S: FileStorage> MaintenanceConsole<S> {
     }
 
     fn serve_remote(&self, id: &str, request: RemoteRequest) -> Vec<String> {
-        match request {
+        let taken = match request {
             RemoteRequest::Tap(button) => self.remote.tap(button),
             RemoteRequest::Hold { buttons, duration } => self.remote.hold(&buttons, duration),
             RemoteRequest::Turn(clockwise_detents) => self.remote.turn(clockwise_detents),
+        };
+        match taken {
+            Ok(()) => vec![protocol::ok(id, "")],
+            Err(not_taken) => vec![protocol::error(id, &not_taken.to_string())],
         }
-        vec![protocol::ok(id, "")]
     }
 
     /// A line at a time, so that neither the frame nor its lines are held whole in the
@@ -234,11 +237,13 @@ fn inserted_card<'a, S>(storage: &'a Result<S, Fault>, id: &str) -> Result<&'a S
 
 #[cfg(test)]
 mod tests {
+    use core::time::Duration;
+
     use base64::engine::general_purpose::STANDARD;
     use base64::Engine;
     use hal::clock::DateTime;
     use hal::display::{EpaperDisplay, Frame, Redraw, FRAME_BYTES};
-    use hal::input::{PushButton, RotaryEncoder};
+    use hal::input::PushButton;
     use hal::light::{Brightness, DimmableLight};
     use hal::Fault;
     use hal_testing::clock::FakeRtc;
@@ -248,6 +253,7 @@ mod tests {
     use hal_testing::storage::FakeFileStorage;
 
     use super::*;
+    use crate::fake_image_controls::{FakeImageControls, Taken};
     use crate::remote::ButtonName;
 
     const MORNING: DateTime = DateTime { year: 2026, month: 9, day: 26, hour: 7, minute: 30, second: 15 };
@@ -417,21 +423,28 @@ mod tests {
     }
 
     #[test]
-    fn the_remote_taps_holds_and_turns() {
+    fn the_remote_taps_holds_and_turns_and_answers_once_the_image_took_it() {
         let remote = Remote::new(FakeSteadyClock::default());
         let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), remote.clone(), Observation::default(), FakeRtc::at(MORNING));
-        let mut yellow = remote.button(ButtonName::Yellow);
-        let mut long = remote.button(ButtonName::Long);
-        let mut wheel = remote.wheel();
+        let image = FakeImageControls::taking_from(&remote);
         let lines = ["@@ 1 tap yellow", "@@ 2 hold 1500 yellow long", "@@ 3 turn -2"].map(String::from);
         assert_eq!(talk(&mut console, &lines), ["@@ 1 ok", "@@ 2 ok", "@@ 3 ok"]);
-        assert_eq!((yellow.take_presses(), long.take_presses(), wheel.take_detents()), (2, 1, -2));
-        assert!(!yellow.is_held() && !long.is_held(), "released once the hold is over");
+        assert_eq!(image.taken(), Taken { yellow_presses: 2, long_presses: 1, detents: -2, ..Taken::default() });
+        assert!(!remote.button(ButtonName::Yellow).is_held() && !remote.button(ButtonName::Long).is_held(), "released once the hold is over");
+    }
+
+    #[test]
+    fn what_the_image_does_not_take_is_an_error() {
+        let remote = Remote::new(FakeSteadyClock::default()).taken_within(Duration::ZERO);
+        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), remote, Observation::default(), FakeRtc::at(MORNING));
+        assert_eq!(talk(&mut console, &["@@ 1 tap long".into()]), ["@@ 1 error the app image did not take it within 0ns"]);
     }
 
     #[test]
     fn without_a_card_the_remote_still_answers() {
-        let mut console = MaintenanceConsole::<FakeFileStorage>::new(Err(Fault::new("not inserted")), Remote::new(FakeSteadyClock::default()), Observation::default(), FakeRtc::at(MORNING));
+        let remote = Remote::new(FakeSteadyClock::default());
+        let mut console = MaintenanceConsole::<FakeFileStorage>::new(Err(Fault::new("not inserted")), remote.clone(), Observation::default(), FakeRtc::at(MORNING));
+        let _image = FakeImageControls::taking_from(&remote);
         let replies = talk(&mut console, &["@@ 1 ls".into(), "@@ 2 turn 2".into()]);
         assert_eq!(replies, ["@@ 1 error no SD card: not inserted", "@@ 2 ok"]);
     }

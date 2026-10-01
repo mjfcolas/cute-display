@@ -4,8 +4,10 @@ mod console;
 mod controls;
 mod lights;
 mod network;
+mod ntp_server;
 mod options;
 mod panel;
+mod recordings;
 mod speaker;
 mod steady;
 mod system;
@@ -26,12 +28,14 @@ use maintenance::remote::{ButtonName, Remote, RemoteButton, RemoteWheel};
 use maintenance::MaintenanceConsole;
 
 use crate::card::DirectoryCard;
-use crate::clock::HostClock;
+use crate::clock::{HostClock, TrueTime};
 use crate::controls::{KeyButton, ScrollWheel};
 use crate::lights::SimulatedLight;
-use crate::network::{HostHttpClient, HostWifi};
-use crate::options::Options;
+use crate::network::{HostHttpClient, HostWifi, TimeServer, Web};
+use crate::ntp_server::SimulatedNtpServer;
+use crate::options::{Network, Options, StartTime, Window};
 use crate::panel::SimulatedPanel;
+use crate::recordings::{RecordedWeb, RecordingWeb};
 use crate::speaker::LoggedSpeaker;
 use crate::steady::ScaledClock;
 use crate::system::HostSystem;
@@ -48,8 +52,8 @@ impl Hardware for Computer {
     type Speaker = ObservedSpeaker<LoggedSpeaker>;
     type Card = DirectoryCard;
     type Wifi = HostWifi;
-    type Http = HostHttpClient;
-    type Udp = StdUdpClient;
+    type Http = Web;
+    type Udp = TimeServer;
     type System = HostSystem;
     type Steady = ScaledClock;
 
@@ -75,7 +79,20 @@ fn main() -> Result<(), Fault> {
     let case = Case::new(steady);
     let remote = Remote::new(steady);
     let observation = Observation::default();
-    let rtc = SharedRtc::new(HostClock::new(steady)?);
+    let (true_time, udp) = match options.start {
+        StartTime::Given(time) => {
+            let true_time = TrueTime::starting_at(steady, time);
+            (true_time, TimeServer::Simulated(SimulatedNtpServer(true_time)))
+        }
+        StartTime::TheComputers => (TrueTime::from_the_computer(steady)?, TimeServer::TheComputers(StdUdpClient)),
+    };
+    let (wifi, https) = match options.network {
+        Network::TheComputers => (HostWifi::online(), Web::TheComputers(HostHttpClient::default())),
+        Network::Recorded(directory) => (HostWifi::online(), Web::Recorded(RecordedWeb::read(&directory)?)),
+        Network::Recording(directory) => (HostWifi::online(), Web::Recording(RecordingWeb::in_directory(directory)?)),
+        Network::Offline => (HostWifi::offline(), Web::TheComputers(HostHttpClient::default())),
+    };
+    let rtc = SharedRtc::new(HostClock::new(true_time));
     if let Some(path) = &options.console_socket {
         console::listen(path, MaintenanceConsole::new(card.clone(), remote.clone(), observation.clone(), rtc.clone()))?;
     }
@@ -90,13 +107,13 @@ fn main() -> Result<(), Fault> {
         rtc,
         speaker: observation.speaker(LoggedSpeaker(steady)),
         sd_card: card,
-        wifi: HostWifi,
-        https: HostHttpClient::default(),
-        udp: StdUdpClient,
+        wifi,
+        https,
+        udp,
         system: HostSystem,
         steady,
     };
-    thread::Builder::new()
+    let image = thread::Builder::new()
         .name("app".into())
         .spawn(move || match app::run(devices, catalog::APPS, move |lines| observation.said(lines)) {
             Ok(never) => match never {},
@@ -104,7 +121,13 @@ fn main() -> Result<(), Fault> {
         })
         .map_err(Fault::new)?;
 
-    window::show(&case)
+    match options.window {
+        Window::Shown => window::show(&case),
+        Window::Headless => {
+            let _ = image.join();
+            Err(Fault::new("the app image stopped"))
+        }
+    }
 }
 
 /// The Internet asks the card for a network to join; the computer is already on one.

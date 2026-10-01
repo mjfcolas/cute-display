@@ -1,6 +1,6 @@
 # Testing plan
 
-> **Not done yet.** Steps 1 to 5 are done; **step 6 is the current one**. This file
+> **Not done yet.** Steps 1 to 6 are done; **step 7 is the current one**. This file
 > is updated as each step lands, and goes once the last one has: the
 > [pyramid](README.md) and the code are then the reference.
 
@@ -64,8 +64,9 @@
 - The other contracts have no check: what they promise (a panel may redraw more than
   asked, a speaker plays, a place or an answer is given) leaves a double nothing to
   keep.
-- `StubHttpClient` answers by URL and `StubUdpClient` as an NTP server, open-meteo's
-  answer recorded in `src/libs/forecast/testdata/` (done); the others' with step 6.
+- `StubHttpClient` answers by URL, open-meteo's answer recorded in
+  `src/libs/forecast/testdata/`; `StubUdpClient` the datagram it is given, an NTP server's
+  made by `infrastructure::ntp::server_answer` (done).
 - `domain`'s own tests keep their doubles: a crate cannot use one built on itself.
 
 ### D. Virtual time, and the app image in a test
@@ -78,29 +79,30 @@
   `src/app/tests/image/` (done): the apps of `catalog`, driven through the doubles of the
   controls, observed through them and what the frames say; its RTC a `FakeRunningRtc`.
 
-### E. A deterministic simulator
+### E. A deterministic simulator — done
 
 - `--headless`: no window; the controls are the console's alone.
-- `--time <unix>`: the RTC starts there, and NTP answers that time (`StubUdpClient`).
-- `--web <dir>`: HTTP answered from recorded responses (`StubHttpClient`); `--record <dir>`
-  records them from the real Internet; `--offline`: no network.
+- `--time <unix>`: the true time starts there; the RTC keeps to it, and NTP answers it
+  (the simulator's own server: a test double would answer one time forever).
+- `--web <dir>`: HTTP answered from recorded responses; `--record <dir>` records them
+  from the real Internet; `--offline`: no network.
 
 ### F. Synchronising with the console
 
-- `tap` and `turn` answer once the image has taken them (`take_presses`,
-  `take_detents`), still at the HAL.
+- `tap`, `hold` and `turn` answer once the image has taken them (`take_presses`,
+  `take_detents`), still at the HAL; an error after 8 s if it has not (done).
 - Clients wait for a description to match, with a timeout; a `settled` request only if
   negative assertions need one.
 - `restart`, on a `hal::system` contract: `esp_restart` on the device, the link
   reconnecting; the simulator ends and the harness starts it again.
-- `tools/link` keeps the log lines it does not consume, for diagnostics and to catch a
-  crash or a reboot.
+- `tools/link`'s `KeepingLog` keeps the log lines no request consumes, for diagnostics and
+  to catch a crash or a reboot (done).
 
 ### G. The end-to-end harness, `tools/e2e`, pytest
 
 - A `target` fixture: `Simulator` or `Device`.
 - `Simulator`, one per scenario: a copy of `tools/e2e/cards/standard/`, `--headless
-  --speed N --time T --web tools/e2e/web/`.
+  --speed N --time T --web tools/e2e/web/`; its log is its standard error.
 - `Device`, one per session, in test mode: keep `cute-display/`'s conf files, put the
   test card's (no `wifi.conf`: offline, no NTP), `clock set T`, `restart`; at the end,
   failed or not, put them back, set the real time, `restart`.
@@ -125,9 +127,9 @@ still true.
    reads it.
 5. **Done.** The integration tier (D): the stepped clock, the test hardware, and its
    tests in `src/app/tests/image/tests/`, by screen where a screen is concerned.
-6. **Current.** The deterministic simulator (E) and the console's synchronisation (F),
+6. **Done.** The deterministic simulator (E) and the console's synchronisation (F),
    but `restart`.
-7. The end-to-end harness on the simulator (G), five to eight scenarios: start, switching
+7. **Current.** The end-to-end harness on the simulator (G), five to eight scenarios: start, switching
    apps, setting an alarm, ringing on time, the light, recorded weather, recorded radar,
    system settings kept on the card.
 8. The device's test mode: `restart`, keeping and restoring, `just e2e-device`,

@@ -1,10 +1,15 @@
 # Simulator
 
-The app image on a computer, in a window: `just sim [card] [--speed N]`.
+The app image on a computer, in a window: `just sim [card] [flags]`.
 
 - `--speed N`: everything runs N times faster than the wall, but the network.
 - `--console PATH`: the [maintenance console](../maintenance/README.md) on that Unix
   socket instead of USB; `just sim` puts it on `target/simulator.sock`.
+- `--headless`: no window, the controls are the console's alone.
+- `--time UNIX_SECONDS`: the time it is at the start; NTP answers it, run on from there.
+- `--web DIR`: HTTP answered from the responses recorded in `DIR`, any other URL
+  unreachable; `--record DIR` records them there from the Internet; `--offline`: no
+  network at all.
 
 ## Controls
 

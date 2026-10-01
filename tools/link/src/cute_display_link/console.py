@@ -42,3 +42,29 @@ class Request:
         if kind != wanted:
             raise ConsoleError(f'expected {wanted}, got {kind} {rest}')
         return rest
+
+
+class KeepingLog:
+    """A link that keeps the lines that are not the console's, the device's log, for a
+    diagnostic and to catch a crash or a restart; they come in as requests are answered."""
+
+    def __init__(self, link):
+        self.link = link
+        self.kept = []
+
+    def write(self, data):
+        self.link.write(data)
+
+    def flush(self):
+        self.link.flush()
+
+    def readline(self):
+        line = self.link.readline()
+        text = line.decode(errors='replace').rstrip('\r\n')
+        if text and not text.startswith('@@ '):
+            self.kept.append(text)
+        return line
+
+    def take_log(self):
+        taken, self.kept = self.kept, []
+        return taken

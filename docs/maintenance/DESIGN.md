@@ -5,6 +5,9 @@
 - **The remote enters where the hardware does, and the observation watches it there**:
   a test goes through every layer, as a person would, and never sees the domain. What
   the screen says is what a person reads on it, handed over beside the frame.
+- **A control is answered once the image took it**: a test knows its gesture reached
+  the image, then waits for what the screen says to follow; an image that takes nothing
+  is an error, never a silent `ok`.
 - **Always there, releases included**: tests run on the image people get, and the
   remote opens little more than the buttons already do.
 - **How configuration reaches the device**: a file prepared on a computer is dropped in

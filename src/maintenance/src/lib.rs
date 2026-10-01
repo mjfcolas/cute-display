@@ -7,6 +7,8 @@
 //! above all, is ignored by both ends. The other end is `tools/link/`.
 
 pub mod console;
+#[cfg(test)]
+mod fake_image_controls;
 pub mod observation;
 pub mod path;
 pub mod protocol;
