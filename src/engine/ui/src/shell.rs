@@ -45,12 +45,14 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
 
     pub fn draw(&mut self, target: &mut D, area: Rectangle) -> Description {
         let front = self.enter_front();
+        // Read before drawing: a change another thread makes meanwhile is then drawn next.
+        let version = self.version_of(front);
         let mut description = Description::default();
         description.say("front", front.name());
         if let Some(hosted) = self.hosted(front) {
             description = description.followed_by(hosted.screen.draw(target, area.offset(-MARGIN)));
         }
-        self.drawn = Some((front, self.version_of(front)));
+        self.drawn = Some((front, version));
         description
     }
 
@@ -324,5 +326,29 @@ mod tests {
         let mut frame = Frame::blank();
         let visible = Rectangle::new(Point::zero(), Size::new(VISIBLE_WIDTH.into(), HEIGHT.into()));
         assert_eq!(shell.draw(&mut frame, visible).text(), ["front radar", "text 12 aircraft"]);
+    }
+
+    /// Its version moves on while it is drawn, as when another thread changes what it shows.
+    struct StubChangingScreen(Rc<RefCell<u64>>);
+
+    impl Screen for StubChangingScreen {
+        type UiState = StubText;
+
+        fn version(&self) -> u64 {
+            *self.0.borrow()
+        }
+        fn on_input(&mut self, _: Input) {}
+        fn ui_state(&self) -> StubText {
+            *self.0.borrow_mut() += 1;
+            StubText(String::new())
+        }
+    }
+
+    #[test]
+    fn a_change_made_while_the_screen_is_drawn_is_drawn_next() {
+        let screens = vec![Hosted { app: WEATHER, screen: Box::new(StubChangingScreen(Rc::default())) as Box<dyn HostedScreen<Frame>> }];
+        let mut shell = Shell::new(Foreground::new(WEATHER), screens).unwrap();
+        render(&mut shell);
+        assert!(shell.is_outdated());
     }
 }

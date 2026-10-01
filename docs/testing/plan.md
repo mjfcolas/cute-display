@@ -64,9 +64,8 @@
 - The other contracts have no check: what they promise (a panel may redraw more than
   asked, a speaker plays, a place or an answer is given) leaves a double nothing to
   keep.
-- Still to come, with the step that first needs them (5 and 6): `StubHttpClient`,
-  answering recorded responses by URL, and `StubUdpClient`, answering SNTP with a given
-  time.
+- `StubHttpClient` answers by URL and `StubUdpClient` as an NTP server (done); still to
+  come, with steps 5 and 6: responses recorded from the real services.
 - `domain`'s own tests keep their doubles: a crate cannot use one built on itself.
 
 ### D. Virtual time, and the app image in a test
@@ -75,9 +74,9 @@
   parked, so `app::run` keeps returning `Infallible`.
 - The speaker's thread waits on a channel, not on the clock, and is not one of its
   threads: its stub plays at once, and a test asserts the sound as "eventually".
-- `TestHardware`, an `app::Hardware` in `src/app/tests/`: the doubles of C, driven by
-  `maintenance::Remote`, observed by `maintenance::Observation` and what the frames say,
-  with the apps of `catalog`.
+- `TestHardware`, an `app::Hardware` of test doubles, and its bench, in
+  `src/app/tests/image/` (done): the apps of `catalog`, driven through the doubles of the
+  controls, observed through them and what the frames say; its RTC a `FakeRunningRtc`.
 
 ### E. A deterministic simulator
 
@@ -124,10 +123,10 @@ still true.
 4. **Done.** The description to the console (B): each screen and the `Shell` say
    what they drew, `describe` answers it, `remote describe` prints it, the `drive` skill
    reads it.
-5. **Current.** The stepped clock (done), then the integration tier (D): starting
-   with and without a card; a night until the alarm (in front, light and sound, snooze,
-   stop); NTP setting the RTC, failing, retrying ten minutes later; a recorded forecast
-   shown.
+5. **Current.** The integration tier (D): the stepped clock, the test hardware,
+   starting with and without a card, a night until the alarm (dawn, in front, ringing,
+   snoozed), NTP setting the RTC and retrying ten minutes later (done); the alarm
+   stopped, a recorded forecast shown.
 6. The deterministic simulator (E) and the console's synchronisation (F), but `restart`.
 7. The end-to-end harness on the simulator (G), five to eight scenarios: start, switching
    apps, setting an alarm, ringing on time, the light, recorded weather, recorded radar,

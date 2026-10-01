@@ -46,3 +46,41 @@ impl Speaker for StubSpeaker {
         Ok(())
     }
 }
+
+/// Hears the first second of each sound and moves on, so that a sound that lasts until it
+/// is stopped, a ringing alarm, does not keep its thread busy.
+#[derive(Clone, Default)]
+pub struct StubBriefSpeaker(Arc<Mutex<Heard>>);
+
+#[derive(Default)]
+struct Heard {
+    sounds: usize,
+    audible: usize,
+}
+
+impl StubBriefSpeaker {
+    pub const SAMPLE_RATE_HZ: u32 = 8_000;
+
+    pub fn sounds_started(&self) -> usize {
+        lock(&self.0).sounds
+    }
+
+    /// The sounds started whose first second was not silence.
+    pub fn sounds_heard(&self) -> usize {
+        lock(&self.0).audible
+    }
+}
+
+impl Speaker for StubBriefSpeaker {
+    fn sample_rate_hz(&self) -> u32 {
+        Self::SAMPLE_RATE_HZ
+    }
+
+    fn play(&mut self, samples: &mut dyn Iterator<Item = i16>) -> Result<(), Fault> {
+        let audible = samples.take(Self::SAMPLE_RATE_HZ as usize).any(|sample| sample != 0);
+        let mut heard = lock(&self.0);
+        heard.sounds += 1;
+        heard.audible += usize::from(audible);
+        Ok(())
+    }
+}

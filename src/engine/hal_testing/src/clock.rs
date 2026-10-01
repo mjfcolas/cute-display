@@ -6,7 +6,7 @@ use hal::Fault;
 use crate::shared::lock;
 
 /// What a DS3231 holds at power-up: its registers' zero.
-const POWER_UP: DateTime = DateTime { year: 2000, month: 1, day: 1, hour: 0, minute: 0, second: 0 };
+pub(crate) const POWER_UP: DateTime = DateTime { year: 2000, month: 1, day: 1, hour: 0, minute: 0, second: 0 };
 
 /// An RTC that stands at the time it was set to: a test moves it by setting it.
 #[derive(Clone)]

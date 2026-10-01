@@ -8,10 +8,15 @@
 pub mod audio;
 pub mod clock;
 pub mod display;
+pub mod http;
 pub mod input;
 pub mod light;
+pub mod radio;
+pub mod running_rtc;
 pub mod steady_clock;
 pub mod stepped_clock;
 pub mod storage;
+pub mod system;
+pub mod udp;
 
 mod shared;

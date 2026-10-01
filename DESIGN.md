@@ -59,8 +59,9 @@ type, the UI never sees hardware, `app` never sees a chip, and nothing but `firm
 knows which chip is on which pin. An app sees neither the HAL nor another app: what it
 gets from outside comes through the engine's contracts. Tests are the one exception:
 `ui`, the apps and the libs draw on `hal`'s `Frame` there, and any crate's tests use
-`hal_testing`, `domain_testing` and `ui_testing`, all as dev-dependencies; the
-simulator's screen preview, an example, uses `domain_testing` the same way.
+`hal_testing`, `domain_testing` and `ui_testing`, all as dev-dependencies; `app`'s
+integration tests run the apps of `catalog`; the simulator's screen preview, an example,
+uses `domain_testing` the same way.
 
 The UI meets the outside through three exchange surfaces, which `app` connects:
 

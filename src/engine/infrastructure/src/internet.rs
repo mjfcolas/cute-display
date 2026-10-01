@@ -219,12 +219,12 @@ mod tests {
         }
     }
 
-    struct StubWifiStation {
+    struct StubJournaledWifiStation {
         journal: Journal,
         joins: bool,
     }
 
-    impl WifiStation for StubWifiStation {
+    impl WifiStation for StubJournaledWifiStation {
         fn connect(&mut self, ssid: &str, password: &str) -> Result<(), Fault> {
             self.journal.note(format!("connect {ssid} {password}"));
             if self.joins { Ok(()) } else { Err(Fault::new("no such network")) }
@@ -235,12 +235,12 @@ mod tests {
         }
     }
 
-    struct StubHttpClient {
+    struct StubJournaledHttpClient {
         journal: Journal,
         answer: Result<Vec<u8>, Fault>,
     }
 
-    impl HttpClient for StubHttpClient {
+    impl HttpClient for StubJournaledHttpClient {
         fn fetch(&mut self, url: &str, read: &mut dyn FnMut(&mut dyn Read) -> Result<(), Fault>) -> Result<(), Fault> {
             self.journal.note(format!("get {url}"));
             let body = self.answer.clone()?;
@@ -248,12 +248,12 @@ mod tests {
         }
     }
 
-    struct StubUdpClient {
+    struct StubJournaledUdpClient {
         journal: Journal,
         answer: Result<Vec<u8>, Fault>,
     }
 
-    impl UdpClient for StubUdpClient {
+    impl UdpClient for StubJournaledUdpClient {
         fn exchange(&mut self, host: &str, port: u16, _: &[u8], answer: &mut [u8], _: Duration) -> Result<usize, Fault> {
             self.journal.note(format!("udp {host}:{port}"));
             let datagram = self.answer.clone()?;
@@ -262,7 +262,7 @@ mod tests {
         }
     }
 
-    type TestInternet = OnDemandInternet<StubWifiStation, StubHttpClient, StubUdpClient, FakeFileStorage>;
+    type TestInternet = OnDemandInternet<StubJournaledWifiStation, StubJournaledHttpClient, StubJournaledUdpClient, FakeFileStorage>;
 
     fn internet(joins: bool, answer: Result<Vec<u8>, Fault>) -> (TestInternet, Journal) {
         internet_on(FakeSteadyClock::default(), joins, answer)
@@ -271,9 +271,9 @@ mod tests {
     fn internet_on(clock: FakeSteadyClock, joins: bool, answer: Result<Vec<u8>, Fault>) -> (TestInternet, Journal) {
         let journal = Journal::default();
         let storage = FakeFileStorage::with(WIFI_FILE, "ssid = Home\npassword = s3cret\n");
-        let http = StubHttpClient { journal: journal.clone(), answer: answer.clone() };
-        let udp = StubUdpClient { journal: journal.clone(), answer };
-        (OnDemandInternet::new(StubWifiStation { journal: journal.clone(), joins }, http, udp, storage, clock), journal)
+        let http = StubJournaledHttpClient { journal: journal.clone(), answer: answer.clone() };
+        let udp = StubJournaledUdpClient { journal: journal.clone(), answer };
+        (OnDemandInternet::new(StubJournaledWifiStation { journal: journal.clone(), joins }, http, udp, storage, clock), journal)
     }
 
     #[test]
@@ -323,9 +323,9 @@ mod tests {
     fn without_wifi_conf_it_says_what_to_do_and_leaves_the_radio_off() {
         let journal = Journal::default();
         let mut internet = OnDemandInternet::new(
-            StubWifiStation { journal: journal.clone(), joins: true },
-            StubHttpClient { journal: journal.clone(), answer: Ok(vec![]) },
-            StubUdpClient { journal: journal.clone(), answer: Ok(vec![]) },
+            StubJournaledWifiStation { journal: journal.clone(), joins: true },
+            StubJournaledHttpClient { journal: journal.clone(), answer: Ok(vec![]) },
+            StubJournaledUdpClient { journal: journal.clone(), answer: Ok(vec![]) },
             FakeFileStorage::default(),
             FakeSteadyClock::default(),
         );
@@ -348,7 +348,7 @@ mod tests {
 
     fn internet_failing_udp() -> (TestInternet, Journal) {
         let (internet, journal) = internet(true, Ok(vec![]));
-        let udp = StubUdpClient { journal: journal.clone(), answer: Err(Fault::new("no answer")) };
+        let udp = StubJournaledUdpClient { journal: journal.clone(), answer: Err(Fault::new("no answer")) };
         (OnDemandInternet { udp, ..internet }, journal)
     }
 

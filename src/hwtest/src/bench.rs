@@ -250,6 +250,7 @@ mod tests {
     use hal_testing::display::StubPanel;
     use hal_testing::input::{FakeButton, FakeWheel};
     use hal_testing::light::FakeLight;
+    use hal_testing::system::StubSystemMonitor;
 
     use super::*;
 
@@ -267,16 +268,6 @@ mod tests {
         }
         fn battery_sense_millivolts(&mut self) -> Result<u32, Fault> {
             Ok(900)
-        }
-    }
-
-    struct StubSystemMonitor;
-    impl SystemMonitor for StubSystemMonitor {
-        fn free_heap_bytes(&self) -> u32 {
-            200 * 1024
-        }
-        fn largest_free_block_bytes(&self) -> u32 {
-            100 * 1024
         }
     }
 
