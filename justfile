@@ -78,6 +78,9 @@ release:
     elif ! echo "$version" | grep -Eq '^[0-9]{4}\.[1-9][0-9]?\.(0|[1-9][0-9]*)$'; then
         echo "The tag v$version is not v<year>.<month>.<n> with no leading zero." >&2
         exit 1
+    elif grep -qx '## Unreleased' CHANGELOG.md UPDATING.md; then
+        echo "CHANGELOG.md or UPDATING.md still says Unreleased, not $version." >&2
+        exit 1
     elif [ -n "$(git status --porcelain)" ]; then
         echo "Uncommitted changes go into the release, which still says $version." >&2
     fi

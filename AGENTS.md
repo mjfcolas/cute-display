@@ -81,6 +81,18 @@ the device boots it again.
 - ESP-IDF components that would write NVS on their own are configured not to (the Wi-Fi
   driver without NVS, PHY calibration not stored).
 
+### 8. The changelog is written with the change
+
+[`CHANGELOG.md`](CHANGELOG.md) and [`UPDATING.md`](UPDATING.md) are for people who own
+the clock; each change they would notice is in them in the same commit, under
+`## Unreleased`.
+
+- `CHANGELOG.md`: what they see or can do that is new, in their words: an app, a
+  setting, a control, a bug they met. Not how it is made: tests, tools, refactors.
+- `UPDATING.md`: what an update loses or changes under them (a setting lost, a file
+  moved, an answer to give the setup again), which the installer shows before it
+  updates.
+
 ## Commands
 
 In [docs/development.md](docs/development.md#commands), with what they need.
@@ -88,7 +100,7 @@ In [docs/development.md](docs/development.md#commands), with what they need.
 ## Before finishing a change
 
 `just test` and `just lint` pass with no warnings; the docs a change touches still tell
-the truth.
+the truth; the changelog says what it changes for people ([rule 8](#8-the-changelog-is-written-with-the-change)).
 
 The [`rules-reviewer`](.claude/agents/rules-reviewer.md) agent reviews a change against
 these rules.

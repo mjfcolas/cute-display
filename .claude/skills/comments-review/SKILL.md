@@ -1,6 +1,6 @@
 ---
 name: comments-review
-description: Review the comments and the docs of this repository against AGENTS.md rules 1 and 5.
+description: Review the comments and the docs of this repository against AGENTS.md rules 1, 5 and 8.
 ---
 
 # Reviewing comments and docs
@@ -65,6 +65,18 @@ code the change touches (`README.md`, `DESIGN.md`, `AGENTS.md`, `docs/`).
 A missing doc is a finding too: a new app, conf file or `just` recipe that no README
 mentions.
 
+## The changelog
+
+The rule is AGENTS.md's rule 8. `CHANGELOG.md` and `UPDATING.md` are history by nature:
+the history question does not apply to them.
+
+1. **Missing?** A change people who own the clock would notice (an app, a setting, a
+   control, a bug they met) with no line under `## Unreleased` in `CHANGELOG.md`; a
+   setting lost or a file moved with none in `UPDATING.md`.
+2. **Not theirs?** A line about tests, tools or a refactor, or one that says how a thing
+   is made rather than what they see or do.
+3. **Untrue?** A line that overstates the change: check it against the commit.
+
 ## Tags
 
 `comment: dead code`, `comment: history`, `comment: restates`,
@@ -72,4 +84,4 @@ mentions.
 `comment: stale`, `comment: duplicated`, `comment: needless context`,
 `comment: missing why`, `doc: stale`, `doc: history`,
 `doc: repeats code`, `doc: duplicated`, `doc: wrong file`, `doc: too big`, `doc: wordy`,
-`doc: missing`.
+`doc: missing`, `changelog`.

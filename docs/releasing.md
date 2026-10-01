@@ -7,9 +7,9 @@ from 0 (`v2026.9.0`, then `v2026.9.1`, then `v2026.10.0`), with no leading zero:
 wheel's name would drop it. The tag is the only place the version is written: the images
 and the installer take it from git.
 
-1. Say what changed under the new version in [`CHANGELOG.md`](../CHANGELOG.md), and in
-   [`UPDATING.md`](../UPDATING.md) what to know before updating to it, if anything. If
-   the image needs an installer newer than the one
+1. In [`CHANGELOG.md`](../CHANGELOG.md) and [`UPDATING.md`](../UPDATING.md), written as
+   the work went, `## Unreleased` becomes `## <version>`; `just release` refuses a tag
+   while it is there. If the image needs an installer newer than the one
    [`oldest-installer.txt`](../tools/release/oldest-installer.txt) names, as when a file
    the setup writes on the card changes, put the new version there. Commit.
 2. Tag that commit: `git tag v<version>`.
