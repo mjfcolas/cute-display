@@ -29,6 +29,7 @@ use ui::controls::{ButtonSample, ControlsSample};
 use ui::system::{OfferedApp, SystemScreen};
 use ui::{Hosted, Shell};
 use weather::WeatherScreen;
+use timer::{Timer, TimerScreen, TimerSettings, TimerSettingsStore};
 use zen::{Player, SessionLength, Soundscape, ZenScreen, ZenSessions, ZenSettings, ZenSettingsStore};
 
 struct StubAlarmSettingsStore;
@@ -108,6 +109,23 @@ fn zen_sessions(foreground: &Foreground) -> ZenSessions {
     zen.set_length(SessionLength::hours(8).unwrap_or_default());
     zen.set_soundscape(Soundscape::Recorded("Norwegian fjell.wav".into()));
     zen
+}
+
+struct StubTimerSettingsStore;
+
+struct StubTimerRinger;
+
+impl TimerSettingsStore for StubTimerSettingsStore {
+    fn load(&mut self) -> Option<TimerSettings> {
+        None
+    }
+    fn save(&mut self, _: &TimerSettings) {}
+}
+
+impl timer::Ringer for StubTimerRinger {
+    fn ring(&mut self, _: timer::Volume) {}
+    fn chime(&mut self, _: timer::Volume) {}
+    fn silence(&mut self) {}
 }
 
 struct StubForecastSource;
@@ -235,6 +253,8 @@ fn main() -> std::io::Result<()> {
     clock.tick(Instant::now());
     let alarm = alarm_clock(&foreground);
     let zen = zen_sessions(&foreground);
+    let timer = Timer::new(Box::new(StubTimerSettingsStore), Box::new(StubTimerRinger), foreground.clone());
+    timer.tick(Instant::now());
     if let Some(now) = clock.now() {
         alarm.tick(now);
         zen.tick(Instant::now(), Some(now));
@@ -244,6 +264,7 @@ fn main() -> std::io::Result<()> {
         Hosted { app: weather::ID, screen: Box::new(WeatherScreen::new(weather, clock.clone())) },
         Hosted { app: radar::ID, screen: Box::new(RadarScreen::new(radar.clone())) },
         Hosted { app: zen::ID, screen: Box::new(ZenScreen::new(zen.clone(), clock)) },
+        Hosted { app: timer::ID, screen: Box::new(TimerScreen::new(timer.clone())) },
     ];
     let offered = catalog::APPS.iter().map(|app| OfferedApp { app: app.id, title: app.title }).collect();
     let system = SystemScreen::new(foreground.clone(), settings, "2026.9.0", offered);
@@ -277,6 +298,14 @@ fn main() -> std::io::Result<()> {
             foreground.bring_to_front(zen::ID);
             let press = ButtonSample { presses: 1, held: false };
             shell.on_sample(&ControlsSample { long: press, ..Default::default() }, core::time::Duration::ZERO);
+        }
+        "timer" => {
+            foreground.bring_to_front(timer::ID);
+            timer.choose_next_mode();
+        }
+        "timer-running" => {
+            foreground.bring_to_front(timer::ID);
+            timer.start();
         }
         "system-settings" => {
             foreground.open_system();

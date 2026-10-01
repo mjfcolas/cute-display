@@ -204,7 +204,7 @@ class Questions(unittest.IsolatedAsyncioTestCase):
 
             await pilot.click(Button)
             self.assertIsInstance(app.screen, AppsScreen)
-            self.assertEqual(app.screen.query_one(SelectionList).selected, ['alarm', 'weather', 'radar', 'zen'])
+            self.assertEqual(app.screen.query_one(SelectionList).selected, ['alarm', 'weather', 'radar', 'zen', 'timer'])
 
             await pilot.click(Button)
             self.assertIsInstance(app.screen, AirportsScreen)
@@ -255,7 +255,7 @@ class Questions(unittest.IsolatedAsyncioTestCase):
             await settle(pilot)
             self.assertIsInstance(app.screen, DoneScreen)
 
-        self.assertEqual(app.answers.apps, ['alarm', 'weather', 'zen'])
+        self.assertEqual(app.answers.apps, ['alarm', 'weather', 'zen', 'timer'])
         self.assertEqual(sorted(clock.written[0]), ['cute-display/general.conf', 'cute-display/wifi.conf'])
 
     async def test_habitys_ringtones_are_offered_after_the_apps_and_copied(self):
@@ -356,7 +356,7 @@ class Questions(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(app.screen.query_one(SelectionList).selected, ['LFLY'])
             await pilot.press('escape')
             self.assertIsInstance(app.screen, AppsScreen)
-            self.assertEqual(app.screen.query_one(SelectionList).selected, ['alarm', 'weather', 'radar', 'zen'])
+            self.assertEqual(app.screen.query_one(SelectionList).selected, ['alarm', 'weather', 'radar', 'zen', 'timer'])
             await pilot.press('escape')
             self.assertIsInstance(app.screen, TimeZoneScreen)
             self.assertEqual(len(app.screen.query_one(OptionList).options), 1)

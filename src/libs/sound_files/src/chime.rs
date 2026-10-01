@@ -16,6 +16,11 @@ impl Chime {
         Self { sample_rate_hz, note: 0, sample: 0 }
     }
 
+    /// The samples of the phrase and the silence after it, once round.
+    pub fn phrase_samples(&self) -> usize {
+        PHRASE.iter().map(|&(_, ms)| self.samples_in(ms) as usize + 1).sum()
+    }
+
     fn samples_in(&self, ms: u32) -> u32 {
         self.sample_rate_hz * ms / 1000
     }
@@ -45,19 +50,16 @@ impl Iterator for Chime {
 }
 
 #[cfg(test)]
-pub(crate) mod tests {
+mod tests {
     use super::*;
 
-    pub const RATE: u32 = 8_000;
-
-    pub fn phrase_samples() -> usize {
-        PHRASE.iter().map(|&(_, ms)| (RATE * ms / 1000) as usize + 1).sum()
-    }
+    const RATE: u32 = 8_000;
 
     #[test]
     fn the_phrase_comes_round_again_and_reaches_full_scale() {
-        let samples: Vec<i16> = Chime::new(RATE).take(2 * phrase_samples()).collect();
-        let (first, second) = samples.split_at(phrase_samples());
+        let phrase = Chime::new(RATE).phrase_samples();
+        let samples: Vec<i16> = Chime::new(RATE).take(2 * phrase).collect();
+        let (first, second) = samples.split_at(phrase);
         assert_eq!(first, second);
         assert!(samples.iter().any(|s| s.abs() > i16::MAX / 2));
     }

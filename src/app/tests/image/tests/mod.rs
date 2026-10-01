@@ -6,4 +6,5 @@ mod starting;
 mod system;
 mod time;
 mod weather;
+mod timer;
 mod zen;

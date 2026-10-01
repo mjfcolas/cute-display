@@ -199,6 +199,7 @@ dependencies = [
  "alarm",
  "hal",
  "radar",
+ "timer",
  "ui",
  "weather",
  "zen",
@@ -1551,6 +1552,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.3",
+]
+
+[[package]]
+name = "timer"
+version = "0.1.0"
+dependencies = [
+ "conf_text",
+ "domain",
+ "embedded-graphics",
+ "log",
+ "sound_files",
+ "ui",
 ]
 
 [[package]]

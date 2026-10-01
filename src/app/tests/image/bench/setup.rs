@@ -12,6 +12,7 @@ pub const GENERAL_CONF: &str = "cute-display/general.conf";
 pub const WIFI_CONF: &str = "cute-display/wifi.conf";
 pub const ALARM_CONF: &str = "cute-display/apps/alarm/alarm.conf";
 pub const ZEN_CONF: &str = "cute-display/apps/zen/zen.conf";
+pub const TIMER_CONF: &str = "cute-display/apps/timer/timer.conf";
 pub const SETTINGS_CONF: &str = "cute-display/settings.conf";
 
 pub const OPEN_METEO: &str = "https://api.open-meteo.com/";

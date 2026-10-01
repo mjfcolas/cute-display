@@ -2,7 +2,7 @@
 # `firmware` targets xtensa-esp32s3-espidf and is excluded; it depends on these by path.
 [workspace]
 resolver = "2"
-members = ["src/engine/hal", "src/engine/hal_testing", "src/engine/drivers", "src/engine/domain", "src/engine/domain_testing", "src/engine/conf_text", "src/engine/infrastructure", "src/engine/ui", "src/engine/ui_testing", "src/maintenance", "src/hwtest", "src/app", "src/catalog", "src/simulator", "src/libs/forecast", "src/libs/sound_files", "src/apps/weather", "src/apps/radar", "src/apps/alarm", "src/apps/zen"]
+members = ["src/engine/hal", "src/engine/hal_testing", "src/engine/drivers", "src/engine/domain", "src/engine/domain_testing", "src/engine/conf_text", "src/engine/infrastructure", "src/engine/ui", "src/engine/ui_testing", "src/maintenance", "src/hwtest", "src/app", "src/catalog", "src/simulator", "src/libs/forecast", "src/libs/sound_files", "src/apps/weather", "src/apps/radar", "src/apps/alarm", "src/apps/zen", "src/apps/timer"]
 exclude = ["src/firmware"]
 
 [workspace.lints.clippy]

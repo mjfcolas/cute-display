@@ -17,6 +17,8 @@ beside Habity's own firmware, which one command brings back.
 - [Weather](docs/apps/weather/README.md): today, the coming hours, the week.
 - [Radar](docs/apps/radar/README.md): the aircraft around you.
 - [Zen](docs/apps/zen/README.md): a sound to fall asleep to, the lights dimming.
+- [Timer](docs/apps/timer/README.md): a countdown, pomodoro rounds, or a nap that wakes
+  with the light.
 - [System](docs/apps/system/README.md): the other apps, and the settings.
 
 ## Install

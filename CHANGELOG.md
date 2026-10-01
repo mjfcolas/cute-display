@@ -9,6 +9,8 @@ What changes from one release to the next, for whoever owns the clock.
   every day at a time or whenever you start it, the lights dimming; brown noise, or
   Habity's sleep sounds, which the setup offers to copy.
 - Alarm ringtones may be WAV files too.
+- [Timer](docs/apps/timer/README.md): a countdown that rings, pomodoro rounds of work and
+  breaks that chime, or a nap that wakes you with the light, then a ringing.
 
 ## 2026.10.0
 

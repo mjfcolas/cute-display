@@ -1,3 +1,4 @@
+mod chime;
 mod mp3;
 mod recording;
 mod shared_files;
@@ -7,6 +8,7 @@ mod wav;
 use domain::fetch::Unavailable;
 use domain::files::Files;
 
+pub use crate::chime::Chime;
 pub use crate::recording::Recording;
 pub use crate::shared_files::SharedFiles;
 pub use crate::volume::VolumeKnob;

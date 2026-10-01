@@ -1,9 +1,8 @@
 use domain::files::Files;
 use domain::sound::{Samples, Sound};
-use sound_files::{sound_files_in, Recording, SharedFiles, VolumeKnob};
+use sound_files::{sound_files_in, Chime, Recording, SharedFiles, VolumeKnob};
 
 use crate::domain::alarm_clock::{Ringer, Ringtone, Volume};
-use crate::infrastructure::chime::Chime;
 
 const RINGTONES_DIRECTORY: &str = "ringtones";
 
@@ -63,7 +62,12 @@ mod tests {
     use domain_testing::files::FakeFiles;
 
     use super::*;
-    use crate::infrastructure::chime::tests::{phrase_samples, RATE};
+
+    const RATE: u32 = 8_000;
+
+    fn phrase_samples() -> usize {
+        Chime::new(RATE).phrase_samples()
+    }
 
     #[derive(Clone, Default)]
     struct StubSound {

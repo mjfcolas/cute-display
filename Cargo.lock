@@ -273,6 +273,7 @@ dependencies = [
  "alarm",
  "hal",
  "radar",
+ "timer",
  "ui",
  "weather",
  "zen",
@@ -1931,6 +1932,7 @@ dependencies = [
  "maintenance",
  "minifb",
  "radar",
+ "timer",
  "ui",
  "ureq",
  "weather",
@@ -2098,6 +2100,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.6",
+]
+
+[[package]]
+name = "timer"
+version = "0.1.0"
+dependencies = [
+ "conf_text",
+ "domain",
+ "domain_testing",
+ "embedded-graphics",
+ "hal",
+ "log",
+ "sound_files",
+ "ui",
+ "ui_testing",
 ]
 
 [[package]]

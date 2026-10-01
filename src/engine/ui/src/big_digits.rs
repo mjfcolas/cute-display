@@ -50,17 +50,26 @@ impl DigitSize {
         }
     }
 
-    pub fn degrees_width(&self, degrees: i16) -> u32 {
-        let glyphs = degree_glyphs(degrees).len() as u32;
-        glyphs * (self.digit_width + self.gap) + self.degree_side()
+    /// With the gap after its last digit.
+    pub fn number_width(&self, number: i32) -> u32 {
+        number_glyphs(number).len() as u32 * (self.digit_width + self.gap)
     }
 
-    pub fn draw_degrees<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, degrees: i16, top_left: Point) {
+    pub fn draw_number<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, number: i32, top_left: Point) {
         let mut left = top_left.x;
-        for glyph in degree_glyphs(degrees) {
+        for glyph in number_glyphs(number) {
             self.draw_digit(target, glyph, Point::new(left, top_left.y));
             left += (self.digit_width + self.gap) as i32;
         }
+    }
+
+    pub fn degrees_width(&self, degrees: i16) -> u32 {
+        self.number_width(i32::from(degrees)) + self.degree_side()
+    }
+
+    pub fn draw_degrees<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, degrees: i16, top_left: Point) {
+        self.draw_number(target, i32::from(degrees), top_left);
+        let left = top_left.x + self.number_width(i32::from(degrees)) as i32;
         let ring = Rectangle::new(Point::new(left, top_left.y), Size::new(self.degree_side(), self.degree_side()));
         let style = PrimitiveStyleBuilder::new()
             .stroke_color(BinaryColor::On)
@@ -103,9 +112,9 @@ fn segments(n: u8) -> u8 {
     DIGITS.get(usize::from(n)).copied().unwrap_or(DASH)
 }
 
-fn degree_glyphs(degrees: i16) -> Vec<u8> {
-    let sign = (degrees < 0).then_some(DASH);
-    let digits = degrees.unsigned_abs().to_string().bytes().map(|b| segments(b.saturating_sub(b'0'))).collect::<Vec<_>>();
+fn number_glyphs(number: i32) -> Vec<u8> {
+    let sign = (number < 0).then_some(DASH);
+    let digits = number.unsigned_abs().to_string().bytes().map(|b| segments(b.saturating_sub(b'0'))).collect::<Vec<_>>();
     sign.into_iter().chain(digits).collect()
 }
 
@@ -174,5 +183,16 @@ mod tests {
         TEMPERATURE.draw_degrees(&mut cold, -7, Point::zero());
         assert!(cold.is_ink(TEMPERATURE.digit_width as i32 / 2, TEMPERATURE.height as i32 / 2), "a minus first");
         assert!(!warm.is_ink(TEMPERATURE.digit_width as i32 / 2, TEMPERATURE.height as i32 / 2));
+    }
+
+    #[test]
+    fn a_number_stays_in_its_box_its_last_gap_blank() {
+        for number in [0, 9, 47, 120] {
+            let mut frame = Frame::blank();
+            CLOCK.draw_number(&mut frame, number, Point::zero());
+            let width = CLOCK.number_width(number) as i32;
+            assert!(!ink_beyond(&frame, width - CLOCK.gap as i32, CLOCK.height as i32), "{number}");
+            assert!(frame.is_ink(width - CLOCK.gap as i32 - 1, CLOCK.height as i32 / 4), "{number}: the last digit ends the box");
+        }
     }
 }
