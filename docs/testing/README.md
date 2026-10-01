@@ -1,8 +1,8 @@
 # Testing
 
 A pyramid: many fast tests at the bottom, a few slow ones on top, each test in the
-lowest tier that can fail for the right reason. Not all tiers exist yet: the
-[plan](plan.md) says which, and what comes next.
+lowest tier that can fail for the right reason. The device's end-to-end tier waits for a
+risk only the device has that the others leave uncovered.
 
 | Tier | Where | Proves | Does not prove | Status |
 | --- | --- | --- | --- | --- |
@@ -11,7 +11,7 @@ lowest tier that can fail for the right reason. Not all tiers exist yet: the
 | Rendering | A screen's UI state drawn and compared with its crate's `references/<name>.png`, by [`ui_testing::references`](../../src/engine/ui_testing/src/references.rs) | That a UI state is drawn as expected | That it is the right UI state | In place |
 | Integration | The whole app image, `app::run`, in memory on test doubles of the hardware and a clock stepped by the test | The threads, the wiring, long spans of time, faults | The real process and its I/O | In place |
 | End-to-end, simulator | [Scenarios](../../tools/e2e/README.md) driving the headless simulator through the [maintenance console](../maintenance/README.md) | What a person does, from the controls to the screen, the lights, the sound and the card | The hardware | In place |
-| End-to-end, device | The same scenarios on the device, in a test mode that puts its card and clock back | Memory, stacks, TLS, the card, the RTC, the speaker, real time | The button pins and the glass: the [hardware test](../hwtest/README.md) covers those | Planned |
+| End-to-end, device | The same scenarios on the device, in a test mode that puts its card and clock back | Memory, stacks, TLS, the card, the RTC, the speaker, real time | The button pins and the glass: the [hardware test](../hwtest/README.md) covers those | Not yet |
 
 ## Where a test goes
 

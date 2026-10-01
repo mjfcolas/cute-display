@@ -17,8 +17,7 @@ The [simulator](simulator/README.md) runs the app image on a computer, and the
 
 ## Testing
 
-[The pyramid](testing/README.md): which tier a test goes in, and what each proves; its
-[plan](testing/plan.md), under way.
+[The pyramid](testing/README.md): which tier a test goes in, and what each proves.
 
 ## Apps
 
