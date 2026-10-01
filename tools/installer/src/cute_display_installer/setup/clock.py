@@ -10,7 +10,7 @@ from cute_display_link import usb
 from cute_display_link.card import entries
 from cute_display_link.console import ConsoleError
 
-from .. import releases
+from .. import releases, versions
 from ..flash import device
 from ..flash.layout import image_refusals
 from . import card
@@ -74,13 +74,13 @@ class UsbClock:
         return _step(back_up)
 
     def latest(self):
-        """The latest release's image, checked: whole, and a Cute Display image that fits."""
+        """The latest release, its image checked: whole, and a Cute Display image that fits."""
         def latest():
-            contents = releases.latest_image(report=lambda _: None)[1]
-            refusals = image_refusals(contents)
+            release = releases.latest_release(report=lambda _: None)
+            refusals = image_refusals(release.image) + release.installer_refusals(versions.this_installer_version())
             if refusals:
                 raise Failed(f'The latest release cannot be installed: {" ".join(refusals)}')
-            return contents
+            return release
         return _step(latest)
 
     def install(self, contents):

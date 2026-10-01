@@ -11,6 +11,8 @@ import zlib
 from dataclasses import dataclass
 from enum import Enum
 
+from .. import versions
+
 FLASH_SIZE = 0x1000000
 PARTITION_TABLE = 0x8000
 PARTITION_TABLE_SIZE = 0xc00
@@ -93,10 +95,7 @@ class AppImage:
 
     @property
     def release(self):
-        """The version as numbers to compare, `1.1.2` > `1.1.1`; None when it does not read so,
-        as a snapshot or a build between releases does (`-snapshot`, `-4-gabc1234`, `-dirty`)."""
-        parts = self.version.split('.')
-        return tuple(int(part) for part in parts) if all(part.isdigit() for part in parts) else None
+        return versions.release(self.version)
 
     def __str__(self):
         name = {STOCK_PROJECT: 'Habity', OUR_PROJECT: OUR_NAME}.get(self.project, self.project)

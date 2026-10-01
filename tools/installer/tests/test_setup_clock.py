@@ -75,14 +75,27 @@ class Install(unittest.TestCase):
 
 
 class Latest(unittest.TestCase):
+    def setUp(self):
+        patched = mock.patch.object(clock.versions, 'this_installer_version', return_value='2026.9.1')
+        patched.start()
+        self.addCleanup(patched.stop)
+
     def test_a_release_whose_image_is_not_cute_display_is_refused(self):
-        with mock.patch.object(clock.releases, 'latest_image', return_value=('x.bin', header('habity', '1.1.2'))):
+        with mock.patch.object(clock.releases, 'latest_release',
+                               return_value=releases.Release('x.bin', header('habity', '1.1.2'), ())):
             with self.assertRaisesRegex(Failed, 'latest release cannot be installed'):
                 UsbClock().latest()
 
+    def test_a_release_this_installer_version_is_too_old_for_is_refused(self):
+        with mock.patch.object(clock.releases, 'latest_release',
+                               return_value=releases.Release('x.bin', IMAGE, (), '2026.10.0')):
+            with self.assertRaisesRegex(Failed, 'needs installer 2026.10.0 or newer'):
+                UsbClock().latest()
+
     def test_a_cute_display_release_comes_through(self):
-        with mock.patch.object(clock.releases, 'latest_image', return_value=('x.bin', IMAGE)):
-            self.assertEqual(UsbClock().latest(), IMAGE)
+        release = releases.Release('x.bin', IMAGE, ())
+        with mock.patch.object(clock.releases, 'latest_release', return_value=release):
+            self.assertEqual(UsbClock().latest(), release)
 
 
 class Waiting(unittest.TestCase):

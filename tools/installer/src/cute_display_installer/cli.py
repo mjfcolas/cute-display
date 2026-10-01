@@ -11,7 +11,7 @@ from serial import SerialException
 from cute_display_link import card, usb
 from cute_display_link.console import ConsoleError
 
-from . import releases, rtc, web
+from . import releases, rtc, updating, versions, web
 from .card.copy import pull
 from .config import airports, general, places, radar
 from .flash import device
@@ -63,17 +63,26 @@ def confirmed(question):
 
 
 def install(image, yes):
+    updating_entries, installer_refusals = (), []
     if image:
         with open(image, 'rb') as f:
             contents = f.read()
     else:
-        image, contents = releases.latest_image()
-    refusals = image_refusals(contents)
+        release = releases.latest_release()
+        image, contents, updating_entries = release.name, release.image, release.updating_entries
+        installer_refusals = release.installer_refusals(versions.this_installer_version())
+    refusals = image_refusals(contents) + installer_refusals
     if refusals:
         sys.exit('\n'.join(f'Cannot install {image}: {r}' for r in refusals))
     new = app_image(contents[:APP_HEADER_SIZE])
 
     def go_ahead(placement):
+        ours = unit.ours()
+        to_know = () if ours is None else updating.to_know(updating_entries, unit.slots[ours], new)
+        for entry in to_know:
+            print(f'\nBefore updating to {entry.version}:\n{entry.text}\n')
+        if to_know and not (yes or confirmed(f'Update {unit.slots[ours]} to {new}?')):
+            return False
         if placement.erases and not (yes or confirmed(
                 f'Both slots hold Habity\'s firmware: {placement.erases} in {placement.slot} is erased for '
                 f'Cute Display, {unit.slots[unit.habity(besides=placement.slot)]} stays. Go on?')):

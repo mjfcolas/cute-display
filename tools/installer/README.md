@@ -22,7 +22,8 @@ Each step on its own, the device's flash whatever runs:
 ```sh
 cute-display check                # what each slot holds, which one boots, whether Cute Display can go in
 cute-display backup [directory]   # the whole flash into a file; it holds the Wi-Fi password
-cute-display install [image.bin]  # Cute Display into a slot, and boot it; the latest release's without an image
+cute-display install [image.bin]  # Cute Display into a slot, and boot it; the latest release's without an image,
+                                  # its UPDATING.md shown first
 cute-display boot <target>        # start habity (its newest firmware), factory, cute-display, app0 or app1
 ```
 

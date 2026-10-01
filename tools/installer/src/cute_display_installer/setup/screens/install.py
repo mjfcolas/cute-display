@@ -9,23 +9,29 @@ class InstallScreen(ChoiceScreen):
 
     def __init__(self):
         super().__init__()
-        self.contents = None
+        self.release = None
         self.offered = None
 
     def on_mount(self):
         self.say('Looking for the latest release...')
         self.work(self.app.clock.latest, self._found, self._failed)
 
-    def _found(self, contents):
-        self.contents = contents
-        self.offered = offer(self.app.unit, app_image(contents[:APP_HEADER_SIZE]))
+    def _found(self, release):
+        self.release = release
+        self.offered = offer(self.app.unit, app_image(release.image[:APP_HEADER_SIZE]), release.updating_entries)
         offering, latest, installed = self.offered.offering, self.offered.latest, self.offered.installed
         if offering is Offering.INSTALL:
             erasing = self.offered.placement.erases
             self.say(f'Install {latest} {self.offered.placement}?', Tone.PROBLEM if erasing else Tone.NEWS)
             self.show_buttons(('Install', 'install'), ('Not now', 'done'))
         elif offering is Offering.UPDATE:
-            self.say(f'{installed} is installed; update it to {latest}?')
+            question = f'{installed} is installed; update it to {latest}?'
+            if self.offered.to_know:
+                self.say('\n\n'.join([f'{question} Before you do:',
+                                       *(f'{entry.version}\n{entry.text}' for entry in self.offered.to_know)]),
+                         Tone.PROBLEM)
+            else:
+                self.say(question)
             self.show_buttons(('Update', 'install'), ('Not now', 'done'))
         elif offering is Offering.START:
             self.say(f"{installed} is installed, but the clock runs Habity's firmware: start Cute Display?")
@@ -47,7 +53,7 @@ class InstallScreen(ChoiceScreen):
         clock = self.app.clock
         if event.button.id == 'install':
             self.say('Installing, then waiting for the clock to start it: a minute or two...')
-            self.work(lambda: (clock.install(self.contents), clock.wait_for_cute_display()), self._cute_display_runs,
+            self.work(lambda: (clock.install(self.release.image), clock.wait_for_cute_display()), self._cute_display_runs,
                       self._failed)
         elif event.button.id == 'start':
             self.say('Starting Cute Display...')

@@ -26,5 +26,6 @@ beside Habity's own firmware, which one command brings back.
 ## Further
 
 - [Changelog](CHANGELOG.md): what each release changes.
+- [Updating](UPDATING.md): what to know before updating, which the installer shows.
 - [Notice](NOTICE.md): license, data sources, not affiliated with Habity.
 - [Development](docs/development.md): building, flashing, and how the project is made.

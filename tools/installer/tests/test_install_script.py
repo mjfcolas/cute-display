@@ -1,4 +1,5 @@
 import pathlib
+import re
 import shutil
 import stat
 import subprocess
@@ -97,6 +98,19 @@ class BothScripts(unittest.TestCase):
         for name in ('install.sh', 'install.cmd'):
             self.assertTrue(any('s|@WHEEL@|$wheel|g' in line and f'tools/installer/{name} >' in line
                                 for line in lines), name)
+
+    def test_the_release_recipe_carries_what_to_know_before_updating(self):
+        self.assertIn('cp UPDATING.md {{release_dir}}/', JUSTFILE.read_text())
+
+    def test_the_release_recipe_carries_the_oldest_installer(self):
+        self.assertIn('cp tools/release/oldest-installer.txt {{release_dir}}/', JUSTFILE.read_text())
+
+    def test_the_oldest_installer_is_checked_as_the_release_recipe_does(self):
+        lines = JUSTFILE.read_text().splitlines()
+        check = next(line for line in lines if 'tools/release/oldest-installer.txt; then' in line)
+        pattern = re.search(r"grep -Eqx '([^']+)'", check).group(1)
+        oldest = (INSTALLER.parents[1] / 'tools/release/oldest-installer.txt').read_text()
+        self.assertRegex(oldest, f'^{pattern}\n$')
 
 
 if __name__ == '__main__':

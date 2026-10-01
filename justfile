@@ -89,6 +89,12 @@ release:
     espflash save-image --chip esp32s3 {{elf_dir}}/app "$image"
     (cd {{release_dir}} && sha256sum "$(basename "$image")" > "$(basename "$image").sha256")
     cat "$image.sha256"
+    cp UPDATING.md {{release_dir}}/
+    if ! grep -Eqx '[0-9]{4}\.[1-9][0-9]?\.(0|[1-9][0-9]*)' tools/release/oldest-installer.txt; then
+        echo "tools/release/oldest-installer.txt is not one <year>.<month>.<n>." >&2
+        exit 1
+    fi
+    cp tools/release/oldest-installer.txt {{release_dir}}/
     uv build --quiet --wheel --out-dir {{release_dir}} tools/installer
     wheel=cute_display_installer-$wheel_version-py3-none-any.whl
     if [ "$version" = "$wheel_version" ]; then
@@ -98,9 +104,9 @@ release:
     fi
     sed "s|@WHEEL@|$wheel|g" tools/installer/install.sh > {{release_dir}}/install.sh
     sed "s|@WHEEL@|$wheel|g; s/\r*\$/\r/" tools/installer/install.cmd > {{release_dir}}/install.cmd
-    ls {{release_dir}}/*$version* {{release_dir}}/*$wheel_version* {{release_dir}}/install.*
+    ls {{release_dir}}/*$version* {{release_dir}}/*$wheel_version* {{release_dir}}/install.* {{release_dir}}/UPDATING.md {{release_dir}}/oldest-installer.txt
     if [ "$version" = "$wheel_version" ]; then
-        echo "Next: push v$version, and attach these five files to its GitHub release."
+        echo "Next: push v$version, and attach these seven files to its GitHub release."
     else
         echo "To try it: sh {{release_dir}}/install.sh, which installs this snapshot's installer and runs its setup."
     fi

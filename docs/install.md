@@ -64,7 +64,8 @@ The clock then runs the apps chosen among an [alarm clock](apps/alarm/README.md)
 ## Update, or change the settings
 
 The line [above](#in-short) again: it takes the latest installer, then the setup offers
-the update when a newer release is out, and the settings, which you may leave as they are.
+the update when a newer release is out, with what to [know before updating](../UPDATING.md)
+if anything, and the settings, which you may leave as they are.
 
 `uv tool uninstall cute-display-installer` removes the installer.
 

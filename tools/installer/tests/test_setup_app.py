@@ -7,6 +7,8 @@ from cute_display_installer.config.place import Place
 from cute_display_installer.config.places import Found
 from cute_display_installer.config.wifi import Wifi
 from cute_display_installer.flash.layout import AppImage, Security, Slot
+from cute_display_installer.releases import Release
+from cute_display_installer.updating import entries
 from cute_display_installer.setup.answers import Answers
 from cute_display_installer.setup.app import SetupApp
 from cute_display_installer.setup.clock import Failed
@@ -33,8 +35,8 @@ RUNNING = habity(booting=Slot.APP1, slots=slots(HABITY_1_1_1, AppImage('cute-dis
 class FakeClock:
     """A clock holding `unit` and a card with `answers`, remembering what it was asked."""
 
-    def __init__(self, unit=RUNNING, answers=None, unplugged=False):
-        self.unit, self.answers, self.unplugged = unit, answers or Answers(), unplugged
+    def __init__(self, unit=RUNNING, answers=None, unplugged=False, updating=()):
+        self.unit, self.answers, self.unplugged, self.updating = unit, answers or Answers(), unplugged, updating
         self.done, self.written, self.copied = [], [], []
 
     def read(self):
@@ -46,7 +48,7 @@ class FakeClock:
         return f'{folder}/habity-flash.bin'
 
     def latest(self):
-        return LATEST
+        return Release('cute-display-2026.9.0.bin', LATEST, self.updating)
 
     def install(self, contents):
         self.done.append('install')
@@ -134,6 +136,20 @@ class FirstPart(unittest.IsolatedAsyncioTestCase):
             await settle(pilot)
             await press(pilot, 'no')
             self.assertIn('Cute Display is in app1.', str(app.screen.query_one(Message).render()))
+
+    async def test_an_update_says_first_what_to_know_before_it(self):
+        clock = FakeClock(unit=habity(booting=Slot.APP1, slots=slots(HABITY_1_1_1, AppImage('cute-display', '2026.8.0'))),
+                          updating=entries("# Updating\n\n## 2026.9.0\n\n- The alarm's settings are lost.\n"))
+        app = setup_app(clock)
+        async with app.run_test() as pilot:
+            await settle(pilot)
+            await press(pilot, 'no')
+            await press(pilot, 'next')
+            said = str(app.screen.query_one(Message).render())
+            self.assertIn('Cute Display 2026.8.0 is installed; update it to Cute Display 2026.9.0?', said)
+            self.assertIn("The alarm's settings are lost.", said)
+            await press(pilot, 'install')
+        self.assertEqual(clock.done, ['read', 'install', 'wait'])
 
     async def test_a_cute_display_that_does_not_run_is_started(self):
         clock = FakeClock(unit=habity(booting=Slot.APP0, slots=slots(HABITY_1_1_1, AppImage('cute-display', '2026.9.0'))))
