@@ -18,7 +18,8 @@ pub struct FakeSteppedClock(Arc<Timeline>);
 
 struct Timeline {
     state: Mutex<State>,
-    changed: Condvar,
+    /// Told when a thread falls asleep: the test, moving time on, waits on it.
+    asleep: Condvar,
 }
 
 /// Handed out in the order the sleeps come, which breaks ties between equal deadlines.
@@ -37,6 +38,8 @@ struct State {
 struct Sleeper {
     deadline: Instant,
     ticket: Ticket,
+    /// Its own, so that waking it wakes no other.
+    woken: Arc<Condvar>,
 }
 
 impl FakeSteppedClock {
@@ -44,7 +47,7 @@ impl FakeSteppedClock {
     /// refused.
     pub fn for_threads(threads: usize) -> Self {
         let state = State { now: Instant::now(), threads, stuck_after: STUCK_AFTER, sleepers: Vec::new(), next_ticket: Ticket(0), running: None };
-        Self(Arc::new(Timeline { state: Mutex::new(state), changed: Condvar::new() }))
+        Self(Arc::new(Timeline { state: Mutex::new(state), asleep: Condvar::new() }))
     }
 
     /// For a test of a thread meant to get stuck, so that it fails quickly.
@@ -67,7 +70,7 @@ impl FakeSteppedClock {
             let sleeper = state.sleepers.swap_remove(at);
             state.now = state.now.max(sleeper.deadline);
             state.running = Some(sleeper.ticket);
-            self.0.changed.notify_all();
+            sleeper.woken.notify_one();
         }
         state.now = target;
     }
@@ -76,7 +79,7 @@ impl FakeSteppedClock {
         let stuck_after = state.stuck_after;
         let (state, waited) = self
             .0
-            .changed
+            .asleep
             .wait_timeout_while(state, stuck_after, |state| state.running.is_some() || state.sleepers.len() < state.threads)
             .unwrap_or_else(PoisonError::into_inner);
         assert!(
@@ -108,11 +111,12 @@ impl SteadyClock for FakeSteppedClock {
         let ticket = state.next_ticket;
         state.next_ticket = Ticket(ticket.0 + 1);
         let deadline = later(state.now, duration);
-        state.sleepers.push(Sleeper { deadline, ticket });
+        let woken = Arc::new(Condvar::new());
+        state.sleepers.push(Sleeper { deadline, ticket, woken: woken.clone() });
         // The others are asleep, the count being exact: this sleep ends the running one's turn.
         state.running = None;
-        self.0.changed.notify_all();
-        drop(self.0.changed.wait_while(state, |state| state.running != Some(ticket)).unwrap_or_else(PoisonError::into_inner));
+        self.0.asleep.notify_one();
+        drop(woken.wait_while(state, |state| state.running != Some(ticket)).unwrap_or_else(PoisonError::into_inner));
     }
 }
 

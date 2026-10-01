@@ -19,8 +19,13 @@ struct Web {
 
 impl StubHttpClient {
     pub fn answering(self, url_start: &str, body: impl Into<Vec<u8>>) -> Self {
-        lock(&self.0).answers.push((url_start.into(), body.into()));
+        self.starts_answering(url_start, body);
         self
+    }
+
+    /// For a server that comes back while the test runs.
+    pub fn starts_answering(&self, url_start: &str, body: impl Into<Vec<u8>>) {
+        lock(&self.0).answers.push((url_start.into(), body.into()));
     }
 
     pub fn asked(&self) -> Vec<String> {

@@ -201,35 +201,7 @@ mod tests {
     use super::*;
 
     /// Shaped like a real answer, trimmed of the fields not asked for.
-    const ANSWER: &str = r#"{
-        "latitude": 48.86, "longitude": 2.3399997, "timezone": "Europe/Paris",
-        "current_units": {"time": "iso8601", "temperature_2m": "°C", "weather_code": "wmo code"},
-        "current": {
-            "time": "2026-09-25T17:45", "interval": 900, "temperature_2m": 18.6, "weather_code": 3,
-            "apparent_temperature": 17.4, "relative_humidity_2m": 64, "pressure_msl": 1015.6,
-            "wind_speed_10m": 12.4, "wind_direction_10m": 214
-        },
-        "hourly_units": {"time": "iso8601", "temperature_2m": "°C", "weather_code": "wmo code"},
-        "hourly": {
-            "time": ["2026-09-25T17:00", "2026-09-25T18:00", "2026-09-25T19:00"],
-            "temperature_2m": [18.6, 17.4, 15.5],
-            "weather_code": [3, 61, 0],
-            "precipitation_probability": [5, 70, null],
-            "precipitation": [0.0, 2.35, null]
-        },
-        "daily_units": {"time": "iso8601", "weather_code": "wmo code"},
-        "daily": {
-            "time": ["2026-09-25", "2026-09-26", "2026-09-27", "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01"],
-            "weather_code": [3, 61, 2, 0, 45, 71, 95],
-            "temperature_2m_max": [21.4, 17.0, 19.2, 22.5, 16.1, 3.4, 18.0],
-            "temperature_2m_min": [11.6, 12.3, 9.8, 10.1, 8.0, -2.5, 11.9],
-            "precipitation_probability_max": [10, 85, 20, 0, 5, 60, null],
-            "sunrise": ["2026-09-25T07:40", "2026-09-26T07:41", "2026-09-27T07:43", "2026-09-28T07:44",
-                        "2026-09-29T07:46", "2026-09-30T07:47", "2026-10-01T07:49"],
-            "sunset": ["2026-09-25T19:43", "2026-09-26T19:41", "2026-09-27T19:39", "2026-09-28T19:36",
-                       "2026-09-29T19:34", "2026-09-30T19:32", "2026-10-01T19:30"]
-        }
-    }"#;
+    const ANSWER: &str = include_str!("../testdata/open-meteo.json");
 
     fn paris() -> Place {
         Place { name: "Paris".into(), point: GeoPoint { latitude: 48.8566, longitude: 2.3522 } }

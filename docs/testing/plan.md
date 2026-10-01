@@ -1,6 +1,6 @@
 # Testing plan
 
-> **Not done yet.** Steps 1 to 4 are done; **step 5 is the current one**. This file
+> **Not done yet.** Steps 1 to 5 are done; **step 6 is the current one**. This file
 > is updated as each step lands, and goes once the last one has: the
 > [pyramid](README.md) and the code are then the reference.
 
@@ -64,8 +64,8 @@
 - The other contracts have no check: what they promise (a panel may redraw more than
   asked, a speaker plays, a place or an answer is given) leaves a double nothing to
   keep.
-- `StubHttpClient` answers by URL and `StubUdpClient` as an NTP server (done); still to
-  come, with steps 5 and 6: responses recorded from the real services.
+- `StubHttpClient` answers by URL and `StubUdpClient` as an NTP server, open-meteo's
+  answer recorded in `src/libs/forecast/testdata/` (done); the others' with step 6.
 - `domain`'s own tests keep their doubles: a crate cannot use one built on itself.
 
 ### D. Virtual time, and the app image in a test
@@ -123,11 +123,10 @@ still true.
 4. **Done.** The description to the console (B): each screen and the `Shell` say
    what they drew, `describe` answers it, `remote describe` prints it, the `drive` skill
    reads it.
-5. **Current.** The integration tier (D): the stepped clock, the test hardware,
-   starting with and without a card, a night until the alarm (dawn, in front, ringing,
-   snoozed), NTP setting the RTC and retrying ten minutes later (done); the alarm
-   stopped, a recorded forecast shown.
-6. The deterministic simulator (E) and the console's synchronisation (F), but `restart`.
+5. **Done.** The integration tier (D): the stepped clock, the test hardware, and its
+   tests in `src/app/tests/image/tests/`, by screen where a screen is concerned.
+6. **Current.** The deterministic simulator (E) and the console's synchronisation (F),
+   but `restart`.
 7. The end-to-end harness on the simulator (G), five to eight scenarios: start, switching
    apps, setting an alarm, ringing on time, the light, recorded weather, recorded radar,
    system settings kept on the card.
