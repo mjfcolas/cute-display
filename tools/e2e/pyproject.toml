@@ -1,0 +1,22 @@
+[project]
+name = "cute-display-e2e"
+version = "0"
+description = "Cute Display from the outside: scenarios a person would play, on the simulator through its console."
+requires-python = ">=3.11"
+dependencies = [
+    "cute-display-link",
+    "pytest>=8,<9",
+]
+
+[tool.uv.sources]
+cute-display-link = { path = "../link", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cute_display_e2e"]
+
+[tool.pytest.ini_options]
+testpaths = ["scenarios"]

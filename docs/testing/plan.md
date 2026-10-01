@@ -1,6 +1,6 @@
 # Testing plan
 
-> **Not done yet.** Steps 1 to 6 are done; **step 7 is the current one**. This file
+> **Not done yet.** Steps 1 to 7 are done; **step 8 is the current one**. This file
 > is updated as each step lands, and goes once the last one has: the
 > [pyramid](README.md) and the code are then the reference.
 
@@ -98,20 +98,24 @@
 - `tools/link`'s `KeepingLog` keeps the log lines no request consumes, for diagnostics and
   to catch a crash or a reboot (done).
 
-### G. The end-to-end harness, `tools/e2e`, pytest
+### G. The end-to-end harness, `tools/e2e`, pytest — done on the simulator
 
-- A `target` fixture: `Simulator` or `Device`.
-- `Simulator`, one per scenario: a copy of `tools/e2e/cards/standard/`, `--headless
-  --speed N --time T --web tools/e2e/web/`; its log is its standard error.
+- A simulator per scenario (done): a copy of `tools/e2e/cards/standard/`, `--headless
+  --speed N --time T --web tools/e2e/web/`, `T` when `web/` was recorded; its log is its
+  standard error.
+- With step 8, a `target` fixture: that simulator, or the device.
 - `Device`, one per session, in test mode: keep `cute-display/`'s conf files, put the
   test card's (no `wifi.conf`: offline, no NTP), `clock set T`, `restart`; at the end,
   failed or not, put them back, set the real time, `restart`.
-- Scenarios see the console alone: controls, `describe`, lights, sound, clock, card.
+- Scenarios see the console alone: controls, `describe`, lights, sound, clock, card (done;
+  but the files a card starts with, put before the simulator starts).
 - Markers: `sim_only` (recorded data: weather, radar), `device_only` (a real fetch:
   `wifi.conf` back, a forecast eventually arrives), `device_smoke` (what runs on the
   device).
-- A scenario fails if the log shows a panic or an unexpected restart.
-- `just e2e [pytest arguments]` on the simulator, `just e2e-device` (monitor closed).
+- A scenario fails if the log shows a panic or the simulator ends (done), or the device
+  restarts unasked.
+- `just e2e [pytest arguments]` on the simulator (done), `just e2e-device` (monitor
+  closed).
 
 ## Steps
 
@@ -129,10 +133,11 @@ still true.
    tests in `src/app/tests/image/tests/`, by screen where a screen is concerned.
 6. **Done.** The deterministic simulator (E) and the console's synchronisation (F),
    but `restart`.
-7. **Current.** The end-to-end harness on the simulator (G), five to eight scenarios: start, switching
-   apps, setting an alarm, ringing on time, the light, recorded weather, recorded radar,
-   system settings kept on the card.
-8. The device's test mode: `restart`, keeping and restoring, `just e2e-device`,
+7. **Done.** The end-to-end harness on the simulator (G), seven scenarios: start, switching
+   apps, setting an alarm, ringing and its speaker, recorded weather, recorded radar, system
+   settings kept on the card across a restart. The light, and the time before the alarm,
+   are the integration tier's: they need time to pass.
+8. **Current.** The device's test mode: `restart`, keeping and restoring, `just e2e-device`,
    `device_smoke`, a first run on the clock.
 
 ## Checking each step

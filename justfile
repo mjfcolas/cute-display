@@ -15,11 +15,12 @@ sim_console := justfile_directory() / "target/simulator.sock"
 default:
     @just --list
 
-# run the host tests: the crates, the installer and its link, the test images' maker, the release's version
+# run the host tests: the crates, the installer and its link, the end-to-end harness, the test images' maker, the release's version
 test:
     cargo test --workspace
     uv run --quiet --project tools/installer python -m unittest discover --start-directory tools/installer/tests --quiet
     uv run --quiet --project tools/link python -m unittest discover --start-directory tools/link/tests --quiet
+    uv run --quiet --project tools/e2e python -m unittest discover --start-directory tools/e2e/tests --quiet
     uv run --quiet --project tools/installer python -m unittest discover --start-directory tools/test_flashes/tests --quiet
     python3 -m unittest discover --start-directory tools/release/tests --quiet
 
@@ -41,6 +42,10 @@ sim card="sim-sd" *flags:
 # the same on the simulator `just sim` started
 remote-sim *args:
     uv run --quiet --project {{justfile_directory()}}/tools/link remote --simulator {{sim_console}} {{args}}
+
+# the end-to-end scenarios on simulators of their own; pytest's arguments, `-k alarm` for one
+e2e *args:
+    uv run --quiet --project tools/e2e pytest tools/e2e/scenarios {{args}}
 
 # render the hardware test's report page to a PNG (`pattern` for the checkerboard)
 preview-hwtest page="" zoom="2":

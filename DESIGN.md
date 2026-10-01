@@ -146,7 +146,8 @@ docs/           installing and troubleshooting, development and releasing, the b
 tools/          host tools: the [installer](tools/installer/README.md) (the device's flash
                 and SD card, the step-by-step setup, radar airports, RTC registers), whole-flash
                 test images for it, the [link](tools/link/README.md) to the device's console it
-                shares with tests, and that turns a frame dump into a PNG
+                shares with tests, and that turns a frame dump into a PNG, and the
+                [end-to-end scenarios](tools/e2e/README.md) on the simulator
 ```
 
 ## Applications

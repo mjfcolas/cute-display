@@ -10,7 +10,7 @@ lowest tier that can fail for the right reason. Not all tiers exist yet: the
 | Contract | The `check_*` of `hal_testing` and `domain_testing`, each run on every double and every host implementation of its contract | That the doubles tell the truth | What the chips do | In place |
 | Rendering | A screen's UI state drawn and compared with its crate's `references/<name>.png`, by [`ui_testing::references`](../../src/engine/ui_testing/src/references.rs) | That a UI state is drawn as expected | That it is the right UI state | In place |
 | Integration | The whole app image, `app::run`, in memory on test doubles of the hardware and a clock stepped by the test | The threads, the wiring, long spans of time, faults | The real process and its I/O | In place |
-| End-to-end, simulator | Scenarios driving the headless simulator through the [maintenance console](../maintenance/README.md) | What a person does, from the controls to the screen, the lights, the sound and the card | The hardware | Planned |
+| End-to-end, simulator | [Scenarios](../../tools/e2e/README.md) driving the headless simulator through the [maintenance console](../maintenance/README.md) | What a person does, from the controls to the screen, the lights, the sound and the card | The hardware | In place |
 | End-to-end, device | The same scenarios on the device, in a test mode that puts its card and clock back | Memory, stacks, TLS, the card, the RTC, the speaker, real time | The button pins and the glass: the [hardware test](../hwtest/README.md) covers those | Planned |
 
 ## Where a test goes
@@ -34,6 +34,7 @@ lowest tier that can fail for the right reason. Not all tiers exist yet: the
 - `UPDATE_REFERENCES=1 cargo test`: the frames drawn become the rendering references;
   look at them before committing.
 - `just lint`: clippy, host and ESP32.
+- `just e2e [pytest arguments]`: the end-to-end scenarios on the simulator.
 - `just preview <screen>`: a screen as a PNG, to look at.
 - `just remote-sim …` and `just remote …`: the console by hand, on the simulator or the
   device.
