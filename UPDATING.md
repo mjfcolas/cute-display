@@ -5,7 +5,7 @@ changes for whoever owns the clock, not all it changes, which is the
 [changelog](CHANGELOG.md)'s. The installer shows the entries after the installed version
 up to the one it installs, before it updates.
 
-## Unreleased
+## 2026.10.0
 
 - The alarm's wake-up times, and whether it is on, are lost: set them again on the clock.
 - The place, the time zone and the airports the radar names are lost: answer the setup's

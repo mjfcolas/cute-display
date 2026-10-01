@@ -3,7 +3,7 @@
 What changes from one release to the next, for whoever owns the clock.
 [Releasing](docs/releasing.md) says how one is made.
 
-## Unreleased
+## 2026.10.0
 
 - Alarm ringtones: Habity's own beside the chime, chosen in the alarm's settings, each
   playing softly while the wheel goes round them; the setup offers to copy them from
