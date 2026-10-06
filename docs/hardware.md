@@ -43,7 +43,7 @@ The console is the USB Serial/JTAG (`303a:1001`); there is no reachable UART.
 
 Measured, no datasheet. What the driver relies on is written beside the code, in
 [`src/engine/drivers/src/uc8253/`](../src/engine/drivers/src/uc8253/). Clean full refresh ≈ 2.6 s (up
-to 6.9 s cold); fast partial ≈ 350 ms.
+to 6.9 s cold); fast ≈ 350 ms, in a partial window or on the whole glass.
 
 ## Flash layout of this unit
 

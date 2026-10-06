@@ -8,7 +8,7 @@ use hal::display::{EpaperDisplay, Frame, Redraw, Refreshed};
 use hal::Fault;
 
 use super::memory::{self, Image, BYTES};
-use super::refresh::{fast_windows, partial_window, Plan, RefreshPolicy};
+use super::refresh::{fast_area, FastArea, Plan, RefreshPolicy};
 use crate::or_fault::OrFault;
 
 mod command {
@@ -160,33 +160,37 @@ impl Uc8253 {
     }
 
     fn refresh_rows(&mut self, rows: &RangeInclusive<usize>) -> Result<Refreshed, Fault> {
-        let mut took = Duration::ZERO;
-        for window in fast_windows(rows) {
-            took += self.refresh_window(&window)?;
-        }
-        Ok(Refreshed::Columns { count: rows.clone().count() as u16, took })
-    }
-
-    fn refresh_window(&mut self, rows: &RangeInclusive<usize>) -> Result<Duration, Fault> {
-        let window = partial_window(rows);
+        let area = fast_area(rows);
         let Memories { holding_glass, receiving } = self.memories();
         self.power_on()?;
-        // Each memory in its own partial block: sharing one spills outside the window.
-        for (memory, image) in [(holding_glass, &self.on_glass), (receiving, &self.wanted)] {
-            self.bus.command(command::PARTIAL_IN, &[])?;
-            self.bus.command(command::PARTIAL_WINDOW, &window)?;
-            self.bus.command(memory, memory::rows(image, rows))?;
-            self.bus.command(command::PARTIAL_OUT, &[])?;
+        match &area {
+            // Each memory in its own partial block: sharing one spills outside the window.
+            FastArea::Window(window) => {
+                for (memory, image) in [(holding_glass, &self.on_glass), (receiving, &self.wanted)] {
+                    self.bus.command(command::PARTIAL_IN, &[])?;
+                    self.bus.command(command::PARTIAL_WINDOW, window)?;
+                    self.bus.command(memory, memory::rows(image, rows))?;
+                    self.bus.command(command::PARTIAL_OUT, &[])?;
+                }
+            }
+            FastArea::WholeGlass => {
+                self.bus.command(holding_glass, &self.on_glass[..])?;
+                self.bus.command(receiving, &self.wanted[..])?;
+            }
         }
         self.bus.command(command::TEMPERATURE_SOURCE, &[TEMPERATURE_FROM_REGISTER])?;
         self.bus.command(command::TEMPERATURE, &[FAST_WAVEFORM_TEMPERATURE])?;
         self.bus.command(command::VCOM_AND_DATA_INTERVAL, &[VCOM_FAST])?;
-        self.bus.command(command::PARTIAL_IN, &[])?;
-        self.bus.command(command::PARTIAL_WINDOW, &window)?;
+        if let FastArea::Window(window) = &area {
+            self.bus.command(command::PARTIAL_IN, &[])?;
+            self.bus.command(command::PARTIAL_WINDOW, window)?;
+        }
 
         let took = self.refresh();
 
-        self.bus.command(command::PARTIAL_OUT, &[])?;
+        if let FastArea::Window(_) = area {
+            self.bus.command(command::PARTIAL_OUT, &[])?;
+        }
         // The forced temperature persists and would select the fast bank for every
         // later refresh.
         self.bus.command(command::TEMPERATURE_SOURCE, &[TEMPERATURE_FROM_SENSOR])?;
@@ -195,7 +199,7 @@ impl Uc8253 {
         let took = took?;
 
         memory::rows_mut(&mut self.on_glass, rows).copy_from_slice(memory::rows(&self.wanted, rows));
-        Ok(took)
+        Ok(Refreshed::Columns { count: rows.clone().count() as u16, took })
     }
 
     fn refresh(&mut self) -> Result<Duration, Fault> {

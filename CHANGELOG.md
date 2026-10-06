@@ -15,6 +15,8 @@ What changes from one release to the next, for whoever owns the clock.
   or square, the lights and a breath of sound rising and falling with you until you stop.
 - The system app's apps scroll when they do not all fit, an arrow saying more are above
   or below.
+- A change across most of the screen, such as going from one app to another, shows in
+  one go, twice as fast.
 
 ## 2026.10.0
 

@@ -5,7 +5,7 @@ use hal::display::{Redraw, HEIGHT};
 use super::memory::{self, Image};
 
 /// Wider partial windows run the waveform and change nothing.
-const MAX_FAST_ROWS: usize = 320;
+const MAX_WINDOW_ROWS: usize = 320;
 /// Fast refreshes leave ghosts that only a clean one erases.
 const FAST_REFRESHES_BETWEEN_CLEAN: u32 = 1000;
 
@@ -51,14 +51,25 @@ impl RefreshPolicy {
     }
 }
 
-pub fn fast_windows(rows: &RangeInclusive<usize>) -> impl Iterator<Item = RangeInclusive<usize>> {
-    let last = *rows.end();
-    rows.clone().step_by(MAX_FAST_ROWS).map(move |first| first..=last.min(first + MAX_FAST_ROWS - 1))
+#[derive(Debug, PartialEq, Eq)]
+pub enum FastArea {
+    Window([u8; 7]),
+    /// Without partial mode, the fast waveform drives the whole glass in the time a
+    /// window takes.
+    WholeGlass,
+}
+
+pub fn fast_area(rows: &RangeInclusive<usize>) -> FastArea {
+    if rows.clone().count() <= MAX_WINDOW_ROWS {
+        FastArea::Window(partial_window(rows))
+    } else {
+        FastArea::WholeGlass
+    }
 }
 
 /// Always the full height. The last byte leaves "scan every gate line" off: on, a
 /// small window wears a full-width band into the glass.
-pub fn partial_window(rows: &RangeInclusive<usize>) -> [u8; 7] {
+fn partial_window(rows: &RangeInclusive<usize>) -> [u8; 7] {
     let [first_hi, first_lo] = (*rows.start() as u16).to_be_bytes();
     let [last_hi, last_lo] = (*rows.end() as u16).to_be_bytes();
     [0, (HEIGHT - 1) as u8, first_hi, first_lo, last_hi, last_lo, 0]
@@ -111,10 +122,11 @@ mod tests {
     }
 
     #[test]
-    fn rows_too_many_for_one_window_are_split_into_the_widest_windows() {
-        assert_eq!(fast_windows(&(10..=300)).collect::<Vec<_>>(), vec![10..=300]);
-        assert_eq!(fast_windows(&(0..=415)).collect::<Vec<_>>(), [0..=319, 320..=415]);
-        assert_eq!(fast_windows(&(0..=MAX_FAST_ROWS)).collect::<Vec<_>>(), [0..=319, 320..=320]);
+    fn rows_too_many_for_one_window_are_refreshed_without_one() {
+        assert_eq!(fast_area(&(10..=300)), FastArea::Window([0, 239, 0, 10, 1, 44, 0]));
+        assert!(matches!(fast_area(&(0..=MAX_WINDOW_ROWS - 1)), FastArea::Window(_)));
+        assert_eq!(fast_area(&(0..=MAX_WINDOW_ROWS)), FastArea::WholeGlass);
+        assert_eq!(fast_area(&(0..=415)), FastArea::WholeGlass);
     }
 
     #[test]
