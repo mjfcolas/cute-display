@@ -63,6 +63,8 @@ the device keeps running.
   part does is in its own README. What developers need starts at `docs/development.md`.
 - The code is the reference for behaviour and details: docs do not repeat what a name,
   a type or a module comment already says.
+- The apps are listed once, in the root `README.md`; elsewhere, docs and diagrams speak
+  of an app in general, so that a new app changes none of them.
 
 ### 6. On the SD card, ours is under `cute-display/`
 

@@ -26,11 +26,11 @@ The engine, what the apps run on:
 The apps, on it, listed by `catalog`, which the composition roots share:
 
 ```
-   apps/weather ──▶ libs/forecast ◀── apps/alarm ──▶ libs/sound_files ◀── apps/zen, apps/timer, apps/breathe     apps/radar
-        │                │                 │                 │                          │                          │
-        └────────────────┴─────────────────┴────────┬────────┴──────────────────────────┴──────────────────────────┘
-                                                    ▼
-                    engine: domain (what it lends an app), ui (the shell, the toolkit), conf_text
+   apps/<app> ──▶ libs/<lib>
+        │              │
+        └──────┬───────┘
+               ▼
+   engine: domain (what it lends an app), ui (the shell, the toolkit), conf_text
 ```
 
 `maintenance` and `hwtest`, beside the diagrams, depend on `hal` alone.
@@ -131,9 +131,8 @@ src/            the sources, one crate per directory
                     world, and the checks each implementation passes
     drivers/        ESP32-S3 implementations of hal; chip logic that needs no ESP32 is
                     host-tested
-  libs/           what apps share: forecasts, sound files, the chime and brown noise
-  apps/           one crate per app: the alarm clock, the weather, the radar, zen, the timer,
-                  breathing
+  libs/           what several apps share, as code
+  apps/           one crate per app
   catalog/        the apps an image can hold, the same for the board and the computer
   maintenance/    the console on the USB cable (a Unix socket on the simulator): the SD
                   card, and the remote for tests
@@ -145,7 +144,7 @@ src/            the sources, one crate per directory
 docs/           installing and troubleshooting, development and releasing, the board, and a
                 README per app, console and test image
 tools/          host tools: the [installer](tools/installer/README.md) (the device's flash
-                and SD card, the step-by-step setup, radar airports, RTC registers), whole-flash
+                and SD card, the step-by-step setup), whole-flash
                 test images for it, the [link](tools/link/README.md) to the device's console it
                 shares with tests, and that turns a frame dump into a PNG, and the
                 [end-to-end scenarios](tools/e2e/README.md) on the simulator
@@ -171,7 +170,7 @@ that run and their order.
 - **Apps are independent**: none depends on another. What several share is a `libs`
   crate, and each has its own instance of it.
 - **Which app is in front is the domain's**: `Foreground` says which. Anything may
-  bring an app forward, not only the controls: an app's `tick` may (the alarm, Zen and the timer do).
+  bring an app forward, not only the controls: an app's `tick` may.
 - **Fetching**: on the network thread, one app after another, each says whether a fetch
   is due and then fetches. Only one fetch runs at a time, so an app keeps its requests
   bounded and rare; the engine brings the Wi-Fi up for a fetch and down once idle.

@@ -53,15 +53,11 @@ step, asking before it writes anything:
    It goes into a slot Habity's firmware does not use; when both hold one, the question
    says which older one would be erased. The one the clock was shipped with is never
    touched.
-4. **Set it up**: your Wi-Fi, your town, your time zone, your apps, Habity's alarm
-   ringtones copied for the alarm clock or not, Habity's sleep sounds copied for Zen or
-   not, and the airports on the radar, what the clock already holds filled in; written
-   onto the clock at the end, which then restarts.
+4. **Set it up**: your Wi-Fi, your town, your time zone, your apps and what they need,
+   what the clock already holds filled in; written onto the clock at the end, which then
+   restarts.
 
-The clock then runs the apps chosen among an [alarm clock](apps/alarm/README.md), the
-[weather](apps/weather/README.md), a [radar](apps/radar/README.md),
-[Zen](apps/zen/README.md), a [timer](apps/timer/README.md) and
-[Breathe](apps/breathe/README.md), with the
+The clock then runs the [apps](../README.md#apps) chosen, with the
 [system app](apps/system/README.md) a click of the wheel away.
 
 ## Update, or change the settings

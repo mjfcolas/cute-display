@@ -38,7 +38,7 @@ The [simulator](simulator/README.md) runs the app image on a computer, and the
 ```sh
 just test            # host tests
 just lint            # clippy, host and ESP32
-just preview         # render an app screen to a PNG (screens: just --list)
+just preview         # render an app screen to a PNG (screens: src/simulator/examples/app_screen.rs)
 just sim             # the app image in a window, the SD card in sim-sd/
 just fw              # build the app image, flash it, watch the log
 just fw hwtest       # the same with the hardware test image
@@ -58,8 +58,8 @@ just                 # every recipe
 The installer's cases on the device: `just test-bins <backup>`, `just test-flash <name>`
 and `just test-on-device` ([`tools/test_flashes/`](../tools/test_flashes/)).
 
-The README's screenshots are `just preview alarm`, `weather`, `radar` and `system`, each
-`/tmp/cute-display.png` copied into `images/<screen>.png`.
+The README's screenshots are `just preview <screen>`, `/tmp/cute-display.png` copied into
+`images/<screen>.png`.
 
 Building and flashing need the `esp` toolchain (`espup`, sourcing `~/export-esp.sh`),
 `espflash`, `ldproxy`, `just` and `uv`. [Releasing](releasing.md) says how a release is

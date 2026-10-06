@@ -2,7 +2,7 @@
 //!
 //!   cargo run -p simulator --example app_screen -- out.fb <screen>
 //!
-//! The screens are those `just --list` names for `preview`.
+//! The screens are those `main` names, the system app's for any other.
 
 use std::time::Instant;
 

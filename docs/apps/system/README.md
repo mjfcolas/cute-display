@@ -20,7 +20,7 @@ Without a card, they last until the power goes.
 ## Where the device is
 
 What every app shares, in `cute-display/general.conf`, written by the setup: the place
-the weather and the radar are about, and the time zone, in POSIX `TZ` form (Central
+the apps are about, and the time zone, in POSIX `TZ` form (Central
 European time without it). `time_zone_name` is the setup's own; the device ignores it.
 A new time zone shows within a minute; a new place at the apps' next update.
 
