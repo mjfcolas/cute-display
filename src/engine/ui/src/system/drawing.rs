@@ -1,7 +1,9 @@
 use embedded_graphics::mono_font::MonoFont;
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{Line, PrimitiveStyle, Rectangle};
+use core::ops::Range;
+
+use embedded_graphics::primitives::{Line, PrimitiveStyle, Rectangle, Triangle};
 
 use super::ui_state::{Current, SettingRow, SystemUiState};
 use crate::app_screen::DrawWithin;
@@ -15,6 +17,8 @@ const ROW_GAP: i32 = 4;
 const BOX_PADDING: i32 = 3;
 const CHOICE_GAP: i32 = 4;
 const SETTING_GAP: i32 = 10;
+const MORE_ARROW_WIDTH: i32 = 10;
+const MORE_ARROW_HEIGHT: i32 = 6;
 
 impl DrawWithin for SystemUiState {
     fn draw_within<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle) {
@@ -38,9 +42,24 @@ impl DrawWithin for SystemUiState {
         let divider = left + apps_width + COLUMN_GAP / 2;
         let _ = Line::new(Point::new(divider, columns_top), Point::new(divider, hint_top - SECTION_GAP)).into_styled(stroke).draw(target);
 
-        let mut apps_top = columns_top + heading(target, "apps", Point::new(left, columns_top), apps_width as u32, &HINT);
-        for app in &self.apps {
+        let columns_bottom = hint_top - SECTION_GAP;
+        let first_app_top = columns_top + heading(target, "apps", Point::new(left, columns_top), apps_width as u32, &HINT);
+        let row_pitch = row_height() + ROW_GAP;
+        let fitting = usize::try_from((columns_bottom - MORE_ARROW_HEIGHT - first_app_top + ROW_GAP) / row_pitch).unwrap_or(0);
+        let chosen = self.apps.iter().position(|app| app.mark == Mark::Chosen);
+        let shown = rows_in_sight(self.apps.len(), chosen, fitting);
+        let mut apps_top = first_app_top;
+        for app in self.apps.get(shown.clone()).unwrap_or_default() {
             apps_top += draw_row(target, app.title, Point::new(left, apps_top), apps_width as u32, app.mark) + ROW_GAP;
+        }
+        let more_left = left + apps_width - MORE_ARROW_WIDTH;
+        if shown.start > 0 {
+            let top = columns_top + (HINT.character_size.height as i32 - MORE_ARROW_HEIGHT) / 2;
+            draw_more_arrow(target, Point::new(more_left, top + MORE_ARROW_HEIGHT), Point::new(more_left + MORE_ARROW_WIDTH / 2, top));
+        }
+        if shown.end < self.apps.len() {
+            let top = columns_bottom - MORE_ARROW_HEIGHT;
+            draw_more_arrow(target, Point::new(more_left, top), Point::new(more_left + MORE_ARROW_WIDTH / 2, top + MORE_ARROW_HEIGHT));
         }
         let mut settings_top = columns_top + heading(target, "settings", Point::new(settings_left, columns_top), settings_width, &HINT);
         for setting in &self.settings {
@@ -70,8 +89,22 @@ fn draw_setting<D: DrawTarget<Color = BinaryColor>>(target: &mut D, setting: &Se
     top - top_left.y
 }
 
+fn rows_in_sight(count: usize, chosen: Option<usize>, fitting: usize) -> Range<usize> {
+    let start = chosen.map_or(0, |chosen| (chosen + 1).saturating_sub(fitting)).min(count.saturating_sub(fitting));
+    start..(start + fitting).min(count)
+}
+
+fn draw_more_arrow<D: DrawTarget<Color = BinaryColor>>(target: &mut D, base_left: Point, tip: Point) {
+    let base_right = Point::new(base_left.x + MORE_ARROW_WIDTH, base_left.y);
+    let _ = Triangle::new(base_left, base_right, tip).into_styled(PrimitiveStyle::with_fill(BinaryColor::On)).draw(target);
+}
+
+fn row_height() -> i32 {
+    BODY.character_size.height as i32 + 2 * BAR_PADDING
+}
+
 fn draw_row<D: DrawTarget<Color = BinaryColor>>(target: &mut D, label: &str, top_left: Point, width: u32, mark: Mark) -> i32 {
-    let height = BODY.character_size.height + 2 * BAR_PADDING as u32;
+    let height = row_height() as u32;
     let color = match mark {
         Mark::Chosen => {
             let _ = Rectangle::new(top_left, Size::new(width, height)).into_styled(PrimitiveStyle::with_fill(BinaryColor::On)).draw(target);
@@ -128,8 +161,9 @@ mod tests {
 
     #[test]
     fn nothing_is_drawn_outside_the_area() {
-        for chosen in APPS.into_iter().chain(SETTINGS) {
-            let frame = render(&state_choosing(chosen));
+        for state in APPS.into_iter().chain(SETTINGS).map(state_choosing).chain(MANY_APPS.into_iter().map(state_with_many_apps_choosing)) {
+            let chosen = state.apps.iter().find(|app| app.mark == Mark::Chosen).map_or("a setting", |app| app.title);
+            let frame = render(&state);
             for x in 0..i32::from(WIDTH) {
                 for y in 0..i32::from(HEIGHT) {
                     if frame.is_ink(x, y) {
@@ -160,6 +194,45 @@ mod tests {
     fn the_chosen_app_is_on_an_ink_bar() {
         assert!(bar_lines_under_the_apps(&render(&state_choosing("Radar"))) > 0);
         assert_eq!(bar_lines_under_the_apps(&render(&state_choosing("Backlight"))), 0);
+    }
+
+    const MANY_APPS: [&str; 7] = ["Alarm clock", "Weather", "Radar", "Zen", "Timer", "Breathe", "Ephemeris"];
+
+    fn state_with_many_apps_choosing(chosen: &str) -> SystemUiState {
+        let apps = MANY_APPS.map(|title| AppRow { title, mark: if title == chosen { Mark::Chosen } else { Mark::Plain } }).into();
+        SystemUiState { apps, ..state_choosing(chosen) }
+    }
+
+    #[test]
+    fn the_rows_shown_move_down_only_as_far_as_the_chosen_one_needs() {
+        assert_eq!(rows_in_sight(3, Some(2), 5), 0..3);
+        assert_eq!(rows_in_sight(7, None, 5), 0..5);
+        assert_eq!(rows_in_sight(7, Some(4), 5), 0..5);
+        assert_eq!(rows_in_sight(7, Some(5), 5), 1..6);
+        assert_eq!(rows_in_sight(7, Some(6), 5), 2..7);
+        assert_eq!(rows_in_sight(7, Some(9), 5), 2..7);
+        assert!(rows_in_sight(7, Some(3), 0).is_empty());
+    }
+
+    #[test]
+    fn many_apps_stay_above_the_hint_whichever_is_chosen() {
+        let hint_top = AREA.top_left.y + AREA.size.height as i32 - HINT.character_size.height as i32;
+        for chosen in MANY_APPS.into_iter().chain(SETTINGS) {
+            let frame = render(&state_with_many_apps_choosing(chosen));
+            let gap = (hint_top - SECTION_GAP..hint_top).flat_map(|y| (AREA.top_left.x..AREA.top_left.x + 100).map(move |x| (x, y)));
+            assert!(gap.into_iter().all(|(x, y)| !frame.is_ink(x, y)), "{chosen} chosen: an app runs into the hint");
+            assert!(bar_lines_under_the_apps(&frame) > 0 || SETTINGS.contains(&chosen), "{chosen} chosen and out of sight");
+        }
+    }
+
+    #[test]
+    fn the_last_of_many_apps_chosen_looks_as_its_reference() {
+        references::check(&render(&state_with_many_apps_choosing("Ephemeris")), env!("CARGO_MANIFEST_DIR"), "system-many-apps-scrolled");
+    }
+
+    #[test]
+    fn many_apps_from_the_first_look_as_their_reference() {
+        references::check(&render(&state_with_many_apps_choosing("Weather")), env!("CARGO_MANIFEST_DIR"), "system-many-apps");
     }
 
     #[test]

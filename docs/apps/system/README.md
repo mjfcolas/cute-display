@@ -4,7 +4,8 @@ The app launcher and the device's settings. Its title line says which version of
 Cute Display runs.
 
 - **Open**: click the wheel, from any app.
-- **Wheel**: move through the apps, then the settings.
+- **Wheel**: move through the apps, then the settings. Apps that do not all fit scroll,
+  an arrow saying more are above or below.
 - **Wheel click or long button**: open an app, or move a setting to its next value.
 - **Yellow**: back to the app it was opened from.
 

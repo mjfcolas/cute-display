@@ -13,6 +13,8 @@ What changes from one release to the next, for whoever owns the clock.
   breaks that chime, or a nap that wakes you with the light, then a ringing.
 - [Breathe](docs/apps/breathe/README.md): breathing to a rhythm, cardiac coherence, 4-7-8
   or square, the lights and a breath of sound rising and falling with you until you stop.
+- The system app's apps scroll when they do not all fit, an arrow saying more are above
+  or below.
 
 ## 2026.10.0
 
