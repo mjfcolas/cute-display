@@ -24,6 +24,12 @@ impl BrownNoise {
     }
 }
 
+impl Default for BrownNoise {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Iterator for BrownNoise {
     type Item = i16;
 

@@ -29,7 +29,7 @@ lint:
     cargo clippy --workspace --all-targets
     cd src/firmware && source ~/export-esp.sh && cargo clippy --release
 
-# render an app screen to a PNG: system, system-settings, alarm, alarm-settings, weather, weather-week, radar, zen, zen-settings, timer or timer-running
+# render an app screen to a PNG: system, system-settings, alarm, alarm-settings, weather, weather-week, radar, zen, zen-settings, timer, timer-running or breathe
 preview screen="system" zoom="2":
     cargo run --quiet -p simulator --example app_screen -- /tmp/cute-display.fb {{screen}}
     uv run --quiet --project tools/link python -m cute_display_link.frame /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}

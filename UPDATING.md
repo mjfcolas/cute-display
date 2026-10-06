@@ -7,8 +7,8 @@ up to the one it installs, before it updates.
 
 ## Unreleased
 
-- Zen and the timer, new apps, run only once chosen among the apps: answer the setup's
-  question again, if you chose your apps before.
+- Zen, the timer and Breathe, new apps, run only once chosen among the apps: answer the
+  setup's question again, if you chose your apps before.
 
 ## 2026.10.0
 

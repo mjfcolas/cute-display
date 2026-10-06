@@ -29,6 +29,7 @@ use ui::controls::{ButtonSample, ControlsSample};
 use ui::system::{OfferedApp, SystemScreen};
 use ui::{Hosted, Shell};
 use weather::WeatherScreen;
+use breathe::{Breath, BreatheScreen, Breathing, BreathingSettings, BreathingSettingsStore};
 use timer::{Timer, TimerScreen, TimerSettings, TimerSettingsStore};
 use zen::{Player, SessionLength, Soundscape, ZenScreen, ZenSessions, ZenSettings, ZenSettingsStore};
 
@@ -125,6 +126,22 @@ impl TimerSettingsStore for StubTimerSettingsStore {
 impl timer::Ringer for StubTimerRinger {
     fn ring(&mut self, _: timer::Volume) {}
     fn chime(&mut self, _: timer::Volume) {}
+    fn silence(&mut self) {}
+}
+
+struct StubBreathingSettingsStore;
+
+struct StubBreath;
+
+impl BreathingSettingsStore for StubBreathingSettingsStore {
+    fn load(&mut self) -> Option<BreathingSettings> {
+        None
+    }
+    fn save(&mut self, _: &BreathingSettings) {}
+}
+
+impl Breath for StubBreath {
+    fn sound_at(&mut self, _: breathe::Volume) {}
     fn silence(&mut self) {}
 }
 
@@ -255,6 +272,8 @@ fn main() -> std::io::Result<()> {
     let zen = zen_sessions(&foreground);
     let timer = Timer::new(Box::new(StubTimerSettingsStore), Box::new(StubTimerRinger), foreground.clone());
     timer.tick(Instant::now());
+    let breathing = Breathing::new(Box::new(StubBreathingSettingsStore), Box::new(StubBreath));
+    breathing.tick(Instant::now());
     if let Some(now) = clock.now() {
         alarm.tick(now);
         zen.tick(Instant::now(), Some(now));
@@ -265,6 +284,7 @@ fn main() -> std::io::Result<()> {
         Hosted { app: radar::ID, screen: Box::new(RadarScreen::new(radar.clone())) },
         Hosted { app: zen::ID, screen: Box::new(ZenScreen::new(zen.clone(), clock)) },
         Hosted { app: timer::ID, screen: Box::new(TimerScreen::new(timer.clone())) },
+        Hosted { app: breathe::ID, screen: Box::new(BreatheScreen::new(breathing.clone())) },
     ];
     let offered = catalog::APPS.iter().map(|app| OfferedApp { app: app.id, title: app.title }).collect();
     let system = SystemScreen::new(foreground.clone(), settings, "2026.9.0", offered);
@@ -306,6 +326,11 @@ fn main() -> std::io::Result<()> {
         "timer-running" => {
             foreground.bring_to_front(timer::ID);
             timer.start();
+        }
+        "breathe" => {
+            foreground.bring_to_front(breathe::ID);
+            breathing.turn_rhythm(1);
+            breathing.start();
         }
         "system-settings" => {
             foreground.open_system();

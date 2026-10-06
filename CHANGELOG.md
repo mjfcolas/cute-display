@@ -11,6 +11,8 @@ What changes from one release to the next, for whoever owns the clock.
 - Alarm ringtones may be WAV files too.
 - [Timer](docs/apps/timer/README.md): a countdown that rings, pomodoro rounds of work and
   breaks that chime, or a nap that wakes you with the light, then a ringing.
+- [Breathe](docs/apps/breathe/README.md): breathing to a rhythm, cardiac coherence, 4-7-8
+  or square, the lights and a breath of sound rising and falling with you until you stop.
 
 ## 2026.10.0
 

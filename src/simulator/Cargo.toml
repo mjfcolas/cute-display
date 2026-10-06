@@ -9,12 +9,13 @@ description = "The app image on a computer: the panel in a window, the controls 
 workspace = true
 
 [features]
-default = ["alarm", "weather", "radar", "zen", "timer"]
+default = ["alarm", "weather", "radar", "zen", "timer", "breathe"]
 alarm = ["catalog/alarm"]
 weather = ["catalog/weather"]
 radar = ["catalog/radar"]
 zen = ["catalog/zen"]
 timer = ["catalog/timer"]
+breathe = ["catalog/breathe"]
 
 [dependencies]
 app = { path = "../app" }
@@ -40,7 +41,8 @@ weather = { path = "../apps/weather" }
 radar = { path = "../apps/radar" }
 zen = { path = "../apps/zen" }
 timer = { path = "../apps/timer" }
+breathe = { path = "../apps/breathe" }
 
 [[example]]
 name = "app_screen"
-required-features = ["alarm", "weather", "radar", "zen", "timer"]
+required-features = ["alarm", "weather", "radar", "zen", "timer", "breathe"]

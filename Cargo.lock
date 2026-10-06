@@ -194,6 +194,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 
 [[package]]
+name = "breathe"
+version = "0.1.0"
+dependencies = [
+ "conf_text",
+ "domain",
+ "domain_testing",
+ "embedded-graphics",
+ "hal",
+ "log",
+ "sound_files",
+ "ui",
+ "ui_testing",
+]
+
+[[package]]
 name = "bstr"
 version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -271,6 +286,7 @@ name = "catalog"
 version = "0.1.0"
 dependencies = [
  "alarm",
+ "breathe",
  "hal",
  "radar",
  "timer",
@@ -1918,6 +1934,7 @@ version = "0.1.0"
 dependencies = [
  "alarm",
  "app",
+ "breathe",
  "catalog",
  "domain",
  "domain_testing",

@@ -60,7 +60,8 @@ step, asking before it writes anything:
 
 The clock then runs the apps chosen among an [alarm clock](apps/alarm/README.md), the
 [weather](apps/weather/README.md), a [radar](apps/radar/README.md),
-[Zen](apps/zen/README.md) and a [timer](apps/timer/README.md), with the
+[Zen](apps/zen/README.md), a [timer](apps/timer/README.md) and
+[Breathe](apps/breathe/README.md), with the
 [system app](apps/system/README.md) a click of the wheel away.
 
 ## Update, or change the settings

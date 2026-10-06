@@ -1,9 +1,8 @@
 use domain::files::Files;
 use domain::sound::{Samples, Sound};
-use sound_files::{sound_files_in, Recording, SharedFiles, VolumeKnob};
+use sound_files::{sound_files_in, BrownNoise, Recording, SharedFiles, VolumeKnob};
 
 use crate::domain::zen_sessions::{Player, Soundscape, Volume};
-use crate::infrastructure::brown_noise::BrownNoise;
 
 pub const SOUNDS_DIRECTORY: &str = "sounds";
 

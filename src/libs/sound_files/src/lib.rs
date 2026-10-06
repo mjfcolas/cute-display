@@ -1,3 +1,4 @@
+mod brown_noise;
 mod chime;
 mod mp3;
 mod recording;
@@ -8,6 +9,7 @@ mod wav;
 use domain::fetch::Unavailable;
 use domain::files::Files;
 
+pub use crate::brown_noise::BrownNoise;
 pub use crate::chime::Chime;
 pub use crate::recording::Recording;
 pub use crate::shared_files::SharedFiles;

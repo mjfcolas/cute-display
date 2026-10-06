@@ -1,4 +1,5 @@
 mod alarm;
+mod breathe;
 mod lighting;
 mod network;
 mod radar;

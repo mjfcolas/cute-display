@@ -12,9 +12,11 @@ pub const APPS: &[Installable<Frame>] = &[
     zen::app(),
     #[cfg(feature = "timer")]
     timer::app(),
+    #[cfg(feature = "breathe")]
+    breathe::app(),
 ];
 
-#[cfg(all(test, feature = "alarm", feature = "weather", feature = "radar", feature = "zen", feature = "timer"))]
+#[cfg(all(test, feature = "alarm", feature = "weather", feature = "radar", feature = "zen", feature = "timer", feature = "breathe"))]
 mod tests {
     use super::*;
 

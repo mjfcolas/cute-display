@@ -30,12 +30,13 @@ path = "src/bin/hwtest.rs"
 harness = false
 
 [features]
-default = ["alarm", "weather", "radar", "zen", "timer"]
+default = ["alarm", "weather", "radar", "zen", "timer", "breathe"]
 alarm = ["catalog/alarm"]
 weather = ["catalog/weather"]
 radar = ["catalog/radar"]
 zen = ["catalog/zen"]
 timer = ["catalog/timer"]
+breathe = ["catalog/breathe"]
 
 [dependencies]
 log = "0.4"

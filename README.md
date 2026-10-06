@@ -19,6 +19,8 @@ beside Habity's own firmware, which one command brings back.
 - [Zen](docs/apps/zen/README.md): a sound to fall asleep to, the lights dimming.
 - [Timer](docs/apps/timer/README.md): a countdown, pomodoro rounds, or a nap that wakes
   with the light.
+- [Breathe](docs/apps/breathe/README.md): breathing to a rhythm, the lights and a sound
+  rising and falling with you.
 - [System](docs/apps/system/README.md): the other apps, and the settings.
 
 ## Install

@@ -26,9 +26,9 @@ The engine, what the apps run on:
 The apps, on it, listed by `catalog`, which the composition roots share:
 
 ```
-   apps/weather ──▶ libs/forecast ◀── apps/alarm ──▶ libs/sound_files ◀── apps/zen, apps/timer     apps/radar
-        │                │                 │                 │                    │                    │
-        └────────────────┴─────────────────┴────────┬────────┴────────────────────┴────────────────────┘
+   apps/weather ──▶ libs/forecast ◀── apps/alarm ──▶ libs/sound_files ◀── apps/zen, apps/timer, apps/breathe     apps/radar
+        │                │                 │                 │                          │                          │
+        └────────────────┴─────────────────┴────────┬────────┴──────────────────────────┴──────────────────────────┘
                                                     ▼
                     engine: domain (what it lends an app), ui (the shell, the toolkit), conf_text
 ```
@@ -131,8 +131,9 @@ src/            the sources, one crate per directory
                     world, and the checks each implementation passes
     drivers/        ESP32-S3 implementations of hal; chip logic that needs no ESP32 is
                     host-tested
-  libs/           what apps share: forecasts, sound files and the chime
-  apps/           one crate per app: the alarm clock, the weather, the radar, zen, the timer
+  libs/           what apps share: forecasts, sound files, the chime and brown noise
+  apps/           one crate per app: the alarm clock, the weather, the radar, zen, the timer,
+                  breathing
   catalog/        the apps an image can hold, the same for the board and the computer
   maintenance/    the console on the USB cable (a Unix socket on the simulator): the SD
                   card, and the remote for tests
