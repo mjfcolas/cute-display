@@ -138,6 +138,10 @@ sd-rm path:
 remote *args:
     uv run --quiet --project {{justfile_directory()}}/tools/link remote {{args}}
 
+# how fast a put, the console, the card read through it and a copy on the card go (monitor closed)
+bench *args:
+    uv run --quiet --project {{justfile_directory()}}/tools/link bench {{args}}
+
 # step by step: back up the device, install or update Cute Display, set it up (monitor closed)
 setup:
     {{cute_display}} setup

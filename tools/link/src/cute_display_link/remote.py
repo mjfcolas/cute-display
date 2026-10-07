@@ -2,14 +2,10 @@
 computer; see its glass and read what it says, see its lights and its speaker; read and
 set its clock."""
 import argparse
-import sys
 from datetime import datetime
 
-from serial import SerialException
-
-from . import clock, controls, observation, usb
-from .console import ConsoleError
-from .simulator import NoSimulator, SimulatorLink
+from . import clock, controls, observation
+from .command import on_link
 
 
 def save_screen(link, arguments):
@@ -63,14 +59,4 @@ def main():
     rtc.set_defaults(act=show_clock)
 
     arguments = parser.parse_args()
-    try:
-        with SimulatorLink(arguments.simulator) if arguments.simulator else usb.open_link() as link:
-            arguments.act(link, arguments)
-    except usb.NoDevice as error:
-        sys.exit(str(error))
-    except SerialException as error:
-        sys.exit(usb.explain(error))
-    except NoSimulator as error:
-        sys.exit(str(error))
-    except ConsoleError as error:
-        sys.exit(f'The device: {error}')
+    on_link(arguments.simulator, lambda link: arguments.act(link, arguments))

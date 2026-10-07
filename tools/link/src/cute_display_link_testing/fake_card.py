@@ -54,6 +54,6 @@ class FakeCard:
             self.files[destination] = self.files[source]
             return ['ok']
         if verb == 'rm':
-            del self.files[rest]
+            self.files.pop(rest, None)
             return ['ok']
         return None

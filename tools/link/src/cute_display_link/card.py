@@ -33,7 +33,7 @@ def entries(link, directory=''):
         found.append(Entry(name=name, is_directory=entry_type == 'd', size=int(size)))
 
 
-def _read_range(link, path, offset):
+def read_range(link, path, offset):
     for _ in range(RANGE_ATTEMPTS):
         contents = bytearray()
         for kind, rest in Request(link, f'get {offset} {path}').replies():
@@ -49,7 +49,7 @@ def _read_range(link, path, offset):
 
 def read_file(link, path):
     contents = bytearray()
-    while chunk := _read_range(link, path, len(contents)):
+    while chunk := read_range(link, path, len(contents)):
         contents += chunk
     return bytes(contents)
 

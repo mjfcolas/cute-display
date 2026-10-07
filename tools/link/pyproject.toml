@@ -11,6 +11,7 @@ dependencies = [
 
 [project.scripts]
 remote = "cute_display_link.remote:main"
+bench = "cute_display_link.bench:main"
 
 [build-system]
 requires = ["hatchling>=1.27,<2", "hatch-vcs>=0.4,<1"]

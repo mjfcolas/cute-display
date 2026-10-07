@@ -19,3 +19,6 @@ just remote clock --set 2026-09-28T06:59:50  # sets the RTC, until the next dail
 
 - `just remote-sim …` does the same on the simulator `just sim` started, through its Unix
   socket.
+- `just bench`: how fast a put, the console alone, the card read through it and a copy on
+  the card go, so that a slow copy says where its time goes; it reads and copies the
+  largest of Habity's ringtones, else the file it put, and removes what it wrote.
