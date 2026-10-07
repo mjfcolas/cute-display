@@ -1,5 +1,6 @@
 pub mod button;
 pub mod chunked_copy;
+pub mod console_output;
 pub mod detents;
 pub mod ds3231;
 pub mod std_steady;
@@ -18,6 +19,8 @@ pub mod esp_system;
 #[cfg(target_os = "espidf")]
 pub mod esp_wifi;
 #[cfg(target_os = "espidf")]
+pub mod heap_bytes;
+#[cfg(target_os = "espidf")]
 pub mod i2c;
 #[cfg(target_os = "espidf")]
 pub mod i2s_speaker;
@@ -25,8 +28,6 @@ pub mod i2s_speaker;
 pub mod ledc_light;
 #[cfg(target_os = "espidf")]
 pub mod pcnt_encoder;
-#[cfg(target_os = "espidf")]
-pub mod psram;
 #[cfg(target_os = "espidf")]
 pub mod sdmmc_card;
 #[cfg(target_os = "espidf")]

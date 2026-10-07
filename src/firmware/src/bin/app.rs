@@ -1,4 +1,4 @@
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, LineWriter};
 use std::thread;
 use std::time::Duration;
 
@@ -8,10 +8,10 @@ use drivers::ds3231::Ds3231Clock;
 use drivers::esp_http::EspHttpsClient;
 use drivers::esp_system::EspSystem;
 use drivers::esp_wifi::EspWifiRadio;
+use drivers::heap_bytes::PsramBytes;
 use drivers::i2s_speaker::I2sSpeaker;
 use drivers::ledc_light::LedcLight;
 use drivers::pcnt_encoder::PcntEncoder;
-use drivers::psram::PsramBytes;
 use drivers::sdmmc_card::SdmmcCard;
 use drivers::std_steady::StdSteadyClock;
 use drivers::uc8253::Uc8253;
@@ -105,19 +105,21 @@ fn start_maintenance(
     observation: Observation,
     rtc: SharedRtc<Ds3231Clock>,
 ) -> Result<(), Fault> {
-    usb_console::listen()?;
+    let output = usb_console::listen()?;
     thread::Builder::new()
         .name("maintenance".into())
         .stack_size(16 * 1024)
         .spawn(move || {
             let mut console = MaintenanceConsole::new(card, remote, observation, rtc);
+            // A line a call, so that no other output lands in the middle of it.
+            let mut output = LineWriter::new(output);
             let mut line = String::new();
             loop {
                 line.clear();
                 let replied = io::stdin()
                     .lock()
                     .read_line(&mut line)
-                    .and_then(|_| console.on_line(&line, &mut io::stdout().lock()));
+                    .and_then(|_| console.on_line(&line, &mut output));
                 if let Err(e) = replied {
                     log::warn!("maintenance: {e}");
                     thread::sleep(Duration::from_secs(1));

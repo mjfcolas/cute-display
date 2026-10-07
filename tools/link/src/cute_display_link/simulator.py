@@ -1,6 +1,8 @@
 """The simulator's console, on the Unix socket it listens on (`--console`)."""
 import socket
 
+from .lines import Lines
+
 READ_TIMEOUT_S = 0.2
 
 
@@ -17,7 +19,7 @@ class SimulatorLink:
             self.socket.close()
             raise NoSimulator(f'No simulator on {path}: start one with --console {path}.') from None
         self.socket.settimeout(READ_TIMEOUT_S)
-        self.pending = b''
+        self.lines = Lines(self._receive)
 
     def write(self, data):
         self.socket.sendall(data)
@@ -25,17 +27,14 @@ class SimulatorLink:
     def flush(self):
         pass
 
+    def _receive(self):
+        try:
+            return self.socket.recv(4096)
+        except TimeoutError:
+            return b''
+
     def readline(self):
-        while b'\n' not in self.pending:
-            try:
-                received = self.socket.recv(4096)
-            except TimeoutError:
-                return b''
-            if not received:
-                return b''
-            self.pending += received
-        line, _, self.pending = self.pending.partition(b'\n')
-        return line + b'\n'
+        return self.lines.readline()
 
     def close(self):
         self.socket.close()

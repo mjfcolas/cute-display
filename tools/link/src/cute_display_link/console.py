@@ -29,9 +29,12 @@ class Request:
         deadline = time.monotonic() + self.timeout_s
         while time.monotonic() < deadline:
             line = self.link.readline().decode(errors='replace').strip()
-            if line.startswith(prefix):
+            # The device's console does not wait for a log line being written: a reply may
+            # come in the middle of one, the id telling it apart.
+            at = line.find(prefix)
+            if at >= 0:
                 deadline = time.monotonic() + self.timeout_s
-                kind, _, rest = line[len(prefix):].partition(' ')
+                kind, _, rest = line[at + len(prefix):].partition(' ')
                 if kind == 'error':
                     raise ConsoleError(rest)
                 yield kind, rest

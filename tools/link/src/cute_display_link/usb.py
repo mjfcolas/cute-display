@@ -4,6 +4,8 @@ import os
 import serial
 from serial.tools import list_ports
 
+from .lines import Lines
+
 ESPRESSIF_USB_JTAG = (0x303a, 0x1001)
 PORT_VARIABLE = 'CUTE_DISPLAY_PORT'
 
@@ -27,11 +29,26 @@ def port(ports=None):
     return found[0]
 
 
+class LineSerial(serial.Serial):
+    """A port whose `readline` is `Lines`'."""
+
+    def __init__(self, *arguments, **options):
+        self.lines = Lines(lambda: self.read(max(1, self.in_waiting)))
+        super().__init__(*arguments, **options)
+
+    def readline(self, size=-1):
+        return self.lines.readline()
+
+    def reset_input_buffer(self):
+        self.lines.clear()
+        super().reset_input_buffer()
+
+
 def open_link():
     """A line to the running firmware's console."""
     # Opening the port raises DTR and RTS, and pyserial's defaults keep them there. On the
     # ESP32-S3, lowering one before the other is what resets the chip.
-    link = serial.Serial(port(), 115200, timeout=0.2)
+    link = LineSerial(port(), 115200, timeout=0.2)
     link.reset_input_buffer()
     return link
 

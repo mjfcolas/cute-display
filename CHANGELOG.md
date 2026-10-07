@@ -17,6 +17,9 @@ What changes from one release to the next, for whoever owns the clock.
   or below.
 - A change across most of the screen, such as going from one app to another, shows in
   one go, twice as fast.
+- The setup copies Habity's sounds about four times faster, and the SD card is read from
+  the computer seven times faster: Habity's card, about 300 MB, in a quarter of an hour
+  instead of two hours.
 
 ## 2026.10.0
 

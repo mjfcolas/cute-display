@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
-from cute_display_link.usb import PORT_VARIABLE, NoDevice, explain, port
+from cute_display_link.usb import PORT_VARIABLE, LineSerial, NoDevice, explain, port
 
 HABITY = SimpleNamespace(device='/dev/ttyACM0', vid=0x303a, pid=0x1001)
 OTHER = SimpleNamespace(device='/dev/ttyUSB0', vid=0x10c4, pid=0xea60)
@@ -38,6 +38,33 @@ class Explain(unittest.TestCase):
 
     def test_anything_else_asks_for_the_cable_again(self):
         self.assertIn('Unplug it', explain(Exception('Failed to connect to ESP32-S3: No serial data received.')))
+
+
+class StubLineSerial(LineSerial):
+    """Not opened: hands out what a test says came in, a read at a time."""
+
+    def __init__(self, *received):
+        self.received = list(received)
+        super().__init__()
+
+    @property
+    def in_waiting(self):
+        return len(self.received[0]) if self.received else 0
+
+    def read(self, size=1):
+        return self.received.pop(0) if self.received else b''
+
+
+class Lines(unittest.TestCase):
+    def test_lines_are_cut_from_what_came_in_at_once(self):
+        link = StubLineSerial(b'I (12) app: up\n@@ 1 ok\n@@ 2 da', b'ta AAAA\n')
+        self.assertEqual([link.readline() for _ in range(4)], [b'I (12) app: up\n', b'@@ 1 ok\n', b'@@ 2 data AAAA\n', b''])
+
+    def test_a_line_cut_short_by_time_waits_for_the_rest(self):
+        link = StubLineSerial(b'@@ 1 o')
+        self.assertEqual(link.readline(), b'')
+        link.received.append(b'k\n')
+        self.assertEqual(link.readline(), b'@@ 1 ok\n')
 
 
 if __name__ == '__main__':
