@@ -2,6 +2,7 @@ use std::io::{self, BufRead, LineWriter};
 use std::thread;
 use std::time::Duration;
 
+use app::image::OWN_DIRECTORY;
 use app::{Devices, Hardware};
 use drivers::button::Button;
 use drivers::ds3231::Ds3231Clock;
@@ -96,7 +97,7 @@ fn main() -> Result<(), Fault> {
         system: board.system,
         steady: StdSteadyClock,
     };
-    match app::run(devices, catalog::APPS, move |lines| observation.said(lines))? {}
+    match app::run(devices, OWN_DIRECTORY, catalog::APPS, move |lines| observation.said(lines))? {}
 }
 
 fn start_maintenance(
@@ -110,7 +111,7 @@ fn start_maintenance(
         .name("maintenance".into())
         .stack_size(16 * 1024)
         .spawn(move || {
-            let mut console = MaintenanceConsole::new(card, remote, observation, rtc);
+            let mut console = MaintenanceConsole::new(card, OWN_DIRECTORY.name(), remote, observation, rtc);
             // A line a call, so that no other output lands in the middle of it.
             let mut output = LineWriter::new(output);
             let mut line = String::new();

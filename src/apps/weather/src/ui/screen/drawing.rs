@@ -215,7 +215,7 @@ mod tests {
     }
 
     fn state(page: ShownPage) -> WeatherUiState {
-        WeatherUiState { title: "Saint-Rémy-de-Provence".into(), page, status: "offline: no Wi-Fi: put cute-display/wifi.conf".into() }
+        WeatherUiState { title: "Saint-Rémy-de-Provence".into(), page, status: "offline: no Wi-Fi: put wifi.conf".into() }
     }
 
     fn render(state: &WeatherUiState) -> Frame {

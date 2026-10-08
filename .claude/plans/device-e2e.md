@@ -3,7 +3,7 @@
 ## Avancement
 
 - [x] 1. Règles et design
-- [ ] 2. Le dossier de l'image sur la carte, configurable pour toutes les images
+- [x] 2. Le dossier de l'image sur la carte, configurable pour toutes les images
 - [ ] 2 bis. Redirection du réseau de l'image `e2e`
 - [ ] 3. Driver HTTP : choisir à qui faire confiance
 - [ ] 4. Image `e2e`
@@ -11,6 +11,12 @@
 - [ ] 6. Harnais pytest sur cible
 - [ ] 7. Premiers scénarios marqués `device`
 - [ ] 8. Docs
+
+## À reprendre plus tard
+
+- **Le contrôle des chemins existe deux fois** : `OwnDirectory::inside` et
+  `SdPath::parse` (console) vérifient la même chose. Un type de chemin relatif dans
+  `hal::storage` pourrait servir aux deux.
 
 ## Contexte
 

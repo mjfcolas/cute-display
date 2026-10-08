@@ -96,7 +96,7 @@ mod tests {
         let card = FakeFileStorage::default();
         let files = files_on(&Ok(card.clone()), AppId::new("alarm"));
         files.write("alarm.conf", "enabled = yes").unwrap();
-        assert!(card.contains("cute-display/apps/alarm/alarm.conf"));
+        assert!(card.contains("apps/alarm/alarm.conf"));
     }
 
     #[test]

@@ -11,7 +11,7 @@ pub struct CardFiles<S> {
 
 impl<S: FileStorage> CardFiles<S> {
     pub fn new(storage: S, app: AppId) -> Self {
-        Self { storage, directory: format!("cute-display/apps/{}", app.name()) }
+        Self { storage, directory: format!("apps/{}", app.name()) }
     }
 
     fn path(&self, name: &str) -> String {
@@ -74,12 +74,12 @@ mod tests {
 
     #[test]
     fn an_app_reads_and_writes_its_files_in_its_own_directory() {
-        let storage = FakeFileStorage::with("cute-display/apps/alarm/alarm.conf", "enabled = yes\n");
+        let storage = FakeFileStorage::with("apps/alarm/alarm.conf", "enabled = yes\n");
         let files = CardFiles::new(storage.clone(), AppId::new("alarm"));
         assert_eq!(files.read("alarm.conf").unwrap().as_deref(), Some("enabled = yes\n"));
         assert_eq!(files.read("notes.txt").unwrap(), None);
         files.write("notes.txt", "hello").unwrap();
-        assert!(storage.contains("cute-display/apps/alarm/notes.txt"));
+        assert!(storage.contains("apps/alarm/notes.txt"));
     }
 
     #[test]

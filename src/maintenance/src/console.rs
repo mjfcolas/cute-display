@@ -28,6 +28,7 @@ struct PendingPut {
 
 pub struct MaintenanceConsole<S> {
     storage: Result<S, Fault>,
+    own_directory: &'static str,
     remote: Remote,
     observation: Observation,
     rtc: Box<dyn RealTimeClock + Send>,
@@ -35,8 +36,14 @@ pub struct MaintenanceConsole<S> {
 }
 
 impl<S: FileStorage> MaintenanceConsole<S> {
-    pub fn new(storage: Result<S, Fault>, remote: Remote, observation: Observation, rtc: impl RealTimeClock + Send + 'static) -> Self {
-        Self { storage, remote, observation, rtc: Box::new(rtc), put: None }
+    pub fn new(
+        storage: Result<S, Fault>,
+        own_directory: &'static str,
+        remote: Remote,
+        observation: Observation,
+        rtc: impl RealTimeClock + Send + 'static,
+    ) -> Self {
+        Self { storage, own_directory, remote, observation, rtc: Box::new(rtc), put: None }
     }
 
     /// One line from the computer. Lines that are not the protocol's are ignored; a new
@@ -141,6 +148,10 @@ impl<S: FileStorage> MaintenanceConsole<S> {
         }
     }
 
+    fn refused_outside_own_directory(&self, id: &str) -> String {
+        protocol::error(id, &format!("only {}/ may be written", self.own_directory))
+    }
+
     fn serve_card(&mut self, id: &str, request: CardRequest) -> Vec<String> {
         let storage = match inserted_card(&self.storage, id) {
             Ok(storage) => storage,
@@ -166,8 +177,8 @@ impl<S: FileStorage> MaintenanceConsole<S> {
                 Err(fault) => vec![protocol::error(id, fault.reason())],
             },
             CardRequest::Put { path, size_bytes, crc32 } => {
-                if !path.is_writable() {
-                    return vec![protocol::error(id, "only cute-display/ may be written")];
+                if !path.is_inside(self.own_directory) {
+                    return vec![self.refused_outside_own_directory(id)];
                 }
                 if size_bytes > MAX_PUT_BYTES {
                     return vec![protocol::error(id, &format!("larger than {MAX_PUT_BYTES} bytes"))];
@@ -176,8 +187,8 @@ impl<S: FileStorage> MaintenanceConsole<S> {
                 vec![protocol::ready(id)]
             }
             CardRequest::Remove(path) => {
-                if !path.is_writable() {
-                    return vec![protocol::error(id, "only cute-display/ may be written")];
+                if !path.is_inside(self.own_directory) {
+                    return vec![self.refused_outside_own_directory(id)];
                 }
                 match storage.remove(path.as_str()) {
                     Ok(()) => vec![protocol::ok(id, "")],
@@ -185,8 +196,8 @@ impl<S: FileStorage> MaintenanceConsole<S> {
                 }
             }
             CardRequest::Copy { from, to } => {
-                if !to.is_writable() {
-                    return vec![protocol::error(id, "only cute-display/ may be written")];
+                if !to.is_inside(self.own_directory) {
+                    return vec![self.refused_outside_own_directory(id)];
                 }
                 match storage.copy(from.as_str(), to.as_str()) {
                     Ok(CopyOutcome::Copied) => vec![protocol::ok(id, "")],
@@ -256,10 +267,11 @@ mod tests {
     use crate::fake_image_controls::{FakeImageControls, Taken};
     use crate::remote::ButtonName;
 
+    const APP_IMAGE: &str = "cute-display";
     const MORNING: DateTime = DateTime { year: 2026, month: 9, day: 26, hour: 7, minute: 30, second: 15 };
 
     fn console(card: FakeFileStorage) -> MaintenanceConsole<FakeFileStorage> {
-        MaintenanceConsole::new(Ok(card), Remote::new(FakeSteadyClock::default()), Observation::default(), FakeRtc::at(MORNING))
+        MaintenanceConsole::new(Ok(card), APP_IMAGE, Remote::new(FakeSteadyClock::default()), Observation::default(), FakeRtc::at(MORNING))
     }
 
     fn talk(console: &mut MaintenanceConsole<FakeFileStorage>, lines: &[String]) -> Vec<String> {
@@ -325,7 +337,7 @@ mod tests {
     }
 
     #[test]
-    fn nothing_outside_the_devices_directory_is_written_or_removed() {
+    fn nothing_outside_the_images_directory_is_written_or_removed() {
         let card = FakeFileStorage::with("sounds/alarm.wav", b"RIFF");
         let mut console = console(card.clone());
         let replies = talk(&mut console, &put_lines("1", "sounds/alarm.wav", b"oops", crc32fast::hash(b"oops")));
@@ -333,6 +345,17 @@ mod tests {
         let replies = talk(&mut console, &["@@ 2 rm sounds/alarm.wav".into()]);
         assert!(replies[0].starts_with("@@ 2 error"));
         assert_eq!(card.file("sounds/alarm.wav").as_deref(), Some(b"RIFF".as_slice()));
+    }
+
+    #[test]
+    fn a_test_images_console_leaves_the_clocks_own_directory_alone() {
+        let card = FakeFileStorage::with("cute-display/wifi.conf", b"ssid = Home\n");
+        let mut console = MaintenanceConsole::new(Ok(card.clone()), "cute-display-e2e", Remote::new(FakeSteadyClock::default()), Observation::default(), FakeRtc::at(MORNING));
+        let replies = talk(&mut console, &["@@ 1 rm cute-display/wifi.conf".into()]);
+        assert_eq!(replies, ["@@ 1 error only cute-display-e2e/ may be written"]);
+        talk(&mut console, &put_lines("2", "cute-display-e2e/wifi.conf", b"ssid = Lab\n", crc32fast::hash(b"ssid = Lab\n")));
+        assert_eq!(card.file("cute-display-e2e/wifi.conf").as_deref(), Some(b"ssid = Lab\n".as_slice()));
+        assert_eq!(card.file("cute-display/wifi.conf").as_deref(), Some(b"ssid = Home\n".as_slice()));
     }
 
     #[test]
@@ -352,7 +375,7 @@ mod tests {
     }
 
     #[test]
-    fn a_file_is_copied_on_the_card_into_the_devices_directory_only() {
+    fn a_file_is_copied_on_the_card_into_the_images_directory_only() {
         let card = FakeFileStorage::with("sounds/alarm/Zen.mp3", b"ID3");
         let mut console = console(card.clone());
         let replies = talk(
@@ -425,7 +448,7 @@ mod tests {
     #[test]
     fn the_remote_taps_holds_and_turns_and_answers_once_the_image_took_it() {
         let remote = Remote::new(FakeSteadyClock::default());
-        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), remote.clone(), Observation::default(), FakeRtc::at(MORNING));
+        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), APP_IMAGE, remote.clone(), Observation::default(), FakeRtc::at(MORNING));
         let image = FakeImageControls::taking_from(&remote);
         let lines = ["@@ 1 tap yellow", "@@ 2 hold 1500 yellow long", "@@ 3 turn -2"].map(String::from);
         assert_eq!(talk(&mut console, &lines), ["@@ 1 ok", "@@ 2 ok", "@@ 3 ok"]);
@@ -436,14 +459,14 @@ mod tests {
     #[test]
     fn what_the_image_does_not_take_is_an_error() {
         let remote = Remote::new(FakeSteadyClock::default()).taken_within(Duration::ZERO);
-        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), remote, Observation::default(), FakeRtc::at(MORNING));
+        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), APP_IMAGE, remote, Observation::default(), FakeRtc::at(MORNING));
         assert_eq!(talk(&mut console, &["@@ 1 tap long".into()]), ["@@ 1 error the app image did not take it within 0ns"]);
     }
 
     #[test]
     fn without_a_card_the_remote_still_answers() {
         let remote = Remote::new(FakeSteadyClock::default());
-        let mut console = MaintenanceConsole::<FakeFileStorage>::new(Err(Fault::new("not inserted")), remote.clone(), Observation::default(), FakeRtc::at(MORNING));
+        let mut console = MaintenanceConsole::<FakeFileStorage>::new(Err(Fault::new("not inserted")), APP_IMAGE, remote.clone(), Observation::default(), FakeRtc::at(MORNING));
         let _image = FakeImageControls::taking_from(&remote);
         let replies = talk(&mut console, &["@@ 1 ls".into(), "@@ 2 turn 2".into()]);
         assert_eq!(replies, ["@@ 1 error no SD card: not inserted", "@@ 2 ok"]);
@@ -454,7 +477,7 @@ mod tests {
         let observation = Observation::default();
         let mut lamp = observation.light(LightName::ReadingLamp, FakeLight::default());
         lamp.set_brightness(Brightness::percent(30)).unwrap();
-        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), Remote::new(FakeSteadyClock::default()), observation, FakeRtc::at(MORNING));
+        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), APP_IMAGE, Remote::new(FakeSteadyClock::default()), observation, FakeRtc::at(MORNING));
         let replies = talk(&mut console, &["@@ 1 lights".into(), "@@ 2 sound".into()]);
         assert_eq!(replies, ["@@ 1 ok 0 30", "@@ 2 ok silent"]);
     }
@@ -463,7 +486,7 @@ mod tests {
     fn the_clock_is_read_from_the_rtc_and_its_fault_said() {
         let mut console = console(FakeFileStorage::default());
         assert_eq!(talk(&mut console, &["@@ 1 clock".into()]), [format!("@@ 1 ok {}", MORNING.unix_seconds())]);
-        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), Remote::new(FakeSteadyClock::default()), Observation::default(), FakeRtc::unreadable("I2C: no answer"));
+        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), APP_IMAGE, Remote::new(FakeSteadyClock::default()), Observation::default(), FakeRtc::unreadable("I2C: no answer"));
         assert_eq!(talk(&mut console, &["@@ 1 clock".into(), "@@ 2 clock set 0".into()]), ["@@ 1 error I2C: no answer", "@@ 2 error I2C: no answer"]);
     }
 
@@ -479,7 +502,7 @@ mod tests {
         let observation = Observation::default();
         let last_frame: Box<[u8; FRAME_BYTES]> = vec![0; FRAME_BYTES].into_boxed_slice().try_into().unwrap();
         let mut panel = observation.panel(StubPanel::default(), last_frame);
-        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), Remote::new(FakeSteadyClock::default()), observation, FakeRtc::at(MORNING));
+        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), APP_IMAGE, Remote::new(FakeSteadyClock::default()), observation, FakeRtc::at(MORNING));
         assert_eq!(talk(&mut console, &["@@ 1 screen".into()]), ["@@ 1 error nothing shown yet"]);
         let mut frame = Frame::blank();
         frame.set_ink(0, 0, true);
@@ -495,7 +518,7 @@ mod tests {
         let last_frame: Box<[u8; FRAME_BYTES]> = vec![0; FRAME_BYTES].into_boxed_slice().try_into().unwrap();
         let mut panel = observation.panel(StubPanel::default(), last_frame);
         let said = observation.clone();
-        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), Remote::new(FakeSteadyClock::default()), observation, FakeRtc::at(MORNING));
+        let mut console = MaintenanceConsole::new(Ok(FakeFileStorage::default()), APP_IMAGE, Remote::new(FakeSteadyClock::default()), observation, FakeRtc::at(MORNING));
         assert_eq!(talk(&mut console, &["@@ 1 describe".into()]), ["@@ 1 error nothing said yet"]);
         panel.show(&Frame::blank(), Redraw::Changes).unwrap();
         said.said(vec!["front radar".into(), "range 25 km".into()]);

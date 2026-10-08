@@ -119,7 +119,7 @@ fn distance(km: f64) -> String {
 fn trouble(report: &RadarReport) -> Option<String> {
     match &report.status {
         FetchStatus::NeverFetched | FetchStatus::Updating if report.fetched_at.is_none() => Some("looking...".to_owned()),
-        FetchStatus::NoPlace => Some("no place: put cute-display/general.conf".to_owned()),
+        FetchStatus::NoPlace => Some("no place: put general.conf".to_owned()),
         FetchStatus::Failed(why) => Some(format!("offline: {why}")),
         _ => None,
     }
@@ -297,7 +297,7 @@ mod tests {
         );
         no_place.refresh_if_due(Instant::now());
         let state = RadarScreen::new(no_place).ui_state();
-        assert_eq!(state.trouble.as_deref(), Some("no place: put cute-display/general.conf"));
+        assert_eq!(state.trouble.as_deref(), Some("no place: put general.conf"));
         assert_eq!((state.title.as_str(), state.aircraft.len(), state.nearest.len()), ("Radar", 0, 0));
     }
 }

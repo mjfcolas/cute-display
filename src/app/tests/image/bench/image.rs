@@ -93,7 +93,7 @@ impl Image {
         let says = image.said.clone();
         thread::Builder::new()
             .name("main".into())
-            .spawn(move || app::run(devices, catalog::APPS, move |lines| *says.lock().unwrap_or_else(PoisonError::into_inner) = lines))
+            .spawn(move || app::run(devices, app::image::OWN_DIRECTORY, catalog::APPS, move |lines| *says.lock().unwrap_or_else(PoisonError::into_inner) = lines))
             .expect("the image's main thread starts");
         image.advance(Duration::ZERO);
         image

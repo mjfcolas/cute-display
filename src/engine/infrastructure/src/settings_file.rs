@@ -5,7 +5,7 @@ use hal::storage::FileStorage;
 
 use crate::conf_file;
 
-pub const FILE_NAME: &str = "cute-display/settings.conf";
+pub const FILE_NAME: &str = "settings.conf";
 
 const BACKLIGHT: &str = "backlight";
 const READING_LAMP: &str = "reading_lamp";
@@ -105,10 +105,10 @@ mod tests {
     }
 
     #[test]
-    fn the_file_lives_in_the_devices_own_directory() {
+    fn the_file_is_named_settings_conf() {
         let storage = FakeFileStorage::default();
         SettingsFile::new(storage.clone()).save(&SettingsRecord::default());
-        assert!(storage.contains("cute-display/settings.conf"));
+        assert!(storage.contains("settings.conf"));
     }
 
     #[test]

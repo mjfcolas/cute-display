@@ -31,6 +31,7 @@ use infrastructure::general_file::{GeneralFile, NoGeneralFile};
 use infrastructure::hal_light::HalLight;
 use infrastructure::internet::{NoInternet, OnDemandInternet, SharedInternet};
 use infrastructure::ntp::NtpServer;
+use infrastructure::own_directory::{CardDirectory, OwnDirectory};
 use infrastructure::rtc_keeper::RtcKeeper;
 use infrastructure::settings_file::{SettingsFile, Unkept};
 use infrastructure::speaker_sound;
@@ -86,8 +87,14 @@ pub struct Devices<H: Hardware> {
 type Service = (AppId, Arc<dyn AppService>);
 
 /// `read_out` hears each frame's lines once the frame is shown.
-pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>], read_out: impl FnMut(Vec<String>) + Send + 'static) -> Result<Infallible, Fault> {
-    let settings_store: Box<dyn SettingsStore> = match &devices.sd_card {
+pub fn run<H: Hardware>(
+    devices: Devices<H>,
+    own_directory: CardDirectory,
+    apps: &[Installable<Frame>],
+    read_out: impl FnMut(Vec<String>) + Send + 'static,
+) -> Result<Infallible, Fault> {
+    let card = devices.sd_card.map(|card| OwnDirectory::new(card, own_directory));
+    let settings_store: Box<dyn SettingsStore> = match &card {
         Ok(card) => Box::new(SettingsFile::new(card.clone())),
         Err(fault) => {
             log::warn!("settings: no SD card ({fault}); they will not survive a power cut");
@@ -107,7 +114,6 @@ pub fn run<H: Hardware>(devices: Devices<H>, apps: &[Installable<Frame>], read_o
     H::spawn_speaker(move || player.run())?;
 
     let keeper = Box::new(RtcKeeper::new(devices.rtc));
-    let card = devices.sd_card;
     let internet = card.clone().ok().map(|card| SharedInternet::new(OnDemandInternet::new(devices.wifi, devices.https, devices.udp, card, steady.clone())));
     let clock = match (&card, &internet) {
         (Ok(card), Some(internet)) => {

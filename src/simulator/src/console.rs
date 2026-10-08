@@ -54,6 +54,7 @@ mod tests {
     use std::io::{BufRead, BufReader, Write};
     use std::os::unix::net::{UnixListener, UnixStream};
 
+    use app::image::OWN_DIRECTORY;
     use hal::input::PushButton;
     use hal_testing::steady_clock::FakeSteadyClock;
     use maintenance::observation::Observation;
@@ -81,7 +82,7 @@ mod tests {
         drop(UnixListener::bind(&path).unwrap());
         let remote = Remote::new(FakeSteadyClock::default());
         let mut yellow = remote.button(ButtonName::Yellow);
-        listen(&path, MaintenanceConsole::new(DirectoryCard::open(&root), remote, Observation::default(), rtc())).unwrap();
+        listen(&path, MaintenanceConsole::new(DirectoryCard::open(&root), OWN_DIRECTORY.name(), remote, Observation::default(), rtc())).unwrap();
 
         let mut stream = UnixStream::connect(&path).unwrap();
         stream.write_all(b"@@ 1 tap yellow\n").unwrap();
@@ -99,7 +100,7 @@ mod tests {
         let root = directory("console-file");
         let path = root.join("settings.conf");
         std::fs::write(&path, b"backlight = 5s\n").unwrap();
-        assert!(listen(&path, MaintenanceConsole::new(DirectoryCard::open(&root), Remote::new(FakeSteadyClock::default()), Observation::default(), rtc())).is_err());
+        assert!(listen(&path, MaintenanceConsole::new(DirectoryCard::open(&root), OWN_DIRECTORY.name(), Remote::new(FakeSteadyClock::default()), Observation::default(), rtc())).is_err());
         assert_eq!(std::fs::read(&path).unwrap(), b"backlight = 5s\n");
         std::fs::remove_dir_all(&root).unwrap();
     }

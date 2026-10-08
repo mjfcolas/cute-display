@@ -156,7 +156,7 @@ mod tests {
             airports,
             nearest: vec![listed; aircraft.len().min(NEAREST_LISTED)],
             aircraft,
-            trouble: Some("offline: no Wi-Fi: put cute-display/wifi.conf".into()),
+            trouble: Some("offline: no Wi-Fi: put wifi.conf".into()),
             hints: ["wheel: range", "long: update"],
             credit: "data: adsb.fi",
         }
@@ -209,9 +209,9 @@ mod tests {
 
     #[test]
     fn trouble_is_said_above_the_controls_in_lines_that_fit() {
-        let no_place = RadarUiState { trouble: Some("no place: put cute-display/general.conf".into()), ..state(vec![], vec![]) };
+        let no_place = RadarUiState { trouble: Some("no place: put general.conf".into()), ..state(vec![], vec![]) };
         let lines = footer(&no_place, 22);
-        assert_eq!(lines, ["no place: put", "cute-display/general.c", "onf", "wheel: range", "long: update", "data: adsb.fi"]);
+        assert_eq!(lines, ["no place: put", "general.conf", "wheel: range", "long: update", "data: adsb.fi"]);
         assert!(lines.iter().all(|l| l.chars().count() <= 22));
         let fine = RadarUiState { trouble: None, ..state(vec![], vec![]) };
         assert_eq!(footer(&fine, 22), ["wheel: range", "long: update", "data: adsb.fi"], "the source is credited");

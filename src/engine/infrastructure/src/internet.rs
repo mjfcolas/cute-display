@@ -12,7 +12,7 @@ use hal::Fault;
 
 use crate::conf_file;
 
-pub const WIFI_FILE: &str = "cute-display/wifi.conf";
+pub const WIFI_FILE: &str = "wifi.conf";
 /// A radar asking every fifteen seconds keeps the Wi-Fi, a forecast once an hour does not,
 /// and the radio is off the rest of the night.
 pub const LINGER: Duration = Duration::from_secs(60);

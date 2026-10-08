@@ -7,7 +7,7 @@ use hal::storage::FileStorage;
 
 use crate::conf_file;
 
-pub const GENERAL_FILE: &str = "cute-display/general.conf";
+pub const GENERAL_FILE: &str = "general.conf";
 const TIME_ZONE: &str = "time_zone";
 const APPS: &str = "apps";
 

@@ -5,6 +5,7 @@ pub mod general_file;
 pub mod hal_light;
 pub mod internet;
 pub mod ntp;
+pub mod own_directory;
 pub mod rtc_keeper;
 pub mod settings_file;
 pub mod shared_rtc;

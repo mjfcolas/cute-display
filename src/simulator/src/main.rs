@@ -15,6 +15,7 @@ mod window;
 
 use std::thread;
 
+use app::image::OWN_DIRECTORY;
 use app::{Devices, Hardware};
 use drivers::udp_socket::StdUdpClient;
 use hal::display::FRAME_BYTES;
@@ -22,6 +23,7 @@ use hal::storage::FileStorage;
 use hal::Fault;
 use infrastructure::composite_input::{CompositeButton, CompositeWheel};
 use infrastructure::internet::WIFI_FILE;
+use infrastructure::own_directory::OwnDirectory;
 use infrastructure::shared_rtc::SharedRtc;
 use maintenance::observation::{LightName, Observation, ObservedLight, ObservedPanel, ObservedSpeaker};
 use maintenance::remote::{ButtonName, Remote, RemoteButton, RemoteWheel};
@@ -94,7 +96,7 @@ fn main() -> Result<(), Fault> {
     };
     let rtc = SharedRtc::new(HostClock::new(true_time));
     if let Some(path) = &options.console_socket {
-        console::listen(path, MaintenanceConsole::new(card.clone(), remote.clone(), observation.clone(), rtc.clone()))?;
+        console::listen(path, MaintenanceConsole::new(card.clone(), OWN_DIRECTORY.name(), remote.clone(), observation.clone(), rtc.clone()))?;
     }
     let devices = Devices::<Computer> {
         panel: observation.panel(case.panel.clone(), Box::new([0; FRAME_BYTES])),
@@ -115,7 +117,7 @@ fn main() -> Result<(), Fault> {
     };
     let image = thread::Builder::new()
         .name("app".into())
-        .spawn(move || match app::run(devices, catalog::APPS, move |lines| observation.said(lines)) {
+        .spawn(move || match app::run(devices, OWN_DIRECTORY, catalog::APPS, move |lines| observation.said(lines)) {
             Ok(never) => match never {},
             Err(fault) => log::error!("app: {fault}"),
         })
@@ -132,8 +134,9 @@ fn main() -> Result<(), Fault> {
 
 /// The Internet asks the card for a network to join; the computer is already on one.
 fn with_wifi(card: DirectoryCard) -> Result<DirectoryCard, Fault> {
-    if card.read(WIFI_FILE)?.is_none() {
-        card.write(WIFI_FILE, b"ssid = the computer's own connection\n")?;
+    let own = OwnDirectory::new(card.clone(), OWN_DIRECTORY);
+    if own.read(WIFI_FILE)?.is_none() {
+        own.write(WIFI_FILE, b"ssid = the computer's own connection\n")?;
     }
     Ok(card)
 }
@@ -147,10 +150,10 @@ mod tests {
         let root = std::env::temp_dir().join(format!("cute-display-wifi-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let card = with_wifi(DirectoryCard::open(&root).unwrap()).unwrap();
-        assert!(card.read(WIFI_FILE).unwrap().is_some());
+        assert!(card.read("cute-display/wifi.conf").unwrap().is_some());
 
-        card.write(WIFI_FILE, b"ssid = Home\n").unwrap();
+        card.write("cute-display/wifi.conf", b"ssid = Home\n").unwrap();
         let card = with_wifi(card).unwrap();
-        assert_eq!(card.read(WIFI_FILE).unwrap().as_deref(), Some(&b"ssid = Home\n"[..]));
+        assert_eq!(card.read("cute-display/wifi.conf").unwrap().as_deref(), Some(&b"ssid = Home\n"[..]));
     }
 }

@@ -146,7 +146,7 @@ fn status_line(report: &WeatherReport, clock: &Clock) -> String {
             Some(0) | None => "updated just now   long: update   wheel: today/week".into(),
             Some(minutes) => format!("updated {minutes} min ago   long: update   wheel: today/week"),
         },
-        FetchStatus::NoPlace => "no place: put cute-display/general.conf".into(),
+        FetchStatus::NoPlace => "no place: put general.conf".into(),
         FetchStatus::Failed(why) => format!("offline: {why}"),
     }
 }
@@ -359,11 +359,11 @@ mod tests {
 
     #[test]
     fn offline_the_status_says_why() {
-        let weather = weather(vec![Ok(sample()), Err(Unavailable("no Wi-Fi: put cute-display/wifi.conf".into()))]);
+        let weather = weather(vec![Ok(sample()), Err(Unavailable("no Wi-Fi: put wifi.conf".into()))]);
         weather.refresh_if_due(Instant::now());
         weather.request_refresh();
         weather.refresh_if_due(Instant::now());
         let status = WeatherScreen::new(weather, clock_at(Some(17))).ui_state().status;
-        assert_eq!(status, "offline: no Wi-Fi: put cute-display/wifi.conf");
+        assert_eq!(status, "offline: no Wi-Fi: put wifi.conf");
     }
 }

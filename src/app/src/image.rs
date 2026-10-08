@@ -1,6 +1,9 @@
 use core::ffi::c_char;
 
+use infrastructure::own_directory::CardDirectory;
+
 pub const PROJECT: &str = "cute-display";
+pub const OWN_DIRECTORY: CardDirectory = CardDirectory::new("cute-display");
 pub const VERSION: &str = env!("CUTE_DISPLAY_VERSION");
 
 /// In a const context, as the images' description uses it, a `text` that leaves no room

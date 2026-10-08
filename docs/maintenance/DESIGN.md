@@ -11,4 +11,5 @@
 - **Always there, releases included**: tests run on the image people get, and the
   remote opens little more than the buttons already do.
 - **How configuration reaches the device**: a file prepared on a computer is dropped in
-  `cute-display/` and read by whoever needs it, at every use, so it needs no restart.
+  the image's own directory (`cute-display/` for the app image) and read by whoever
+  needs it, at every use, so it needs no restart.

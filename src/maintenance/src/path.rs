@@ -1,7 +1,5 @@
-//! Paths on the card. Everything may be read; only the device's own directory may be
-//! written, so everything of ours is in one place.
-
-pub const DEVICE_DIR: &str = "cute-display";
+//! Paths on the card. Everything may be read; only the image's own directory may be
+//! written, so everything of an image's is in one place.
 
 /// A path relative to the root of the card, `""` being the root itself.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -23,9 +21,10 @@ impl SdPath {
         &self.0
     }
 
-    /// Inside the device's own directory, and not the directory itself.
-    pub fn is_writable(&self) -> bool {
-        self.0.strip_prefix(DEVICE_DIR).and_then(|rest| rest.strip_prefix('/')).is_some_and(|rest| !rest.is_empty())
+    /// Inside `directory`, and not the directory itself. A directory named `""`, or with a
+    /// '/' at either end, has nothing inside: a mistaken name writes nowhere.
+    pub fn is_inside(&self, directory: &str) -> bool {
+        self.0.strip_prefix(directory).and_then(|rest| rest.strip_prefix('/')).is_some_and(|rest| !rest.is_empty())
     }
 }
 
@@ -43,13 +42,22 @@ mod tests {
     }
 
     #[test]
-    fn only_files_in_the_devices_directory_are_writable() {
-        let writable = |p| SdPath::parse(p).unwrap().is_writable();
-        assert!(writable("cute-display/wifi.conf"));
-        assert!(writable("cute-display/apps/weather.conf"));
-        assert!(!writable("cute-display"));
-        assert!(!writable("cute-display.conf"));
-        assert!(!writable("cute-displayx/a"));
-        assert!(!writable("sounds/alarm.wav"));
+    fn a_path_is_inside_a_directory_below_it_and_not_beside_it() {
+        let inside = |p| SdPath::parse(p).unwrap().is_inside("cute-display");
+        assert!(inside("cute-display/wifi.conf"));
+        assert!(inside("cute-display/apps/weather.conf"));
+        assert!(!inside("cute-display"));
+        assert!(!inside("cute-display.conf"));
+        assert!(!inside("cute-display-e2e/wifi.conf"));
+        assert!(!inside("sounds/alarm.wav"));
+    }
+
+    #[test]
+    fn a_mistaken_directory_has_nothing_inside() {
+        for not_one in ["", "cute-display/", "/cute-display"] {
+            for path in ["wifi.conf", "cute-display/wifi.conf", "sounds/alarm.wav"] {
+                assert!(!SdPath::parse(path).unwrap().is_inside(not_one), "{not_one:?} {path}");
+            }
+        }
     }
 }
