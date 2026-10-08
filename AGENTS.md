@@ -66,10 +66,12 @@ the device keeps running.
 - The apps are listed once, in the root `README.md`; elsewhere, docs and diagrams speak
   of an app in general, so that a new app changes none of them.
 
-### 6. On the SD card, ours is under `cute-display/`
+### 6. On the SD card, an image's own is under its directory
 
-The device and its maintenance console write nowhere else on the card, so everything
-of ours is in one place.
+Its composition root gives each image its directory: `cute-display/` for the app image,
+`cute-display-e2e/` for the test image. An image and its maintenance console write
+nowhere else on the card, so everything of an image's is in one place, and the tests
+never touch what the clock keeps.
 
 ### 7. In NVS, ours is in the `cute_display` namespace
 
@@ -77,7 +79,8 @@ The `nvs` partition is Habity's: its settings and Wi-Fi credentials, which it ne
 the device boots it again.
 
 - What we keep goes on the SD card first; NVS only for what cannot wait for the card.
-- Our keys go in the `cute_display` namespace, and nowhere else.
+- Our keys go in the `cute_display` namespace, and nowhere else; the test image's in
+  `cute_disp_e2e`, an NVS name being 15 characters at most.
 - Never erase the partition, not even when `nvs_flash_init` asks for it: that would
   wipe Habity's settings.
 - ESP-IDF components that would write NVS on their own are configured not to (the Wi-Fi

@@ -38,7 +38,7 @@ The apps, on it, listed by `catalog`, which the composition roots share:
 | Layer            | Holds                                                                                          | Depends on       |
 | ---------------- | ---------------------------------------------------------------------------------------------- | ---------------- |
 | `domain`         | The concepts every app relies on (the app in front, settings, lighting, the time, where the device is, sound…), the contracts the engine lends apps, and the contracts it needs from the outside world. Speaks in intents (`request_refresh`, `choose_next_backlight`), never in controls ("yellow pressed") | nothing          |
-| `infrastructure` | Implementations of the domain's contracts on the HAL, and HAL contracts made of two implementations (a button, a wheel) or shared by two owners (the RTC) | `domain`, `hal`, `conf_text` |
+| `infrastructure` | Implementations of the domain's contracts on the HAL, and HAL contracts made of two implementations (a button, a wheel), shared by two owners (the RTC), or narrowed to the image's directory on the card; for the test image, HTTP and UDP sent to stubs on the local network | `domain`, `hal`, `conf_text` |
 | `conf_text`      | The device's conf files as `key = value` lines: the engine's own, and any app's that takes up the format | nothing |
 | `hal`            | Contracts with the hardware: display, encoder, buttons, lights, speaker, clock, thermometer, storage, radio, HTTP, UDP, I2C bus, power, system, and the steady clock the app image runs on | nothing          |
 | `drivers`        | Implementations of `hal` on the board's chips                                                  | `hal`            |
@@ -49,9 +49,9 @@ The apps, on it, listed by `catalog`, which the composition roots share:
 | `hwtest`         | The hardware test bench                                                                        | `hal`            |
 | `libs`           | What several apps share, as code: each app has its own instance of it | `domain`, `ui`, `conf_text`, other `libs` |
 | `apps`           | One crate per app, layered as the engine is: `domain`, its concepts and the contracts they need; `infrastructure`, those contracts on what the engine lends; `ui`, its screen. Its root installs it | `domain`, `ui`, `conf_text`, `libs` |
-| `app`            | The app image on any hardware that keeps the HAL's contracts: wires the layers, runs the threads, runs the apps it is given | `domain`, `infrastructure`, `ui`, `hal` |
+| `app`            | The app image on any hardware that keeps the HAL's contracts: wires the layers, runs the threads, runs the apps it is given, in the directory on the card it is given | `domain`, `infrastructure`, `ui`, `hal` |
 | `catalog`        | The apps an image can hold, picked by its Cargo features; the same list for the board and the computer | `apps`, `ui`, `hal` |
-| `firmware`       | Composition roots on the board: builds the drivers from the pin map (`board`), hands them and the catalog's apps to `app`, or hands them to `hwtest` | everything but `simulator` |
+| `firmware`       | Composition roots on the board: builds the drivers from the pin map (`board`), hands them and the catalog's apps to `app`, in `cute-display/` and on the Internet for the app image, in `cute-display-e2e/` and on the stubs of the local network for the test image (`e2e`), or hands them to `hwtest` | everything but `simulator` |
 | `simulator`      | Composition root on a computer: the HAL in a window or headless, on the keyboard, in a directory, on the computer's world or a recorded one ([its README](docs/simulator/README.md)), on a clock that may run faster; hands it and the catalog's apps to `app`, and serves the maintenance console on a Unix socket; the panel refreshes by the UC8253 driver's policy | `app`, `catalog`, `hal`, `infrastructure`, `maintenance`, `drivers` (its host half); `domain`, `ui`, `libs`, `apps` and `domain_testing` for its screen preview |
 
 The arrows are the only allowed dependencies. In particular the domain never sees a HAL
@@ -119,7 +119,9 @@ src/            the sources, one crate per directory
                     an app, settings, lighting, the time and time zones, where the
                     device is, sound
     infrastructure/ the domain's contracts on the HAL: conf files, lights, the RTC, the
-                    speaker, Internet on demand, NTP; controls made of two, an RTC shared
+                    speaker, Internet on demand, NTP; controls made of two, an RTC shared,
+                    the image's directory on the card, the test image's network sent to
+                    stubs
     ui/             the shell, gestures, the system app, and the toolkit apps draw
                     with; host-tested with hal's Frame as a dev-dependency
     ui_testing/     for tests: the rendering references screens are held to
@@ -138,7 +140,7 @@ src/            the sources, one crate per directory
                   card, and the remote for tests
   hwtest/         the hardware test bench
   app/            the app image's threads and wiring, generic over the HAL
-  firmware/       board pin map + one binary per image (`app`, `hwtest`); the only crate
+  firmware/       board pin map + one binary per image (`app`, `e2e`, `hwtest`); the only crate
                   built for the ESP32 only
   simulator/      the app image on a computer, and the screen preview
 docs/           installing and troubleshooting, development and releasing, the board, and a
@@ -166,7 +168,7 @@ that run and their order.
   `ui::Screen`.
 - **What the engine lends** is all an app gets from outside: the app in front, the
   clock, where the device is, the Internet, the files in its own directory
-  (`cute-display/apps/<id>/`), the sound.
+  (`apps/<id>/`, in the image's directory on the card), the sound.
 - **Apps are independent**: none depends on another. What several share is a `libs`
   crate, and each has its own instance of it.
 - **Which app is in front is the domain's**: `Foreground` says which. Anything may
