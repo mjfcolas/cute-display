@@ -45,6 +45,9 @@ is a design change and goes through DESIGN.md first.
   a `Fake` works, cut short (`StubInternet`, `FakeFileStorage`). A stub that also keeps
   how it was called, Fowler's spy, is still a `Stub`. When the kind is not enough, a word
   between says what sets it apart: `StubFailingLight`.
+- In a crate the clock runs, what only the test image or the simulator needs (the test
+  image's network sent to stubs, an NTP server's answer) is in its `testing` module;
+  where test doubles go is in [the pyramid](docs/testing/README.md#where-a-test-goes).
 
 ### 4. No panics on the device
 

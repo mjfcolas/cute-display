@@ -4,7 +4,7 @@
 
 - [x] 1. Règles et design
 - [x] 2. Le dossier de l'image sur la carte, configurable pour toutes les images
-- [ ] 2 bis. Redirection du réseau de l'image `e2e`
+- [x] 2 bis. Redirection du réseau de l'image `e2e`
 - [ ] 3. Driver HTTP : choisir à qui faire confiance
 - [ ] 4. Image `e2e`
 - [ ] 5. Serveur de stubs
@@ -116,15 +116,16 @@ Aujourd'hui `cute-display/` est écrit en dur à plusieurs endroits :
   - le banc d'intégration (`app/tests/image/bench/setup.rs`) utilise des chemins
     relatifs au dossier.
 
-### 2 bis. Redirection du réseau de l'image `e2e` (`src/engine/infrastructure/src/stub_network.rs` ou nom voisin)
+### 2 bis. Redirection du réseau de l'image `e2e` (`src/engine/infrastructure/src/testing/to_local_stubs.rs`)
 
-- **`RedirectedHttp<H: HttpClient>`** : `https://<hôte>/<chemin>?<q>` devient
-  `https://<ip>:<port_https>/<hôte>/<chemin>?<q>`.
-- **`RedirectedUdp<U: UdpClient>`** : tout échange part vers `<ip>:<port_ntp>` (seul NTP
-  utilise UDP, avec `pool.ntp.org:123` dans `infrastructure/src/ntp.rs`). Un port non
-  privilégié côté PC évite d'avoir besoin de root.
-- **Conf** : `e2e.conf` dans le dossier de l'image (`conf_text`, lu par `OwnDirectory`),
-  avec `address`, `https_port` et `ntp_port`.
+- **`RedirectedHttp<H, S>`** : `https://<hôte>/<chemin>?<q>` devient
+  `https://<address>:<https_port>/<hôte>/<chemin>?<q>`. Ce qui n'est pas en `https://`
+  est refusé.
+- **`RedirectedUdp<U, S>`** : NTP (port 123) part vers `<address>:<ntp_port>`, tout autre
+  port est refusé. Un port non privilégié côté PC évite d'avoir besoin de root.
+- **Conf** : `e2e.conf` dans le dossier de l'image, avec `address`, `https_port` et
+  `ntp_port`, relue à chaque usage comme les autres conf. Sans conf complète, rien ne
+  sort et la faute dit quoi poser.
 - **Tests** : unitaires sur les stubs HTTP et UDP de `hal_testing`.
 
 ### 3. Driver HTTP : choisir à qui faire confiance (`src/engine/drivers/src/esp_http.rs`)
@@ -163,7 +164,7 @@ Aujourd'hui `cute-display/` est écrit en dur à plusieurs endroits :
 - **Certificat serveur** : émis à chaque session pour l'IP, signé par la CA, avec la lib
   `cryptography` (dépendance de `tools/e2e/pyproject.toml`).
 - **NTP en UDP** : répond l'heure du scénario plus le temps écoulé. C'est le même paquet
-  que `ntp::server_answer`, porté en Python.
+  que `testing::ntp_server::answer`, porté en Python.
 - **Tests** dans `tools/e2e/tests/` (lancés par `just test`) :
   - une requête HTTPS qui vérifie le certificat avec la CA ;
   - un 404 ;
@@ -224,8 +225,8 @@ Aujourd'hui `cute-display/` est écrit en dur à plusieurs endroits :
 
 - `AGENTS.md`, `DESIGN.md`, `docs/testing/README.md`, `tools/e2e/README.md`
 - `src/engine/infrastructure/src/` : `own_directory.rs` (nouveau), la redirection
-  réseau (nouveau), et `settings_file.rs`, `internet.rs`, `general_file.rs`,
-  `card_files.rs`
+  réseau (`testing/to_local_stubs.rs`, nouveau), et `settings_file.rs`, `internet.rs`,
+  `general_file.rs`, `card_files.rs`
 - `src/app/src/lib.rs`, `src/app/src/engine_services.rs`, `src/simulator/src/main.rs`,
   `src/maintenance/src/{path,console}.rs`
 - `src/engine/drivers/src/esp_http.rs`

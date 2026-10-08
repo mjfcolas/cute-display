@@ -3,23 +3,22 @@
 use domain::clock::TimeSource;
 use domain::fetch::Unavailable;
 use domain::time::UtcTime;
-use hal::clock::DateTime;
 
 use crate::internet::Datagrams;
 
 pub const SERVER: &str = "pool.ntp.org";
-const PORT: u16 = 123;
+pub const PORT: u16 = 123;
 pub const PACKET_BYTES: usize = 48;
 /// Leap indicator 0, version 4, mode 3: a client.
 const CLIENT_REQUEST: u8 = 0b00_100_011;
 /// Leap indicator 0, version 4, mode 4: a server.
-const SERVER_HEADER: u8 = 0b00_100_100;
-const SERVER_STRATUM: u8 = 2;
+pub(crate) const SERVER_HEADER: u8 = 0b00_100_100;
+pub(crate) const SERVER_STRATUM: u8 = 2;
 const SERVER_MODE: u8 = 4;
 const LEAP_UNSYNCHRONISED: u8 = 3;
-const TRANSMIT_TIMESTAMP: usize = 40;
+pub(crate) const TRANSMIT_TIMESTAMP: usize = 40;
 /// From 1900-01-01, where NTP counts from, to 1970-01-01.
-const NTP_TO_UNIX_SECONDS: i64 = 2_208_988_800;
+pub(crate) const NTP_TO_UNIX_SECONDS: i64 = 2_208_988_800;
 /// NTP seconds wrap in 2036; below this, they count from then.
 const ERA_WRAP: u32 = 1 << 31;
 /// Of the fraction of a second, which counts in 2^-32 s.
@@ -46,20 +45,6 @@ impl<D: Datagrams> TimeSource for NtpServer<D> {
     }
 }
 
-/// What a server answers when it is `time`, on the second: for a server played elsewhere
-/// than on the Internet.
-pub fn server_answer(time: DateTime) -> [u8; PACKET_BYTES] {
-    let ntp_seconds = u32::try_from(time.unix_seconds().saturating_add(NTP_TO_UNIX_SECONDS).rem_euclid(1 << 32)).unwrap_or_default();
-    let mut packet = [0; PACKET_BYTES];
-    for (byte, value) in packet.iter_mut().zip([SERVER_HEADER, SERVER_STRATUM]) {
-        *byte = value;
-    }
-    for (byte, value) in packet.iter_mut().skip(TRANSMIT_TIMESTAMP).zip(ntp_seconds.to_be_bytes()) {
-        *byte = value;
-    }
-    packet
-}
-
 fn decode(answer: &[u8]) -> Result<UtcTime, Unavailable> {
     let refused = |why: &str| Unavailable(format!("{SERVER}: {why}"));
     let (Some(&header), Some(&stratum), Some(timestamp)) = (answer.first(), answer.get(1), answer.get(TRANSMIT_TIMESTAMP..PACKET_BYTES))
@@ -81,7 +66,10 @@ fn decode(answer: &[u8]) -> Result<UtcTime, Unavailable> {
 
 #[cfg(test)]
 mod tests {
+    use hal::clock::DateTime;
+
     use super::*;
+    use crate::testing::ntp_server;
 
     fn answer(header: u8, stratum: u8, unix_seconds: i64, fraction: u32) -> Vec<u8> {
         let mut packet = vec![0u8; PACKET_BYTES];
@@ -112,7 +100,7 @@ mod tests {
     fn a_server_answer_is_read_back_as_the_time_it_was_made_at() {
         for unix_seconds in [MORNING, NTP_TO_UNIX_SECONDS] {
             let time = DateTime::from_unix_seconds(unix_seconds);
-            assert_eq!(decode(&server_answer(time)), Ok(UtcTime::from_unix_seconds(unix_seconds)), "{time:?}");
+            assert_eq!(decode(&ntp_server::answer(time)), Ok(UtcTime::from_unix_seconds(unix_seconds)), "{time:?}");
         }
     }
 

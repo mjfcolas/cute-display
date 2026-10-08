@@ -16,7 +16,7 @@ struct Exchanges {
 }
 
 impl StubUdpClient {
-    /// A server that answers `datagram`, an NTP one `infrastructure::ntp::server_answer`.
+    /// A server that answers `datagram`, an NTP one `infrastructure::testing::ntp_server::answer`.
     pub fn answering(datagram: impl Into<Vec<u8>>) -> Self {
         Self::new(Some(datagram.into()))
     }

@@ -120,8 +120,8 @@ src/            the sources, one crate per directory
                     device is, sound
     infrastructure/ the domain's contracts on the HAL: conf files, lights, the RTC, the
                     speaker, Internet on demand, NTP; controls made of two, an RTC shared,
-                    the image's directory on the card, the test image's network sent to
-                    stubs
+                    the image's directory on the card; in `testing`, what only the
+                    test image or the simulator needs
     ui/             the shell, gestures, the system app, and the toolkit apps draw
                     with; host-tested with hal's Frame as a dev-dependency
     ui_testing/     for tests: the rendering references screens are held to

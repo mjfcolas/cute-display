@@ -5,7 +5,8 @@ use core::time::Duration;
 use hal::clock::DateTime;
 use hal::udp::UdpClient;
 use hal::Fault;
-use infrastructure::ntp::{self, PACKET_BYTES};
+use infrastructure::ntp::PACKET_BYTES;
+use infrastructure::testing::ntp_server;
 
 use crate::clock::TrueTime;
 
@@ -14,7 +15,7 @@ pub struct SimulatedNtpServer(pub TrueTime);
 impl UdpClient for SimulatedNtpServer {
     fn exchange(&mut self, _host: &str, _port: u16, _request: &[u8], answer: &mut [u8], _timeout: Duration) -> Result<usize, Fault> {
         let room = answer.get_mut(..PACKET_BYTES).ok_or_else(|| Fault::new("no room for an NTP answer"))?;
-        room.copy_from_slice(&ntp::server_answer(DateTime::from_unix_seconds(self.0.unix_seconds())));
+        room.copy_from_slice(&ntp_server::answer(DateTime::from_unix_seconds(self.0.unix_seconds())));
         Ok(PACKET_BYTES)
     }
 }
@@ -42,7 +43,7 @@ mod tests {
         let time = TrueTime::starting_at(ScaledClock::new(NonZeroU32::MIN), DateTime::from_unix_seconds(MORNING));
         HostClock::new(time).set(DateTime::from_unix_seconds(0)).unwrap();
         let answer = asked(&mut SimulatedNtpServer(time));
-        let in_time = [MORNING, MORNING + 1].map(|seconds| ntp::server_answer(DateTime::from_unix_seconds(seconds)));
+        let in_time = [MORNING, MORNING + 1].map(|seconds| ntp_server::answer(DateTime::from_unix_seconds(seconds)));
         assert!(in_time.contains(&answer));
     }
 }
