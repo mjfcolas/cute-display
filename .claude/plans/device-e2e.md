@@ -6,7 +6,7 @@
 - [x] 2. Le dossier de l'image sur la carte, configurable pour toutes les images
 - [x] 2 bis. Redirection du réseau de l'image `e2e`
 - [x] 3. Driver HTTP : choisir à qui faire confiance
-- [ ] 4. Image `e2e`
+- [x] 4. Image `e2e`
 - [ ] 5. Serveur de stubs
 - [ ] 6. Harnais pytest sur cible
 - [ ] 7. Premiers scénarios marqués `device`
@@ -140,21 +140,21 @@ Aujourd'hui `cute-display/` est écrit en dur à plusieurs endroits :
 
 ### 4. Image `e2e` (`src/firmware`)
 
-- Nouveau `[[bin]] e2e` dans `src/firmware/Cargo.toml`, en `src/bin/e2e.rs`.
-- Ce que `app.rs` et `e2e.rs` partagent passe dans la lib `firmware` : le `Hardware`
-  générique ou ses morceaux, `spawn_speaker`, `start_maintenance`.
-- `e2e.rs` câble :
-  - le dossier `cute-display-e2e`, pour l'app et pour la console ;
-  - `RedirectedHttp<EspHttpsClientTrustingOneAuthority>` avec la CA de test ;
-  - `RedirectedUdp<StdUdpClient>`.
-- La CA est incluse avec `include_str!` depuis `tools/e2e/device/ca/ca.pem`, plus un NUL
-  final.
-- La bannière de log et la version disent `e2e`, pour qu'on voie tout de suite quelle
-  image tourne.
-- Sans `e2e.conf` lisible : on logge une faute et le réseau reste injoignable. Pas de
-  panic (règle 4).
-- `just fw-build e2e` et `just fw-flash e2e` marchent déjà, le binaire étant en
-  paramètre. Il faut vérifier que l'installeur (`cute_display install`) accepte l'image.
+- La CA : `tools/e2e/src/cute_display_e2e/authority.py` la fait une fois
+  (`python -m cute_display_e2e.authority`, `--replace` pour en refaire une) dans
+  `tools/e2e/device/ca/` (`ca.pem`, `ca.key`, commités). Il signe aussi les certificats
+  du serveur de stubs (`issue_server_pem`), pour l'étape 5.
+- `firmware::app_image` : ce que `app` et `e2e` partagent, le `Hardware` générique sur
+  `Http` et `Udp`, la console, le logger. `Board` ne porte plus le client HTTPS : il ne
+  vient pas du plan des broches.
+- `src/bin/e2e.rs` : le dossier `cute-display-e2e`,
+  `RedirectedHttp<EspHttpsClientTrustingOneAuthority>` avec `ca.pem` inclus à la
+  compilation, `RedirectedUdp<StdUdpClient>`. Sans carte, les redirections le disent et
+  rien ne sort (elles prennent un `Result` de carte, comme `Devices::sd_card`).
+- La bannière : « Cute Display test image <version> ».
+- Sur l'appareil, à vérifier : `just fw-build e2e && just fw-flash e2e`, la bannière,
+  `just sd-ls cute-display-e2e`, la météo qui dit « no stubs: put e2e.conf », puis
+  `just fw-flash app`.
 
 ### 5. Serveur de stubs (`tools/e2e/src/cute_display_e2e/stubs.py`)
 

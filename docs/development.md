@@ -42,7 +42,8 @@ just preview         # render an app screen to a PNG (screens: src/simulator/exa
 just sim             # the app image in a window, the SD card in sim-sd/
 just fw              # build the app image, flash it, watch the log
 just fw hwtest       # the same with the hardware test image
-just fw-flash        # flash the image last built (`hwtest` for the test one), no build, no log
+just fw e2e          # the same with the test image, its web and time from the stubs
+just fw-flash        # flash the image last built (`hwtest` for the hardware test, `e2e` for the test image), no build, no log
 just fw-boot habity  # back to Habity's firmware (factory: as shipped)
 just fw-check        # which app boots, and where Cute Display would go
 just backup          # dump the whole flash to backup/ (gitignored)

@@ -25,6 +25,11 @@ path = "src/bin/app.rs"
 harness = false
 
 [[bin]]
+name = "e2e"
+path = "src/bin/e2e.rs"
+harness = false
+
+[[bin]]
 name = "hwtest"
 path = "src/bin/hwtest.rs"
 harness = false

@@ -1,9 +1,10 @@
 [project]
 name = "cute-display-e2e"
 version = "0"
-description = "Cute Display from the outside: scenarios a person would play, on the simulator through its console."
+description = "Cute Display from the outside: scenarios a person would play, on the simulator through its console, and the authority the device's test image trusts."
 requires-python = ">=3.11"
 dependencies = [
+    "cryptography>=44,<47",
     "cute-display-link",
     "pytest>=8,<9",
 ]

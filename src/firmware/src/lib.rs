@@ -1,3 +1,4 @@
+pub mod app_image;
 pub mod board;
 
 /// The image's `esp_app_desc_t`, which ESP-IDF's bootloader and the installer read: the

@@ -25,8 +25,9 @@ struct LocalStubs {
 }
 
 impl LocalStubs {
-    fn read(storage: &impl FileStorage) -> Result<Self, Fault> {
-        let conf = conf_file::read(storage, STUBS_FILE)?.ok_or_else(|| Fault::new(format!("no stubs: put {STUBS_FILE}")))?;
+    fn read(card: &Result<impl FileStorage, Fault>) -> Result<Self, Fault> {
+        let card = card.as_ref().map_err(|fault| Fault::new(format!("no stubs: no SD card ({fault})")))?;
+        let conf = conf_file::read(card, STUBS_FILE)?.ok_or_else(|| Fault::new(format!("no stubs: put {STUBS_FILE}")))?;
         let address = conf.get(ADDRESS).filter(|address| !address.is_empty());
         let port = |key: &str| conf.get(key).and_then(|port| port.parse::<u16>().ok());
         match (address, port(HTTPS_PORT), port(NTP_PORT)) {
@@ -48,30 +49,30 @@ impl LocalStubs {
 
 pub struct RedirectedHttp<H, S> {
     http: H,
-    storage: S,
+    card: Result<S, Fault>,
 }
 
 impl<H: HttpClient, S: FileStorage> RedirectedHttp<H, S> {
-    pub fn new(http: H, storage: S) -> Self {
-        Self { http, storage }
+    pub fn new(http: H, card: Result<S, Fault>) -> Self {
+        Self { http, card }
     }
 }
 
 impl<H: HttpClient, S: FileStorage> HttpClient for RedirectedHttp<H, S> {
     fn fetch(&mut self, url: &str, read: &mut dyn FnMut(&mut dyn Read) -> Result<(), Fault>) -> Result<(), Fault> {
-        let redirected = LocalStubs::read(&self.storage)?.url_for(url)?;
+        let redirected = LocalStubs::read(&self.card)?.url_for(url)?;
         self.http.fetch(&redirected, read)
     }
 }
 
 pub struct RedirectedUdp<U, S> {
     udp: U,
-    storage: S,
+    card: Result<S, Fault>,
 }
 
 impl<U: UdpClient, S: FileStorage> RedirectedUdp<U, S> {
-    pub fn new(udp: U, storage: S) -> Self {
-        Self { udp, storage }
+    pub fn new(udp: U, card: Result<S, Fault>) -> Self {
+        Self { udp, card }
     }
 }
 
@@ -81,7 +82,7 @@ impl<U: UdpClient, S: FileStorage> UdpClient for RedirectedUdp<U, S> {
         if port != ntp::PORT {
             return Err(Fault::new(format!("{host}:{port}: no stub answers but NTP")));
         }
-        let stubs = LocalStubs::read(&self.storage)?;
+        let stubs = LocalStubs::read(&self.card)?;
         self.udp.exchange(&stubs.address, stubs.ntp_port, request, answer, timeout)
     }
 }
@@ -107,7 +108,7 @@ mod tests {
     #[test]
     fn a_url_is_asked_of_the_stubs_under_its_host() {
         let web = StubHttpClient::default().answering("https://192.168.1.10:8443/api.open-meteo.com/", "{}");
-        let mut http = RedirectedHttp::new(web.clone(), FakeFileStorage::with(STUBS_FILE, STUBS));
+        let mut http = RedirectedHttp::new(web.clone(), Ok(FakeFileStorage::with(STUBS_FILE, STUBS)));
         assert_eq!(fetch(&mut http, FORECAST), Ok(b"{}".to_vec()));
         assert_eq!(web.asked(), ["https://192.168.1.10:8443/api.open-meteo.com/v1/forecast?latitude=48.8530&longitude=2.3499"]);
     }
@@ -116,7 +117,7 @@ mod tests {
     fn the_stubs_address_is_read_at_every_use() {
         let web = StubHttpClient::default();
         let card = FakeFileStorage::with(STUBS_FILE, STUBS);
-        let mut http = RedirectedHttp::new(web.clone(), card.clone());
+        let mut http = RedirectedHttp::new(web.clone(), Ok(card.clone()));
         let _ = fetch(&mut http, "https://a/");
         card.put(STUBS_FILE, "address = 10.0.0.2\nhttps_port = 443\nntp_port = 123\n");
         let _ = fetch(&mut http, "https://a/");
@@ -133,19 +134,32 @@ mod tests {
         ] {
             let web = StubHttpClient::default().answering("https://", "{}");
             let udp = StubUdpClient::answering(vec![0; ntp::PACKET_BYTES]);
-            let fault = fetch(&mut RedirectedHttp::new(web.clone(), card.clone()), FORECAST).unwrap_err();
+            let fault = fetch(&mut RedirectedHttp::new(web.clone(), Ok(card.clone())), FORECAST).unwrap_err();
             assert_eq!(fault.reason(), said);
             let mut answer = [0; ntp::PACKET_BYTES];
-            assert!(RedirectedUdp::new(udp.clone(), card).exchange(ntp::SERVER, ntp::PORT, &[], &mut answer, TIMEOUT).is_err());
+            assert!(RedirectedUdp::new(udp.clone(), Ok(card)).exchange(ntp::SERVER, ntp::PORT, &[], &mut answer, TIMEOUT).is_err());
             assert!(web.asked().is_empty());
             assert!(udp.asked().is_empty());
         }
     }
 
     #[test]
+    fn without_the_card_nothing_is_asked_and_the_fault_says_why() {
+        let web = StubHttpClient::default().answering("https://", "{}");
+        let mut http = RedirectedHttp::new(web.clone(), Err::<FakeFileStorage, _>(Fault::new("not mounted")));
+        assert_eq!(fetch(&mut http, FORECAST).unwrap_err().reason(), "no stubs: no SD card (not mounted)");
+        let udp = StubUdpClient::answering(vec![0; ntp::PACKET_BYTES]);
+        let mut redirected = RedirectedUdp::new(udp.clone(), Err::<FakeFileStorage, _>(Fault::new("not mounted")));
+        let mut answer = [0; ntp::PACKET_BYTES];
+        assert!(redirected.exchange(ntp::SERVER, ntp::PORT, &[], &mut answer, TIMEOUT).is_err());
+        assert!(web.asked().is_empty());
+        assert!(udp.asked().is_empty());
+    }
+
+    #[test]
     fn what_is_not_https_is_refused() {
         let web = StubHttpClient::default().answering("https://", "{}");
-        let mut http = RedirectedHttp::new(web.clone(), FakeFileStorage::with(STUBS_FILE, STUBS));
+        let mut http = RedirectedHttp::new(web.clone(), Ok(FakeFileStorage::with(STUBS_FILE, STUBS)));
         for not_web in ["http://a/b", "ftp://a/b", "api.open-meteo.com/v1", "https://"] {
             assert!(fetch(&mut http, not_web).is_err(), "{not_web}");
         }
@@ -155,7 +169,7 @@ mod tests {
     #[test]
     fn the_time_is_asked_of_the_stubs_ntp_port_and_nothing_else_goes_out() {
         let udp = StubUdpClient::answering(vec![7; ntp::PACKET_BYTES]);
-        let mut redirected = RedirectedUdp::new(udp.clone(), FakeFileStorage::with(STUBS_FILE, STUBS));
+        let mut redirected = RedirectedUdp::new(udp.clone(), Ok(FakeFileStorage::with(STUBS_FILE, STUBS)));
         let mut answer = [0; ntp::PACKET_BYTES];
         assert_eq!(redirected.exchange(ntp::SERVER, ntp::PORT, &[], &mut answer, TIMEOUT), Ok(ntp::PACKET_BYTES));
         assert!(redirected.exchange("dns.example", 53, &[], &mut answer, TIMEOUT).is_err());

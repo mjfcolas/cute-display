@@ -154,7 +154,7 @@ tools/          host tools: the [installer](tools/installer/README.md) (the devi
 
 ## Applications
 
-The main image (`src/app/`, on the board by `src/firmware/src/bin/app.rs`, on a computer
+The main image (`src/app/`, on the board by `src/firmware/src/app_image.rs`, on a computer
 by `src/simulator/`) runs small apps, one in front at a time. The engine has one app of
 its own, the system app; the others come from `src/apps/`. `catalog` lists them, and
 its Cargo features pick those an image holds; `general.conf` chooses, at start, those
