@@ -10,7 +10,7 @@
 - [x] 5. Serveur de stubs
 - [x] 6. Harnais pytest sur cible
 - [ ] 7. Premiers scénarios marqués `device`
-- [ ] 8. Docs
+- [x] 8. Docs
 
 ## À reprendre plus tard
 
@@ -206,13 +206,13 @@ Aujourd'hui `cute-display/` est écrit en dur à plusieurs endroits :
 
 ### 8. Docs
 
-- **`tools/e2e/README.md`**, section « Sur l'appareil » :
-  - prérequis : appareil branché, même réseau que le PC, ports `https_port` et
-    `ntp_port` ouverts dans le pare-feu ;
-  - `just fw-flash e2e`, `just e2e-device` ;
-  - remettre la prod avec `just fw-flash app`.
-- **Pas d'entrée `CHANGELOG.md` ni `UPDATING.md`** : rien de visible pour les gens qui
-  possèdent l'horloge.
+- `tools/e2e/README.md` : l'introduction, une section « On the device » (avant, la
+  commande, ce que fait chaque scénario, le refus sur l'image de prod, après, quel
+  scénario marquer, les stubs à la main, la CA), le log de l'appareil, `web/` servi
+  aussi par les stubs, réenregistrer pour les deux.
+- `DESIGN.md` : l'arborescence (`tools/` sur le simulateur et l'appareil, `docs/`).
+- Déjà faits en route : `docs/testing/README.md`, `docs/development.md`.
+- Pas d'entrée `CHANGELOG.md` ni `UPDATING.md` pour le tier lui-même.
 
 ## Fichiers critiques
 

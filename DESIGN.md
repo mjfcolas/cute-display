@@ -144,12 +144,13 @@ src/            the sources, one crate per directory
                   built for the ESP32 only
   simulator/      the app image on a computer, and the screen preview
 docs/           installing and troubleshooting, development and releasing, the board, and a
-                README per app, console and test image
+                README per app, the console, the hardware test and the simulator
 tools/          host tools: the [installer](tools/installer/README.md) (the device's flash
                 and SD card, the step-by-step setup), whole-flash
                 test images for it, the [link](tools/link/README.md) to the device's console it
                 shares with tests, and that turns a frame dump into a PNG, and the
-                [end-to-end scenarios](tools/e2e/README.md) on the simulator
+                [end-to-end scenarios](tools/e2e/README.md) on the simulator and the
+                device
 ```
 
 ## Applications
