@@ -35,8 +35,8 @@ risk only the device has that the others leave uncovered.
   look at them before committing.
 - `just lint`: clippy, host and ESP32.
 - `just e2e [pytest arguments]`: the end-to-end scenarios on the simulator.
-- `just e2e-device [pytest arguments]`: those marked `device`, on the device running the
-  test image (`just fw e2e`).
+- `just e2e-device [pytest arguments]`: those marked `device`, on the device: the test
+  image flashed, then the app image back.
 - `just preview <screen>`: a screen as a PNG, to look at.
 - `just remote-sim …` and `just remote …`: the console by hand, on the simulator or the
   device.

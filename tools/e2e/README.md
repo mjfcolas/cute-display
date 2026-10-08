@@ -26,16 +26,21 @@ its time asked of stubs on this computer, over HTTPS it trusts for a test author
 alone.
 
 - Before: the device plugged in, on the same network as this computer, no serial monitor
-  open; this computer reachable on 8443/tcp and 8123/udp; `just fw e2e`.
-- `just e2e-device [pytest arguments]`; `--stubs-address` when the device reaches this
-  computer at another address than the one it leaves from.
+  open; this computer reachable on 8443/tcp and 8123/udp.
+- `just e2e-device [pytest arguments]` builds the test image and the app image, flashes
+  the test image, plays the scenarios, then flashes the app image back, whether they
+  passed, failed or were stopped.
+- `just e2e --device [pytest arguments]` plays them alone, on a device already running the
+  test image (`just fw e2e`).
+- `--stubs-address` when the device reaches this computer at another address than the
+  one it leaves from.
 - Each scenario empties `cute-display-e2e/`, copies the clock's `cute-display/wifi.conf`
   there, lays out `cards/standard/`, sets the RTC and the stubs to its time, and restarts
   the device. `cute-display/` is left as it was.
 - On the app image, the harness stops at once, having changed nothing: its console
   writes nowhere but `cute-display/`.
-- After: `just fw-flash app`. The RTC holds the last scenario's time until the app image
-  sets it from the Internet, within a minute.
+- After, the RTC holds the last scenario's time until the app image sets it from the
+  Internet, within a minute.
 - A scenario is marked `@pytest.mark.device` when it runs in real time: the simulator
   runs ten times faster.
 - By hand: `python -m cute_display_e2e.stub_web_server` serves the stubs and says what to

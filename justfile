@@ -47,8 +47,12 @@ remote-sim *args:
 e2e *args:
     uv run --quiet --project tools/e2e pytest tools/e2e/scenarios {{args}}
 
-# the scenarios marked device, on the device running the test image (`just fw e2e`), the stubs on this computer
-e2e-device *args:
+# the scenarios marked device on the device: the test image built and flashed, the scenarios played with the stubs on this computer, then the app image flashed back whatever they gave; pytest's arguments
+e2e-device *args: (fw-build "e2e") (fw-build "app")
+    #!/usr/bin/env bash
+    set -uo pipefail
+    just fw-flash e2e || exit
+    trap 'just fw-flash app' EXIT
     uv run --quiet --project tools/e2e pytest tools/e2e/scenarios --device {{args}}
 
 # render the hardware test's report page to a PNG (`pattern` for the checkerboard)
