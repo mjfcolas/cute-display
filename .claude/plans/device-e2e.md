@@ -5,7 +5,7 @@
 - [x] 1. Règles et design
 - [x] 2. Le dossier de l'image sur la carte, configurable pour toutes les images
 - [x] 2 bis. Redirection du réseau de l'image `e2e`
-- [ ] 3. Driver HTTP : choisir à qui faire confiance
+- [x] 3. Driver HTTP : choisir à qui faire confiance
 - [ ] 4. Image `e2e`
 - [ ] 5. Serveur de stubs
 - [ ] 6. Harnais pytest sur cible
@@ -128,13 +128,15 @@ Aujourd'hui `cute-display/` est écrit en dur à plusieurs endroits :
   sort et la faute dit quoi poser.
 - **Tests** : unitaires sur les stubs HTTP et UDP de `hal_testing`.
 
-### 3. Driver HTTP : choisir à qui faire confiance (`src/engine/drivers/src/esp_http.rs`)
+### 3. Driver HTTP : choisir à qui faire confiance
 
-- Deux constructeurs :
-  - `EspHttpsClient::trusting_espidf_bundle()` : le comportement actuel ;
-  - `EspHttpsClient::trusting_only(ca: &'static CStr)` : `server_certificate`, sans
-    bundle.
-- L'image `app` est inchangée dans les faits.
+- `drivers::esp_http::EspHttpsClient` ne change pas pour l'image `app` : le bundle de CA
+  d'ESP-IDF. Sa requête devient `fetch_with(&Configuration, …)`, partagée.
+- `drivers::testing::esp_https_one_authority::EspHttpsClientTrustingOneAuthority::new(ca_pem)` :
+  `server_certificate` = la CA de test, sans bundle. Dans `testing`, puisque seule
+  l'image `e2e` s'en sert (règle 3).
+- Rien de testable sur l'hôte : tout est configuration d'ESP-IDF. Vérifié par le build
+  ESP32 (`just lint`), et sur l'appareil à l'étape 4.
 
 ### 4. Image `e2e` (`src/firmware`)
 
@@ -143,7 +145,7 @@ Aujourd'hui `cute-display/` est écrit en dur à plusieurs endroits :
   générique ou ses morceaux, `spawn_speaker`, `start_maintenance`.
 - `e2e.rs` câble :
   - le dossier `cute-display-e2e`, pour l'app et pour la console ;
-  - `RedirectedHttp<EspHttpsClient::trusting_only(CA)>` ;
+  - `RedirectedHttp<EspHttpsClientTrustingOneAuthority>` avec la CA de test ;
   - `RedirectedUdp<StdUdpClient>`.
 - La CA est incluse avec `include_str!` depuis `tools/e2e/device/ca/ca.pem`, plus un NUL
   final.

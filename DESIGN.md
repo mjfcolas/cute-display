@@ -132,7 +132,7 @@ src/            the sources, one crate per directory
     domain_testing/ for tests: test doubles of what the domain needs from the outside
                     world, and the checks each implementation passes
     drivers/        ESP32-S3 implementations of hal; chip logic that needs no ESP32 is
-                    host-tested
+                    host-tested; in `testing`, what only the test image runs
   libs/           what several apps share, as code
   apps/           one crate per app
   catalog/        the apps an image can hold, the same for the board and the computer

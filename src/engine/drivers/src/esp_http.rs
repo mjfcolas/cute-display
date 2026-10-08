@@ -9,7 +9,7 @@ use hal::Fault;
 
 use crate::or_fault::OrFault;
 
-const TIMEOUT: Duration = Duration::from_secs(15);
+pub(crate) const TIMEOUT: Duration = Duration::from_secs(15);
 
 /// HTTP and HTTPS, trusting the certificate authorities ESP-IDF bundles.
 pub struct EspHttpsClient;
@@ -29,13 +29,21 @@ impl HttpClient for EspHttpsClient {
             crt_bundle_attach: Some(esp_crt_bundle_attach),
             ..Default::default()
         };
-        let mut connection = EspHttpConnection::new(&configuration).or_fault("HTTP client")?;
-        connection.initiate_request(Method::Get, url, &[]).or_fault("sending the request")?;
-        connection.initiate_response().or_fault("waiting for the answer")?;
-        let status = connection.status();
-        if !(200..300).contains(&status) {
-            return Err(Fault::new(format!("the server answered {status}")));
-        }
-        read(&mut Body(&mut connection))
+        fetch_with(&configuration, url, read)
     }
+}
+
+pub(crate) fn fetch_with(
+    configuration: &Configuration,
+    url: &str,
+    read: &mut dyn FnMut(&mut dyn Read) -> Result<(), Fault>,
+) -> Result<(), Fault> {
+    let mut connection = EspHttpConnection::new(configuration).or_fault("HTTP client")?;
+    connection.initiate_request(Method::Get, url, &[]).or_fault("sending the request")?;
+    connection.initiate_response().or_fault("waiting for the answer")?;
+    let status = connection.status();
+    if !(200..300).contains(&status) {
+        return Err(Fault::new(format!("the server answered {status}")));
+    }
+    read(&mut Body(&mut connection))
 }

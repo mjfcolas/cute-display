@@ -31,4 +31,6 @@ pub mod pcnt_encoder;
 #[cfg(target_os = "espidf")]
 pub mod sdmmc_card;
 #[cfg(target_os = "espidf")]
+pub mod testing;
+#[cfg(target_os = "espidf")]
 pub mod usb_console;
