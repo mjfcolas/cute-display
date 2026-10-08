@@ -7,7 +7,7 @@
 - [x] 2 bis. Redirection du réseau de l'image `e2e`
 - [x] 3. Driver HTTP : choisir à qui faire confiance
 - [x] 4. Image `e2e`
-- [ ] 5. Serveur de stubs
+- [x] 5. Serveur de stubs
 - [ ] 6. Harnais pytest sur cible
 - [ ] 7. Premiers scénarios marqués `device`
 - [ ] 8. Docs
@@ -17,6 +17,11 @@
 - **Le contrôle des chemins existe deux fois** : `OwnDirectory::inside` et
   `SdPath::parse` (console) vérifient la même chose. Un type de chemin relatif dans
   `hal::storage` pourrait servir aux deux.
+
+- **La console perd des commandes sur l'appareil** : la première après un temps sans
+  échange répond « no answer from the device », et un `turn` envoyé juste après
+  l'ouverture d'un écran est perdu. Déjà vrai sur l'image de prod. Le harnais de
+  l'étape 6 doit le traiter (nouvel essai, ou la cause trouvée).
 
 ## Contexte
 
@@ -156,21 +161,22 @@ Aujourd'hui `cute-display/` est écrit en dur à plusieurs endroits :
   `just sd-ls cute-display-e2e`, la météo qui dit « no stubs: put e2e.conf », puis
   `just fw-flash app`.
 
-### 5. Serveur de stubs (`tools/e2e/src/cute_display_e2e/stubs.py`)
+### 5. Serveurs de stubs (`tools/e2e/src/cute_display_e2e/stub_{web,time}_server.py`)
 
-- **HTTPS** (`http.server` + `ssl`) :
-  - sert `tools/e2e/web/*.http`, dont la première ligne est l'URL et le reste le corps,
-    comme dans `src/simulator/src/recordings.rs` ;
-  - retrouve l'URL d'origine en relisant le `/<hôte>/…` de la requête ;
-  - répond 404 pour une URL non enregistrée, comme `RecordedWeb`.
-- **Certificat serveur** : émis à chaque session pour l'IP, signé par la CA, avec la lib
-  `cryptography` (dépendance de `tools/e2e/pyproject.toml`).
-- **NTP en UDP** : répond l'heure du scénario plus le temps écoulé. C'est le même paquet
-  que `testing::ntp_server::answer`, porté en Python.
-- **Tests** dans `tools/e2e/tests/` (lancés par `just test`) :
-  - une requête HTTPS qui vérifie le certificat avec la CA ;
-  - un 404 ;
-  - le décodage d'une réponse NTP.
+- `StubWebServer(address, port=8443)` et `StubTimeServer(port=8123)` :
+  - HTTPS (`http.server` + `ssl`) : sert `tools/e2e/web/*.http` (URL en première ligne,
+    comme le `--web` du simulateur), l'URL d'origine relue dans le `/<hôte>/…` de la
+    requête ; 404 pour ce qui n'est pas enregistré ; garde les URL demandées (`asked`).
+  - Certificat émis au démarrage pour `address` par `issue_server_pem`.
+  - NTP en UDP : l'heure de `FakeRunningTime`, posée par un scénario, qui court ensuite.
+  - `e2e_conf(address, https_port, ntp_port)` : le fichier à poser sur la carte.
+- `local_address()` : l'adresse du PC sur le réseau local.
+- `python -m cute_display_e2e.stub_web_server` : les sert à la main et affiche l'`e2e.conf`.
+- Tests dans `tools/e2e/tests/test_stub_{web,time}_server.py` : HTTPS vérifié contre une CA, 404, NTP.
+- Pare-feu : aucun actif sur ce PC ; sinon ouvrir 8443/tcp et 8123/udp.
+- Vérifié sur l'appareil : le handshake TLS passe avec la CA de test et un hôte en IP
+  (la météo de Notre-Dame affichée depuis l'enregistrement), et le stub NTP remet à
+  l'heure un RTC décalé d'une heure.
 
 ### 6. Harnais pytest sur cible
 
