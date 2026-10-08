@@ -53,6 +53,7 @@ just remote tap yellow  # the device's controls, lights, speaker, RTC: just remo
 just remote-sim tap yellow  # the same on `just sim`'s simulator
 just bench           # how fast the card and the console move data, each leg apart (monitor closed)
 just e2e             # the end-to-end scenarios on the simulator (testing/README.md)
+just e2e-device      # those marked device, on the device running the test image (testing/README.md)
 just release         # the app image of a release, in release/ (releasing.md)
 just                 # every recipe
 ```

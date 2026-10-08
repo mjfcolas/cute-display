@@ -125,10 +125,10 @@ fn start_maintenance(
             let mut line = String::new();
             loop {
                 line.clear();
-                let replied = io::stdin()
-                    .lock()
-                    .read_line(&mut line)
-                    .and_then(|_| console.on_line(&line, &mut output));
+                let replied = io::stdin().lock().read_line(&mut line).and_then(|_| {
+                    output.get_mut().heard_from_the_computer();
+                    console.on_line(&line, &mut output)
+                });
                 if let Err(e) = replied {
                     log::warn!("maintenance: {e}");
                     thread::sleep(Duration::from_secs(1));

@@ -2,8 +2,8 @@
 real process adds: a countdown over, brought to the front, on its speaker."""
 from cute_display_e2e.waiting import until
 
-GENERAL_CONF = 'cute-display/general.conf'
-TIMER_CONF = 'cute-display/apps/timer/timer.conf'
+GENERAL_CONF = 'general.conf'
+TIMER_CONF = 'apps/timer/timer.conf'
 
 
 def test_a_countdown_over_comes_to_the_front_and_rings_until_stopped(clock):

@@ -11,7 +11,7 @@ risk only the device has that the others leave uncovered.
 | Rendering | A screen's UI state drawn and compared with its crate's `references/<name>.png`, by [`ui_testing::references`](../../src/engine/ui_testing/src/references.rs) | That a UI state is drawn as expected | That it is the right UI state | In place |
 | Integration | The whole app image, `app::run`, in memory on test doubles of the hardware and a clock stepped by the test | The threads, the wiring, long spans of time, faults | The real process and its I/O | In place |
 | End-to-end, simulator | [Scenarios](../../tools/e2e/README.md) driving the headless simulator through the [maintenance console](../maintenance/README.md) | What a person does, from the controls to the screen, the lights, the sound and the card | The hardware | In place |
-| End-to-end, device | The scenarios quick enough for real time, on the device running the test image: its own directory on the card, the web and the time from stubs on the local network, the clock left where the scenario set it | Memory, stacks, TLS, the card, the RTC, the speaker, real time | The button pins and the glass: the [hardware test](../hwtest/README.md) covers those | Not yet |
+| End-to-end, device | The scenarios quick enough for real time, on the device running the test image: its own directory on the card, the web and the time from stubs on the local network, the clock left where the scenario set it | Memory, stacks, TLS, the card, the RTC, the speaker, real time | The button pins and the glass: the [hardware test](../hwtest/README.md) covers those | In place |
 
 ## Where a test goes
 
@@ -35,6 +35,8 @@ risk only the device has that the others leave uncovered.
   look at them before committing.
 - `just lint`: clippy, host and ESP32.
 - `just e2e [pytest arguments]`: the end-to-end scenarios on the simulator.
+- `just e2e-device [pytest arguments]`: those marked `device`, on the device running the
+  test image (`just fw e2e`).
 - `just preview <screen>`: a screen as a PNG, to look at.
 - `just remote-sim …` and `just remote …`: the console by hand, on the simulator or the
   device.

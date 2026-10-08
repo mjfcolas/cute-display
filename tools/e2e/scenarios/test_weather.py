@@ -1,3 +1,7 @@
+import pytest
+
+
+@pytest.mark.device
 def test_the_recorded_forecast_shows_today_then_the_week(display):
     display.until_front('alarm')
     display.tap('wheel')

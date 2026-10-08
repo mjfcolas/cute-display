@@ -1,5 +1,6 @@
 """Where the device is plugged: the ESP32-S3's own USB serial port, on any computer."""
 import os
+import time
 
 import serial
 from serial.tools import list_ports
@@ -51,6 +52,15 @@ def open_link():
     link = LineSerial(port(), 115200, timeout=0.2)
     link.reset_input_buffer()
     return link
+
+
+def restart(link, sleep=time.sleep):
+    """Resets the chip as espflash does: RTS holds it in reset while DTR, low, keeps it out
+    of its download mode. The port stays open, and the image answers seconds later."""
+    link.dtr = False
+    link.rts = True
+    sleep(0.1)
+    link.rts = False
 
 
 def explain(error):

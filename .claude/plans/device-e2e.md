@@ -8,7 +8,7 @@
 - [x] 3. Driver HTTP : choisir à qui faire confiance
 - [x] 4. Image `e2e`
 - [x] 5. Serveur de stubs
-- [ ] 6. Harnais pytest sur cible
+- [x] 6. Harnais pytest sur cible
 - [ ] 7. Premiers scénarios marqués `device`
 - [ ] 8. Docs
 
@@ -17,11 +17,6 @@
 - **Le contrôle des chemins existe deux fois** : `OwnDirectory::inside` et
   `SdPath::parse` (console) vérifient la même chose. Un type de chemin relatif dans
   `hal::storage` pourrait servir aux deux.
-
-- **La console perd des commandes sur l'appareil** : la première après un temps sans
-  échange répond « no answer from the device », et un `turn` envoyé juste après
-  l'ouverture d'un écran est perdu. Déjà vrai sur l'image de prod. Le harnais de
-  l'étape 6 doit le traiter (nouvel essai, ou la cause trouvée).
 
 ## Contexte
 
@@ -180,38 +175,28 @@ Aujourd'hui `cute-display/` est écrit en dur à plusieurs endroits :
 
 ### 6. Harnais pytest sur cible
 
-- **`tools/e2e/src/cute_display_e2e/device.py`** : `Device`, l'équivalent de
-  `Simulator`.
-  - `link` : `cute_display_link.usb.open_link()`. Ouvrir le port reset la puce, voir le
-    commentaire dans `usb.py`.
-  - `log` : `Log`, alimenté par les lignes de log que `console.KeepingLog` met de côté.
-  - `crashes()` reconnaît en plus `Guru Meditation`, `stack overflow` et un reboot
-    inattendu, c'est-à-dire une deuxième bannière de boot.
-- **Dans `scenarios/conftest.py`** :
-  - option `--device` ;
-  - fixture `clock` qui rend un `SimulatedClock` ou un `DeviceClock` avec la même
-    interface : `put_before_start`, `start(at=…)`, `logs`, `check_and_close`.
-- **Chemins relatifs au dossier de l'image** : les scénarios passent
-  `general.conf`, `apps/timer/timer.conf`, etc., sans `cute-display/`. Chaque clock les
-  préfixe de son dossier : `cute-display` pour le simulateur, `cute-display-e2e` pour
-  l'appareil.
-- **`DeviceClock.start(at)`** :
-  1. vide `cute-display-e2e/` par la console ;
-  2. y pose `cards/standard`, `wifi.conf`, `e2e.conf` et les fichiers du scénario ;
-  3. règle le RTC à `at` (`clock set`) et le stub NTP sur `at` ;
-  4. reset la puce et attend la console.
-- **Une seule session de stubs** par run pytest (fixture de session).
-- **IP du PC** : détectée par la route vers le LAN, ou donnée par `--stubs-address`.
-  Elle est écrite dans `e2e.conf` avant les tests.
-- **`wifi.conf` du réseau de test** : `--wifi PATH`, par défaut
-  `backup/sd/cute-display/wifi.conf` (créé par `just backup-sd`).
-- **Sélection des scénarios** :
-  - marqueur `@pytest.mark.device` sur les scénarios assez rapides pour la cible ;
-  - avec `--device`, les autres sont ignorés ;
-  - à ajuster selon `SPEED` : sur cible, la vitesse est 1.
-- **Délais** : `Display` et `waiting.until` prennent des délais propres à la cible
-  (rafraîchissement réel, montée du Wi-Fi).
-- **`justfile`** : `e2e-device *args`, qui lance pytest avec `--device`.
+- `cute_display_link.usb.restart(link)` : RTS tient la puce en reset 0,1 s, DTR bas ;
+  le port reste ouvert, la console répond ~2,5 s après.
+- `cute_display_e2e.device.Device(link)` : la console (et le log, par `KeepingLog`),
+  `restart`, `empty_own_directory_but_the_clocks_wifi` (vide `cute-display-e2e/` et y copie le `wifi.conf` de
+  l'horloge, sur la carte), `put`. Sur une autre image, la console refuse d'écrire :
+  `NotTheTestImage` dit de flasher l'image de test, sans rien avoir changé. Testé sur
+  l'hôte contre le `FakeCard` de `tools/link`, rendu fidèle à la console (dossier en
+  écriture configurable, `rm` refusé ailleurs, dossier absent).
+- Le log est celui de chaque scénario : `DeviceClock` repart d'un `Log` neuf.
+- `scenarios/conftest.py` : `--device`, `--stubs-address`, le marqueur `device` (les
+  autres sautés). `DeviceClock` a l'interface de `SimulatedClock` : au premier `start`,
+  le dossier vidé ; à chaque `start`, les fichiers posés (carte `standard`, `e2e.conf`,
+  ceux du scénario), l'heure des stubs et le RTC à `at`, l'appareil relancé. Les stubs
+  sont lancés une fois pour la session.
+- Les chemins des scénarios sont relatifs au dossier de l'image. Lire la carte et le RTC
+  passe par l'horloge (`clock.read_file`, `clock.rtc_time`), qui connaît son dossier ;
+  `Display` ne garde que ce qu'une personne voit et touche.
+- `just e2e-device`.
+- La console perdait la réponse à la première requête après un temps sans lecteur :
+  `ConsoleOutput::heard_from_the_computer` la fait de nouveau attendre de la place.
+  Vérifié : 10 commandes sur 10 du premier coup.
+- Vérifié sur l'appareil : `test_start` et `test_weather` passent (20 s).
 
 ### 7. Premiers scénarios marqués `device`
 

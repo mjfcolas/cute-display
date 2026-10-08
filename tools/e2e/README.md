@@ -9,6 +9,10 @@ lights, the speaker, the clock and the card. Where they stand among the tests:
   some.
 - `just e2e --window`: each simulator in its window, to watch what a scenario does; the
   keyboard and the mouse are best left alone meanwhile.
+- `just e2e-device`: the scenarios marked `@pytest.mark.device`, on the device running
+  the test image (`just fw e2e`), the stubs on this computer; `--stubs-address` when the
+  device reaches it at another address. Such a scenario reads the card and the RTC
+  through `clock`, which knows the image's directory.
 - A scenario fails on what the glass said last, and the simulator's log comes with it; a
   panic in the log fails it too.
 - `cards/standard/`: the card each starts on, a copy of it.

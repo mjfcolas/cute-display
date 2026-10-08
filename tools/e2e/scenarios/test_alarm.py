@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from cute_display_e2e.waiting import until
 
-ALARM_CONF = 'cute-display/apps/alarm/alarm.conf'
+ALARM_CONF = 'apps/alarm/alarm.conf'
 # 06:29 in Paris.
 A_THURSDAY_MORNING = datetime(2026, 10, 1, 4, 29, tzinfo=timezone.utc)
 
@@ -26,7 +26,7 @@ def test_a_wake_up_time_set_on_the_clock_is_kept_on_the_card(clock):
     display.tap('yellow')
     display.until_screen(lambda screen: screen.first_value('alarm') == 'Alarm today at 06:30', 'the alarm did not switch on')
 
-    alarm_conf = display.read_file(ALARM_CONF).decode()
+    alarm_conf = clock.read_file(ALARM_CONF).decode()
     assert 'thursday = 06:30' in alarm_conf and 'enabled = yes' in alarm_conf
 
 

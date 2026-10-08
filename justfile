@@ -47,6 +47,10 @@ remote-sim *args:
 e2e *args:
     uv run --quiet --project tools/e2e pytest tools/e2e/scenarios {{args}}
 
+# the scenarios marked device, on the device running the test image (`just fw e2e`), the stubs on this computer
+e2e-device *args:
+    uv run --quiet --project tools/e2e pytest tools/e2e/scenarios --device {{args}}
+
 # render the hardware test's report page to a PNG (`pattern` for the checkerboard)
 preview-hwtest page="" zoom="2":
     cargo run --quiet -p hwtest --example report_page -- /tmp/cute-display.fb {{page}}

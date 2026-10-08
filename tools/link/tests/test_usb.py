@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
-from cute_display_link.usb import PORT_VARIABLE, LineSerial, NoDevice, explain, port
+from cute_display_link.usb import PORT_VARIABLE, LineSerial, NoDevice, explain, port, restart
 
 HABITY = SimpleNamespace(device='/dev/ttyACM0', vid=0x303a, pid=0x1001)
 OTHER = SimpleNamespace(device='/dev/ttyUSB0', vid=0x10c4, pid=0xea60)
@@ -65,6 +65,18 @@ class Lines(unittest.TestCase):
         self.assertEqual(link.readline(), b'')
         link.received.append(b'k\n')
         self.assertEqual(link.readline(), b'@@ 1 ok\n')
+
+
+class Restart(unittest.TestCase):
+    def test_the_chip_is_held_in_reset_a_moment_with_download_mode_kept_off(self):
+        lines = []
+
+        class StubSerial:
+            def __setattr__(self, name, value):
+                lines.append(f'{name} {value}')
+
+        restart(StubSerial(), sleep=lambda seconds: lines.append(f'sleep {seconds}'))
+        self.assertEqual(lines, ['dtr False', 'rts True', 'sleep 0.1', 'rts False'])
 
 
 if __name__ == '__main__':

@@ -1,6 +1,7 @@
 //! The console's output, which does not wait for a computer: with nobody reading, what
 //! finds no room is dropped after one wait, and nothing waits again until a write goes
-//! through.
+//! through or the computer writes. The queue still holds what came while nobody read: an
+//! answer that did not wait for it to drain would be dropped.
 
 use std::io;
 
@@ -20,6 +21,10 @@ pub struct ConsoleOutput<R> {
 impl<R> ConsoleOutput<R> {
     pub fn new(ring: R) -> Self {
         Self { ring, nobody_reading: false }
+    }
+
+    pub fn heard_from_the_computer(&mut self) {
+        self.nobody_reading = false;
     }
 }
 
@@ -75,5 +80,16 @@ mod tests {
             output.write_all(b"@@").unwrap();
         }
         assert_eq!(output.ring.pushes, [(2, true), (2, false), (2, false), (2, true)]);
+    }
+
+    #[test]
+    fn once_the_computer_writes_an_answer_waits_for_room_again() {
+        let mut output = ConsoleOutput::new(StubTxRing { room: VecDeque::from([false]), ..StubTxRing::default() });
+        output.write_all(b"log
+").unwrap();
+        output.heard_from_the_computer();
+        output.write_all(b"@@
+").unwrap();
+        assert_eq!(output.ring.pushes, [(4, true), (3, true)]);
     }
 }

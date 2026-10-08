@@ -1,8 +1,8 @@
 """The clock under test as a person meets it, through its console alone: its controls, what
-its glass says, its lights, its speaker, its clock and its card."""
+its glass says, its lights and its speaker."""
 from typing import NamedTuple
 
-from cute_display_link import card, clock, controls, observation
+from cute_display_link import controls, observation
 from cute_display_link.console import ConsoleError
 
 from .screen import Screen
@@ -65,12 +65,3 @@ class Display:
 
     def is_playing(self):
         return observation.is_playing(self.link)
-
-    def time(self):
-        return clock.read(self.link)
-
-    def read_file(self, path):
-        return card.read_file(self.link, path)
-
-    def write_file(self, path, contents):
-        card.write_file(self.link, path, contents)

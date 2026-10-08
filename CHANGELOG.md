@@ -20,6 +20,8 @@ What changes from one release to the next, for whoever owns the clock.
 - The setup copies Habity's sounds about four times faster, and the SD card is read from
   the computer seven times faster: Habity's card, about 300 MB, in a quarter of an hour
   instead of two hours.
+- The card, reached from the computer, answers its first request too: after the clock
+  had been left alone a while, the first one often got "no answer from the device".
 
 ## 2026.10.0
 

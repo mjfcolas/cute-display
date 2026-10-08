@@ -4,7 +4,7 @@ import time
 
 from cute_display_e2e.waiting import until
 
-GENERAL_CONF = 'cute-display/general.conf'
+GENERAL_CONF = 'general.conf'
 # At the scenarios' speed, a breath of the coherence rhythm, ten seconds, lasts one.
 WATCHED_S = 3
 

@@ -5,9 +5,9 @@ import struct
 
 from cute_display_e2e.waiting import until
 
-GENERAL_CONF = 'cute-display/general.conf'
-ZEN_CONF = 'cute-display/apps/zen/zen.conf'
-RAIN = 'cute-display/apps/zen/sounds/Rain.wav'
+GENERAL_CONF = 'general.conf'
+ZEN_CONF = 'apps/zen/zen.conf'
+RAIN = 'apps/zen/sounds/Rain.wav'
 RATE = 44100
 
 

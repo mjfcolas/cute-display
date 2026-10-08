@@ -1,4 +1,5 @@
-"""The SD card, on files in memory."""
+"""The SD card, on files in memory, under the console of an image whose own directory is
+the one it may write."""
 import base64
 import zlib
 
@@ -6,10 +7,16 @@ RANGE_BYTES = 100
 
 
 class FakeCard:
-    def __init__(self, files, damaged_ranges=0):
+    def __init__(self, files, damaged_ranges=0, own_directory='cute-display'):
         self.files = dict(files)
         self.damaged_ranges = damaged_ranges
+        self.own_directory = own_directory
         self.receiving = None
+
+    def _refused(self, path):
+        if path.startswith(f'{self.own_directory}/'):
+            return None
+        return [f'error only {self.own_directory}/ may be written']
 
     def _children(self, directory):
         prefix = f'{directory}/' if directory else ''
@@ -22,8 +29,10 @@ class FakeCard:
 
     def answer(self, verb, rest):
         if verb == 'ls':
-            listed = [f'entry d 0 {name}' if size is None else f'entry f {size} {name}'
-                      for name, size in self._children(rest).items()]
+            children = self._children(rest)
+            if rest and not children:
+                return ['error no such directory']
+            listed = [f'entry d 0 {name}' if size is None else f'entry f {size} {name}' for name, size in children.items()]
             return [*listed, 'ok']
         if verb == 'get':
             offset, path = rest.split(' ', 1)
@@ -35,8 +44,8 @@ class FakeCard:
             return [f'data {base64.b64encode(sent).decode()}', f'ok {len(chunk)} {zlib.crc32(chunk)}']
         if verb == 'put':
             size, crc, path = rest.split(' ', 2)
-            if not path.startswith('cute-display/'):
-                return ['error only cute-display/ can be written']
+            if refused := self._refused(path):
+                return refused
             self.receiving = (path, int(size), int(crc), bytearray())
             return ['ready']
         if verb == 'data':
@@ -49,11 +58,13 @@ class FakeCard:
             return ['ok']
         if verb == 'cp':
             source, destination = rest.split('\t')
-            if not destination.startswith('cute-display/'):
-                return ['error only cute-display/ may be written']
+            if refused := self._refused(destination):
+                return refused
             self.files[destination] = self.files[source]
             return ['ok']
         if verb == 'rm':
+            if refused := self._refused(rest):
+                return refused
             self.files.pop(rest, None)
             return ['ok']
         return None

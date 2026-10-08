@@ -21,3 +21,4 @@ packages = ["src/cute_display_e2e"]
 
 [tool.pytest.ini_options]
 testpaths = ["scenarios"]
+markers = ["device: quick enough to run on the device, where time passes at its own pace"]
