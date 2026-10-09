@@ -1,8 +1,8 @@
 # The hardware
 
-The Habity bedside clock, as recovered by reverse engineering (pin matrix read over the
-USB JTAG from the running stock firmware, then confirmed by probing) and as measured on
-this project's unit.
+The Habity bedside clock, as found by reverse engineering and as measured on this
+project's unit. The pin matrix was read over USB JTAG while the stock firmware was
+running, then confirmed by probing.
 
 ## Pin map
 
@@ -32,18 +32,20 @@ The console is the USB Serial/JTAG (`303a:1001`); there is no reachable UART.
   Secure boot and flash encryption are off: any image boots.
 - **Panel**: GDEY037T03, 416 × 240, controller **UC8253** (a UC8xxx, not an SSD16xx).
   The case hides columns 398 to 415.
-- **RTC**: DS3231, battery-backed. The stock firmware arms alarm 1 daily from settings it
-  keeps in NVS; once it fires, INT (GPIO 3) stays low until the flag is cleared. Its die
+- **RTC**: DS3231, battery-backed. The stock firmware sets alarm 1 every day, from settings it
+  keeps in NVS. When the alarm fires, INT (GPIO 3) stays low until the flag is cleared. Its die
   temperature sensor is the board's only thermometer.
 - **Amplifier**: part unknown, fixed gain, loud: a pure tone at 25 % of full scale is
-  already unpleasant. Volume is digital scaling.
-- **Battery**: the device runs for hours unplugged; no fuel gauge, only the sense pad.
+  already unpleasant. The volume is set by digital scaling.
+- **Battery**: the device runs for hours when unplugged. There is no fuel gauge, only the
+  sense pad.
 
 ## The panel controller
 
-Measured, no datasheet. What the driver relies on is written beside the code, in
-[`src/engine/drivers/src/uc8253/`](../src/engine/drivers/src/uc8253/). Clean full refresh ≈ 2.6 s (up
-to 6.9 s cold); fast ≈ 350 ms, in a partial window or on the whole glass.
+Measured, with no datasheet. What the driver depends on is written next to the code, in
+[`src/engine/drivers/src/uc8253/`](../src/engine/drivers/src/uc8253/). A clean full
+refresh takes about 2.6 s (up to 6.9 s when cold). A fast refresh takes about 350 ms, in
+a partial window or on the whole panel.
 
 ## Flash layout of this unit
 

@@ -1,24 +1,27 @@
 # Weather app
 
-Today's weather and the week's at one place, from [Open-Meteo](https://open-meteo.com).
-The [alarm clock](../alarm/README.md) shows today's and the coming hours.
+The weather for today and for the week at one place, from
+[Open-Meteo](https://open-meteo.com). The [alarm clock](../alarm/README.md) shows today's
+weather and the next hours.
 
 - **Today**:
-  - the weather now, how it feels, the day's range and chance of rain;
-  - the humidity, the pressure at sea level, the wind, its arrow pointing where the air
-    goes, and the sun's hours;
-  - twelve hours from the one under way: their chance of rain when likely, and what
-    falls as a bar.
-- **The week**: each day's sky, range and chance of rain.
-- **Wheel**: today ↔ the week.
+  - the weather now, the temperature it feels like, the day's lowest and highest
+    temperatures, and the chance of rain;
+  - the humidity, the pressure at sea level, the wind (its arrow points where the air
+    goes), and the sunrise and sunset times;
+  - twelve hours, starting with the current hour: their chance of rain when rain is
+    likely, and the amount of rain or snow as a bar.
+- **The week**: for each day, the sky, the lowest and highest temperatures, and the
+  chance of rain.
+- **Wheel**: switch between today and the week.
 - **Long button**: update now.
-- Updates every hour on its own; the foot of the screen says how fresh the forecast is.
+- It updates by itself every hour. The bottom of the screen says how old the forecast is.
 
 ## Configuration
 
-- **Where**: the device's place, in `cute-display/general.conf`, see the
+- **Place**: the device's place, in `cute-display/general.conf`. See the
   [system app](../system/README.md#where-the-device-is).
-- **Wi-Fi**: `cute-display/wifi.conf`, shared with every app that goes online.
+- **Wi-Fi**: `cute-display/wifi.conf`, shared by every app that uses the Internet.
 
 ```text
 # cute-display/wifi.conf
@@ -26,4 +29,4 @@ ssid = MyNetwork
 password = secret
 ```
 
-Changes are picked up at the next update, with no restart; a long press updates now.
+Changes are used at the next update, with no restart. A long press updates now.

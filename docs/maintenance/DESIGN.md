@@ -1,15 +1,16 @@
-# Maintenance console — design
+# Maintenance console: design
 
-- **A second way into the device, beside the UI**, working on files, the controls and
-  what the hardware is told, rather than on the domain: `maintenance` depends on `hal` alone, like `hwtest`.
-- **The remote enters where the hardware does, and the observation watches it there**:
-  a test goes through every layer, as a person would, and never sees the domain. What
-  the screen says is what a person reads on it, handed over beside the frame.
-- **A control is answered once the image took it**: a test knows its gesture reached
-  the image, then waits for what the screen says to follow; an image that takes nothing
-  is an error, never a silent `ok`.
-- **Always there, releases included**: tests run on the image people get, and the
-  remote opens little more than the buttons already do.
-- **How configuration reaches the device**: a file prepared on a computer is dropped in
-  the image's own directory (`cute-display/` for the app image) and read by whoever
-  needs it, at every use, so it needs no restart.
+- **A second way into the device, next to the UI.** It works on files, on the controls
+  and on what the hardware is told to do, not on the domain. Like `hwtest`,
+  `maintenance` depends on `hal` only.
+- **The remote enters at the same place as the hardware, and the observation reads what
+  the hardware is told, at the same place.** A test goes through every layer, as a person would, and never sees the
+  domain. What the screen says is what a person reads on it. It is given with the frame.
+- **The console answers a control once the image has taken it.** So a test knows that
+  its gesture reached the image, and then waits for the screen to say what follows. If
+  the image takes nothing, the answer is an error, never a silent `ok`.
+- **Always present, also in releases.** Tests run on the same image that people get.
+  The remote gives little more access than the buttons already give.
+- **How configuration reaches the device.** A file prepared on a computer is copied into
+  the image's own directory (`cute-display/` for the app image). The code that needs it
+  reads it each time it uses it, so no restart is needed.

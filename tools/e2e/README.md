@@ -1,57 +1,63 @@
 # End-to-end scenarios
 
-What a person does with the clock, played on the simulator, and those marked `device` on
-the device too, through its [console](../../docs/maintenance/README.md) alone: the
-controls, what the glass says, the lights, the speaker, the clock and the card. Where
-they stand among the tests: [the pyramid](../../docs/testing/README.md).
+Scenarios of what a person does with the clock. They play on the simulator, and the
+scenarios marked `device` also play on the device. They use only the device's
+[console](../../docs/maintenance/README.md): the controls, what the screen says, the
+lights, the speaker, the clock and the card. Their place among the tests:
+[the pyramid](../../docs/testing/README.md).
 
-- `just e2e simulator`: every scenario, each on a simulator of its own;
-  `just e2e simulator -k alarm` for some.
-- `just e2e simulator --window`: each simulator in its window, to watch what a scenario does; the
-  keyboard and the mouse are best left alone meanwhile.
+- `just e2e simulator`: every scenario, each on its own simulator.
+  `just e2e simulator -k alarm` runs only some of them.
+- `just e2e simulator --window`: each simulator in a window, so you can watch what a
+  scenario does. Do not use the keyboard and the mouse while it runs.
 - `just e2e device`: the scenarios marked `device`, [on the device](#on-the-device).
-- A scenario fails on what the glass said last, and the simulator's or the device's log
-  comes with it; a panic in the log fails it too.
-- A scenario reads the card and the RTC through `clock`, which knows the image's
-  directory, and names its files in it: `settings.conf`, `apps/alarm/alarm.conf`.
-- `cards/standard/`: the card each starts on, a copy of it.
+- When a scenario fails, it shows the last thing the screen said, and the log of the
+  simulator or the device. A panic in the log also makes it fail.
+- A scenario reads the card and the RTC through `clock`. `clock` knows the image's
+  directory, and a scenario names files relative to it: `settings.conf`,
+  `apps/alarm/alarm.conf`.
+- `cards/standard/`: the card that each scenario starts with, as a copy.
 - `web/`: the answers of Open-Meteo and adsb.fi, recorded at `AT_THE_RECORDING` in
-  `scenarios/conftest.py`, the time a scenario starts at unless it gives its own; the
-  simulator answers them, and on the device the stubs do.
+  `scenarios/conftest.py`. This is also the time when a scenario starts, unless it sets
+  its own. The simulator gives these answers. On the device, the stubs give them.
 
 ## On the device
 
-The test image (`e2e`) is the app image in `cute-display-e2e/` on the card, its web and
-its time asked of stubs on this computer, over HTTPS it trusts for a test authority
-alone.
+The test image (`e2e`) is the app image, using `cute-display-e2e/` on the card. It asks
+stubs on this computer for the web and the time. Over HTTPS, it trusts only a test
+authority.
 
-- Before: the device plugged in, on the same network as this computer, no serial monitor
-  open; this computer reachable on 8443/tcp and 8123/udp.
+- Before you start: the device is plugged in and on the same network as this computer,
+  and no serial monitor is open. The device can reach this computer on 8443/tcp and
+  8123/udp.
 - `just e2e device [pytest arguments]` builds the test image and the app image, flashes
-  the test image, plays the scenarios, then flashes the app image back, whether they
-  passed, failed or were stopped.
+  the test image, and plays the scenarios. Then it flashes the app image again, whether
+  the scenarios passed, failed or were stopped.
 - `uv run --project tools/e2e pytest tools/e2e/scenarios --device [pytest arguments]`
-  plays them alone, on a device already running the test image (`just fw e2e`).
-- `--stubs-address` when the device reaches this computer at another address than the
-  one it leaves from.
-- Each scenario empties `cute-display-e2e/`, copies the clock's `cute-display/wifi.conf`
-  there, lays out `cards/standard/`, sets the RTC and the stubs to its time, and restarts
-  the device. `cute-display/` is left as it was.
-- On the app image, the harness stops at once, having changed nothing: its console
-  writes nowhere but `cute-display/`.
-- After, the RTC holds the last scenario's time until the app image sets it from the
-  Internet, within a minute.
-- A scenario is marked `@pytest.mark.device` when it runs in real time: the simulator
-  runs ten times faster.
-- By hand: `python -m cute_display_e2e.stub_web_server` serves the stubs and says what to
-  put in `cute-display-e2e/e2e.conf`.
-- The test authority, `device/ca/`, is made once by `cute_display_e2e.authority`; another
-  means building and flashing the test image again.
+  only plays the scenarios, on a device that already runs the test image
+  (`just fw e2e`).
+- `--stubs-address`: use it when the device reaches this computer at a different address
+  than the one this computer sends from.
+- Before each scenario, the harness empties `cute-display-e2e/`, copies the clock's
+  `cute-display/wifi.conf` into it, copies `cards/standard/` into it, sets the RTC and
+  the stubs to the scenario's time, and restarts the device. `cute-display/` is not
+  changed.
+- If the device runs the app image, the harness stops at once and changes nothing: the
+  app image's console writes only in `cute-display/`.
+- After the run, the RTC keeps the last scenario's time until the app image sets it from
+  the Internet, within one minute.
+- A scenario is marked `@pytest.mark.device` if it runs in real time. The simulator runs
+  ten times faster.
+- By hand: `python -m cute_display_e2e.stub_web_server` starts the stubs, and says what
+  to put in `cute-display-e2e/e2e.conf`.
+- `cute_display_e2e.authority` creates the test authority, `device/ca/`, once. If you
+  create another one, build and flash the test image again.
 
 ## Recording the web again
 
-The forecast and the aircraft must be about the time the scenarios start at, on the
-simulator and on the device. On a copy of the card, which the simulator writes to:
+The forecast and the aircraft must match the time when the scenarios start, on the
+simulator and on the device. Record on a copy of the card, because the simulator writes
+to it:
 
 ```sh
 cp -r tools/e2e/cards/standard /tmp/e2e-card
@@ -59,5 +65,5 @@ just sim /tmp/e2e-card --time $(date +%s) --record tools/e2e/web
 ```
 
 - Open the weather and the radar, then quit.
-- `AT_THE_RECORDING` becomes that time, and the weather and radar scenarios expect the
-  lines the glass now says.
+- Set `AT_THE_RECORDING` to that time, and update the weather and radar scenarios with
+  the lines that the screen now says.

@@ -1,16 +1,17 @@
 # Hardware test
 
-A second image that checks the board and shows what each part says.
+A second image. It tests the board and shows what each part reports.
 
 ```sh
-just fw hwtest                  # build, flash, watch the log
-just preview-hwtest [pattern]   # render the report page (or the checkerboard) to a PNG
+just fw hwtest                  # build, flash, show the log
+just preview-hwtest [pattern]   # draw the report page (or the checkerboard) into a PNG
 ```
 
 - **Reports**: panel, RTC, temperature, I2C bus, SD card, Wi-Fi scan, USB power, battery
   sense, free heap.
 - **Wheel**: front light.
-- **Wheel press**: a chime.
-- **Yellow button**: cycles the reading lamp.
-- **Long button**: swaps in a checkerboard.
-- Logs the RTC's registers as it starts: `just backup-rtc` keeps them in `backup/`.
+- **Wheel press**: plays a chime.
+- **Yellow button**: the reading lamp's next level.
+- **Long button**: switches between the report and a checkerboard.
+- At start, it writes the RTC's registers to the log. `just backup-rtc` saves them in
+  `backup/`.

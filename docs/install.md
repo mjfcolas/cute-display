@@ -1,13 +1,13 @@
 # Installing Cute Display
 
-Cute Display goes beside Habity's firmware, which stays on the device: going back to it
-takes one command. Installing is at your own risk and may void the warranty
-([notice](../NOTICE.md)).
+Cute Display is installed next to Habity's firmware, which stays on the device. One
+command takes you back to it. You install Cute Display at your own risk, and it may void
+the warranty ([notice](../NOTICE.md)).
 
 ## In short
 
-With [what you need](#what-you-need) at hand (on Linux, the right to open the clock's port),
-plug the clock into the computer, then paste one line into a terminal:
+Check that you have [what you need](#what-you-need) (on Linux, the right to open the
+clock's port). Plug the clock into the computer, then paste one line into a terminal:
 
 - Linux and macOS:
 
@@ -15,68 +15,73 @@ plug the clock into the computer, then paste one line into a terminal:
   curl -LsSf https://github.com/mjfcolas/cute-display/releases/latest/download/install.sh | sh
   ```
 
-- Windows, in the **Command Prompt** (`cmd`), not PowerShell:
+- Windows, in the **Command Prompt** (`cmd`), not in PowerShell:
 
   ```bat
   curl -LsSfo "%TEMP%\cute-display.cmd" https://github.com/mjfcolas/cute-display/releases/latest/download/install.cmd && "%TEMP%\cute-display.cmd"
   ```
 
-It installs [uv](https://docs.astral.sh/uv/) when the computer lacks it, then the latest
-installer, then runs [the setup](#run-the-setup). The same line, run again later, updates
-everything; `cute-display` is also a command of its own from then on, in a new terminal.
+This line installs [uv](https://docs.astral.sh/uv/) if the computer does not have it,
+then the latest installer, then runs [the setup](#run-the-setup). Run the same line
+again later to update everything. After the first run, `cute-display` is also a command
+that you can use in a new terminal.
 
 ## What you need
 
 - The clock.
-- A computer connected to the Internet: tried on Linux and Windows 10 or later; macOS is
-  expected to work.
-- On Linux, the right to open the clock's port: join the group that owns it, then log in
-  again (`sudo usermod -aG dialout $USER`; `uucp` on Arch).
+- A computer connected to the Internet. It was tested on Linux and on Windows 10 or
+  later. macOS should work.
+- On Linux, the right to open the clock's port: join the group that owns the port, then
+  log in again (`sudo usermod -aG dialout $USER`; the group is `uucp` on Arch).
 
 ## Run the setup
 
-The line [above](#in-short) runs it; `cute-display setup` runs it again. It goes step by
-step, asking before it writes anything:
+The line [above](#in-short) runs it. `cute-display setup` runs it again. It goes step by
+step, and asks before it writes anything:
 
-1. **Back up the clock**: its whole memory, 16 MB, into a file in the current folder, in
-   a few minutes; nothing on the clock changes. Should anything ever go wrong, that file
-   is the clock exactly as it was, Habity's firmware and its settings included, and
-   [writing it back](troubleshooting.md#putting-a-backup-back) restores it.
+1. **Back up the clock**: it copies the clock's whole memory, 16 MB, into a file in the
+   current folder. This takes a few minutes, and nothing on the clock changes. If
+   anything goes wrong later, this file is the clock exactly as it was, with Habity's
+   firmware and its settings. [Write it back](troubleshooting.md#putting-a-backup-back)
+   to restore the clock.
 
    > [!WARNING]
-   > The backup holds your Wi-Fi password. Keep it somewhere safe and to yourself, and
-   > never attach it to an issue.
+   > The backup contains your Wi-Fi password. Keep it in a safe place, do not share it,
+   > and never attach it to an issue.
 
-2. **What the clock holds**, and where Cute Display would go; a clock it cannot go on
-   stops there, with nothing written.
-3. **Install Cute Display**: the latest release, checked, then the clock restarts on it.
-   It goes into a slot Habity's firmware does not use; when both hold one, the question
-   says which older one would be erased. The one the clock was shipped with is never
-   touched.
-4. **Set it up**: your Wi-Fi, your town, your time zone, your apps and what they need,
-   what the clock already holds filled in; written onto the clock at the end, which then
-   restarts.
+2. **What the clock contains**, and where Cute Display would go. If Cute Display cannot
+   go on this clock, the setup stops here, and nothing is written.
+3. **Install Cute Display**: the latest release is downloaded and checked, then the
+   clock restarts on it. It goes into a slot that Habity's firmware does not use. If
+   both slots hold Habity's firmware, the question says which one, the older, would be
+   erased.
+   The firmware that the clock was shipped with is never touched.
+4. **Set it up**: your Wi-Fi, your town, your time zone, your apps and what they need.
+   Each question is filled in with what the clock already has. At the end, the setup writes them
+   to the clock, which then restarts.
 
-The clock then runs the [apps](../README.md#apps) chosen, with the
-[system app](apps/system/README.md) a click of the wheel away.
+The clock then runs the [apps](../README.md#apps) you chose. The
+[system app](apps/system/README.md) is one click of the wheel away.
 
 ## Update, or change the settings
 
-The line [above](#in-short) again: it takes the latest installer, then the setup offers
-the update when a newer release is out, with what to [know before updating](../UPDATING.md)
-if anything, and the settings, which you may leave as they are.
+Run the line [above](#in-short) again. It gets the latest installer. Then, if a newer
+release is out, the setup offers the update, and shows what to
+[know before updating](../UPDATING.md), if there is anything. It also shows the
+settings, which you can keep as they are.
 
 `uv tool uninstall cute-display-installer` removes the installer.
 
 ## Go back to Habity's firmware
 
-`cute-display boot habity` restarts the clock on Habity's newest firmware. If that one
-does not start, `cute-display boot factory` starts the one the clock was shipped with.
+`cute-display boot habity` restarts the clock on Habity's newest firmware. If that
+firmware does not start, `cute-display boot factory` starts the firmware that the clock
+was shipped with.
 
-Cute Display stays on the clock: `cute-display boot cute-display` comes back to it,
-until Habity's firmware updates itself over it.
+Cute Display stays on the clock: `cute-display boot cute-display` starts it again. This
+works until Habity's firmware updates itself and writes over it.
 
-Each step also exists on its own, `cute-display backup`, `check`, `install` and `boot`,
-for those who prefer them: [the installer's commands](../tools/installer/README.md#commands).
+Each step also exists as its own command: `cute-display backup`, `check`, `install` and
+`boot`. See [the installer's commands](../tools/installer/README.md#commands).
 
-Something else? [Troubleshooting](troubleshooting.md).
+Another problem? See [Troubleshooting](troubleshooting.md).
