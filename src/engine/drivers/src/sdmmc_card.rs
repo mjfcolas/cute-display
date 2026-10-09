@@ -16,11 +16,11 @@ use crate::or_fault::OrFault;
 const MOUNT_POINT: &str = "/sdcard";
 const MOUNT_POINT_C: &core::ffi::CStr = c"/sdcard";
 const MAX_OPEN_FILES: usize = 4;
-/// A copy moves this much at a time, from the heap rather than from a thread's stack:
-/// many sectors a command, little of the internal RAM the Wi-Fi also needs.
+/// A copy moves this much at a time, through the heap rather than a thread's stack: many
+/// sectors per command, and little of the internal RAM that the Wi-Fi also needs.
 const COPY_BUFFER_BYTES: usize = 16 * 1024;
 
-/// Usable from any thread: FatFs locks the volume itself.
+/// Can be used from any thread: FatFs locks the volume itself.
 #[derive(Clone)]
 pub struct SdmmcCard(());
 
@@ -97,9 +97,10 @@ impl FileStorage for SdmmcCard {
             std::fs::create_dir_all(dir).or_fault("creating a directory on the SD card")?;
         }
         let mut copy = std::fs::File::create(destination).or_fault("writing on the SD card")?;
-        // On the ESP32-S3 the SD host cannot reach PSRAM: from there it goes a sector a
-        // command through a buffer of its own, but it still copies when internal RAM has no
-        // room left. Internal RAM wants the four bytes of alignment the heap gives.
+        // On the ESP32-S3, the SD host cannot reach PSRAM. With a PSRAM buffer, it moves
+        // one sector per command through a buffer of its own, but the copy still works when
+        // internal RAM is full. Internal RAM needs the four-byte alignment that the heap
+        // gives.
         let copied = match DmaBytes::<COPY_BUFFER_BYTES>::zeroed() {
             Ok(mut chunk) => copy_in_chunks(&mut source, &mut copy, &mut *chunk),
             Err(_) => copy_in_chunks(&mut source, &mut copy, &mut *PsramBytes::<COPY_BUFFER_BYTES>::zeroed()?),

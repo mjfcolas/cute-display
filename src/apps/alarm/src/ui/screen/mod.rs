@@ -28,7 +28,7 @@ enum Mode {
     Settings(SettingsStep),
 }
 
-/// Where the settings page is: choosing a row, or setting what is on it.
+/// The state of the settings page: choosing a row, or setting the value on it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum SettingsStep {
     Choosing { row: usize },
@@ -43,7 +43,7 @@ pub struct AlarmScreen {
     weather: Weather,
     mode: Mode,
     hours_ahead: usize,
-    /// Those to choose from, read when the choice opens.
+    /// The values to choose from, read when the choice opens.
     ringtones: Vec<Ringtone>,
 }
 
@@ -138,8 +138,8 @@ impl AlarmScreen {
         Self::choosing(day.days_since_monday())
     }
 
-    /// Ringing or snoozed, every other input is ignored so that nothing half asleep turns
-    /// the alarm off.
+    /// While the alarm rings or snoozes, every other input is ignored, so that a person who
+    /// is half asleep cannot turn the alarm off by mistake.
     fn on_clock_input(&mut self, input: Input) {
         match (self.alarm.state(), input) {
             (AlarmState::Ringing | AlarmState::Snoozed { .. }, Input::HoldYellowAndLong) => self.alarm.stop(),

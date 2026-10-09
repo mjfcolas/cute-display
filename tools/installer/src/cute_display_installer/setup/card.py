@@ -4,7 +4,8 @@ from ..config import habity_sounds
 
 
 class _Listings:
-    """What each directory holds, read once; nothing for a directory the card lacks."""
+    """What each directory contains, read once; nothing for a directory that the card does
+    not have."""
 
     def __init__(self, link):
         self.link = link
@@ -19,7 +20,7 @@ class _Listings:
 
 
 def read_texts(link, paths):
-    """Each path's text, or None for a file the card does not hold."""
+    """The text of each path, or None for a file that the card does not have."""
     entries = _Listings(link)
 
     def present(path):
@@ -30,7 +31,7 @@ def read_texts(link, paths):
 
 
 def habity_sounds_missing(link):
-    """Habity's sounds each app has no copy of, by app, by Habity's names."""
+    """Habity's sounds that each app has no copy of, by app, by Habity's names."""
     entries = _Listings(link)
     missing = {}
     for sounds in habity_sounds.EVERY:
@@ -41,7 +42,8 @@ def habity_sounds_missing(link):
 
 
 def write(link, files, copies):
-    """`files` as {path: text}, then `copies` as {source: destination}, made on the device."""
+    """Writes `files` as {path: text}, then makes `copies` as {source: destination} on the
+    device."""
     for path, text in files.items():
         card.write_file(link, path, text.encode())
     for source, destination in copies.items():

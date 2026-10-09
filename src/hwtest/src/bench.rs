@@ -51,7 +51,7 @@ pub struct Sensors {
     pub system: Box<dyn SystemMonitor>,
 }
 
-/// Devices that block for long enough to get a thread each.
+/// Devices that block long enough to need their own thread.
 pub struct Blocking<D, S, W> {
     pub display: D,
     pub speaker: S,
@@ -298,7 +298,7 @@ mod tests {
 
     impl Hands {
         fn last_shown(&self) -> Option<(Redraw, Seen)> {
-            // The pattern's top-left square is ink, where the report leaves a margin.
+            // The pattern's top-left square is ink; the report leaves a margin there.
             self.panel.last_shown().map(|(redraw, frame)| (redraw, if frame.is_ink(5, 5) { Seen::Pattern } else { Seen::Report }))
         }
     }

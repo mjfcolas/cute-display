@@ -26,7 +26,8 @@ pub struct SettingsPage {
     pub hint: &'static str,
 }
 
-/// A value being set shows its part being turned in brackets: `[07]:30`, `[Zen]`.
+/// While a value is being set, the part that the wheel changes is in brackets: `[07]:30`,
+/// `[Zen]`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SettingRow {
     pub name: &'static str,

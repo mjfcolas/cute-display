@@ -1,4 +1,5 @@
-"""The device's flash through esptool: read what layout.py judges, write what it allows."""
+"""The device's flash through esptool: reads what layout.py checks, and writes what it
+allows."""
 import os
 import time
 
@@ -12,7 +13,7 @@ from .layout import (APP_HEADER_SIZE, FLASH_SIZE, OTADATA, OTADATA_SIZE, PARTITI
 
 
 def connect():
-    """The device in its ROM bootloader, esptool's stub running; a context manager."""
+    """The device in its ROM bootloader, with esptool's stub running; a context manager."""
     log.set_verbosity('silent')
     esp = run_stub(detect_chip(usb.port()))
     attach_flash(esp)
@@ -38,7 +39,8 @@ def read_device(esp):
 
 
 def save_flash(esp, path):
-    """The whole flash into `path`, which only appears once checked against the flash."""
+    """Copies the whole flash into `path`. The file appears only once it is checked against
+    the flash."""
     part = path + '.part'
     try:
         read_flash(esp, 0, FLASH_SIZE, part)
@@ -55,7 +57,7 @@ def backup_path(folder):
 
 
 class Refused(Exception):
-    """Why an install did not happen; nothing was written."""
+    """Why an install did not happen. Nothing was written."""
 
     def __init__(self, refusals):
         super().__init__(' '.join(refusals))
@@ -63,9 +65,9 @@ class Refused(Exception):
 
 
 def install_checked(esp, unit, contents, go_ahead):
-    """`contents` installed on `unit`, the device as just read, once the image and the
-    device pass their checks and `go_ahead(placement)` agrees; the placement. Raises
-    `Refused`, the device restarted, when not."""
+    """Installs `contents` on `unit` (the device as just read), once the image and the
+    device pass their checks and `go_ahead(placement)` agrees. Returns the placement. If
+    not, the device is restarted and `Refused` is raised."""
     refusals = image_refusals(contents) + unit.install_refusals()
     placement = None if refusals else unit.placement()
     if not refusals and not go_ahead(placement):
@@ -79,8 +81,8 @@ def install_checked(esp, unit, contents, go_ahead):
 
 def install(esp, placement, way_back, contents):
     """Writes `contents` into the placement's slot and makes the bootloader start it. Until
-    it is written whole, otadata points at `way_back`: cut short anywhere, the clock
-    starts that."""
+    it is fully written, otadata points at `way_back`: if the write stops at any point, the
+    clock starts that slot."""
     _point_otadata_at(esp, way_back)
     write_flash(esp, [(placement.slot.offset, contents)])
     boot_into(esp, placement.slot)

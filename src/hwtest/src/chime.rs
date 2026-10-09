@@ -11,11 +11,12 @@ use crate::latest::Latest;
 
 /// C5 E5 G5 C6.
 const NOTES: [(f32, u32); 4] = [(523.25, 140), (659.25, 140), (783.99, 140), (1046.5, 320)];
-/// Of full scale. The amplifier is loud: a pure tone at a quarter of full scale hurts.
+/// A fraction of full scale. The amplifier is loud: a pure tone at a quarter of full scale
+/// hurts.
 const AMPLITUDE: f32 = 0.08;
 const FADE_MS: u32 = 10;
 
-/// A rising arpeggio, faded in and out note by note so nothing clicks.
+/// A rising arpeggio. Each note fades in and out, so that nothing clicks.
 pub struct Chime {
     sample_rate_hz: u32,
     note: usize,
@@ -52,7 +53,7 @@ impl Iterator for Chime {
     }
 }
 
-/// Rings chimes on a thread of its own, since playing blocks until the sound ends.
+/// Plays chimes on its own thread, because playing blocks until the sound ends.
 #[derive(Clone)]
 pub struct Chimes {
     requests: Sender<()>,

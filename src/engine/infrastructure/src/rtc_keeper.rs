@@ -8,7 +8,7 @@ use hal::Fault;
 
 pub struct RtcKeeper<C> {
     clock: C,
-    /// What went wrong at the last read, so that a lasting fault is logged once.
+    /// What went wrong at the last read, so that a fault that lasts is logged only once.
     fault: Option<Fault>,
 }
 

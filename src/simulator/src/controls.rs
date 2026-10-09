@@ -9,7 +9,7 @@ struct KeyState {
     held: AtomicBool,
 }
 
-/// Clones share the key; each counts the presses it has taken.
+/// Clones share the key; each clone counts the presses it has taken.
 #[derive(Clone, Default)]
 pub struct KeyButton {
     key: Arc<KeyState>,

@@ -1,4 +1,4 @@
-"""Where the device is plugged: the ESP32-S3's own USB serial port, on any computer."""
+"""Where the device is plugged in: the ESP32-S3's own USB serial port, on any computer."""
 import os
 import time
 
@@ -16,7 +16,8 @@ class NoDevice(Exception):
 
 
 def port(ports=None):
-    """The device's port: CUTE_DISPLAY_PORT, else the one Espressif USB port plugged in."""
+    """The device's port: CUTE_DISPLAY_PORT, or else the one Espressif USB port plugged in.
+    """
     chosen = os.environ.get(PORT_VARIABLE)
     if chosen:
         return chosen
@@ -31,7 +32,7 @@ def port(ports=None):
 
 
 class LineSerial(serial.Serial):
-    """A port whose `readline` is `Lines`'."""
+    """A port whose `readline` is the one of `Lines`."""
 
     def __init__(self, *arguments, **options):
         self.lines = Lines(lambda: self.read(max(1, self.in_waiting)))
@@ -47,8 +48,8 @@ class LineSerial(serial.Serial):
 
 def open_link():
     """A line to the running firmware's console."""
-    # Opening the port raises DTR and RTS, and pyserial's defaults keep them there. On the
-    # ESP32-S3, lowering one before the other is what resets the chip.
+    # Opening the port raises DTR and RTS, and pyserial's defaults keep them raised. On the
+    # ESP32-S3, lowering one before the other resets the chip.
     link = LineSerial(port(), 115200, timeout=0.2)
     link.reset_input_buffer()
     return link
@@ -56,7 +57,7 @@ def open_link():
 
 def restart(link, sleep=time.sleep):
     """Resets the chip as espflash does: RTS holds it in reset while DTR, low, keeps it out
-    of its download mode. The port stays open, and the image answers seconds later."""
+    of its download mode. The port stays open, and the image answers a few seconds later."""
     link.dtr = False
     link.rts = True
     sleep(0.1)
@@ -64,7 +65,7 @@ def restart(link, sleep=time.sleep):
 
 
 def explain(error):
-    """What to do about a port that would not open, or a device that stopped answering."""
+    """What to do about a port that does not open, or a device that stopped answering."""
     text = str(error)
     if 'busy' in text or 'Access is denied' in text:
         return 'The port is in use: close any serial monitor on it (another terminal, an IDE) and try again.'

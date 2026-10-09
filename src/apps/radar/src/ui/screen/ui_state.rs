@@ -11,7 +11,7 @@ pub struct RadarUiState {
     pub credit: &'static str,
 }
 
-/// Where a mark is from the place, within the range.
+/// The position of a mark relative to the place, within the range.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FromPlace {
     pub east_km: f64,

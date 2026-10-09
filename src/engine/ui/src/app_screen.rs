@@ -21,8 +21,8 @@ pub trait Screen {
 
     fn entered(&mut self) {}
     fn left(&mut self) {}
-    /// Changes whenever what the screen shows changed without an input: the screen is
-    /// redrawn then. Screens that only change on input keep the default.
+    /// Changes each time what the screen shows changed without an input: the screen is then
+    /// redrawn. Screens that change only on input keep the default.
     fn version(&self) -> u64 {
         0
     }

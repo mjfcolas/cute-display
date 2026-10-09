@@ -1,6 +1,6 @@
 [project]
 name = "cute-display-installer"
-# The release's git tag, as the app image's (hatch-vcs).
+# The release's git tag, like the app image's version (hatch-vcs).
 dynamic = ["version"]
 description = "Install Cute Display on a Habity bedside clock, and go back to Habity's firmware."
 readme = "README.md"
@@ -14,7 +14,7 @@ dependencies = [
     "tzlocal>=5,<6",
 ]
 
-# The wheel carries cute-display-link (below): people install one wheel.
+# The wheel contains cute-display-link (below), so people install only one wheel.
 [dependency-groups]
 dev = ["cute-display-link"]
 

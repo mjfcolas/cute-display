@@ -1,5 +1,5 @@
-"""What the glass says, as the console's `describe` gives it: lines `name value`, ` *`
-on the one chosen, the first `front <app>`."""
+"""What the screen says, as the console's `describe` gives it: lines `name value`, with ` *`
+on the chosen one, the first line being `front <app>`."""
 from dataclasses import dataclass
 
 CHOSEN = ' *'

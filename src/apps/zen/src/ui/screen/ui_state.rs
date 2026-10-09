@@ -12,9 +12,9 @@ pub enum ZenUiState {
 pub struct ZenPage {
     pub time: Option<TimeOfDay>,
     pub sound: String,
-    /// When the next session starts, or how long the one under way has left.
+    /// When the next session starts, or how much time the current one has left.
     pub session: String,
-    /// In a session.
+    /// During a session.
     pub volume: Option<Volume>,
     pub hint: &'static str,
 }
@@ -26,7 +26,8 @@ pub struct SettingsPage {
     pub hint: &'static str,
 }
 
-/// A value being set shows its part being turned in brackets: `[22]:30`, `[Rain]`.
+/// While a value is being set, the part that the wheel changes is in brackets: `[22]:30`,
+/// `[Rain]`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SettingRow {
     pub name: &'static str,

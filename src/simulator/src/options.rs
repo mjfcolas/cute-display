@@ -8,7 +8,7 @@ const DEFAULT_CARD: &str = "sim-sd";
 #[derive(Debug, PartialEq, Eq)]
 pub struct Options {
     pub card: PathBuf,
-    /// How many times faster than the wall the app image runs.
+    /// How many times faster than real time the app image runs.
     pub speed: NonZeroU32,
     pub console_socket: Option<PathBuf>,
     pub window: Window,
@@ -19,7 +19,7 @@ pub struct Options {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Window {
     Shown,
-    /// The controls are the console's alone.
+    /// Only the console can use the controls.
     Headless,
 }
 
@@ -32,9 +32,9 @@ pub enum StartTime {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Network {
     TheComputers,
-    /// HTTP answered from the responses recorded in this directory.
+    /// HTTP requests get the responses recorded in this directory.
     Recorded(PathBuf),
-    /// The computer's, each HTTP response recorded in this directory.
+    /// The computer's network, with each HTTP response recorded in this directory.
     Recording(PathBuf),
     Offline,
 }

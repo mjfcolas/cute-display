@@ -18,7 +18,7 @@ impl SoundPlayer {
         Self { sound, files: SharedFiles::new(files), volume: VolumeKnob::default(), playing: None }
     }
 
-    /// A file that cannot be played gives way to brown noise: the session goes on anyway.
+    /// If a file cannot be played, brown noise plays instead: the session always continues.
     fn samples_of(&self, soundscape: &Soundscape) -> Samples {
         let samples: Samples = match soundscape {
             Soundscape::BrownNoise => Box::new(BrownNoise::new()),

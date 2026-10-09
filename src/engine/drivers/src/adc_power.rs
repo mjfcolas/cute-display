@@ -10,7 +10,7 @@ const SAMPLES_PER_READING: u32 = 8;
 
 pub type SharedAdc<C> = &'static AdcDriver<'static, <C as AdcChannel>::AdcUnit>;
 
-/// External power detected as a logic level; the battery sensed through the ADC.
+/// External power is read as a logic level; the battery is measured through the ADC.
 pub struct AdcPowerMonitor<C: AdcChannel> {
     external_power: PinDriver<'static, Input>,
     battery: AdcChannelDriver<'static, C, SharedAdc<C>>,

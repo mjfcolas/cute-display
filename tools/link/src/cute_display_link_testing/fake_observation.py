@@ -1,4 +1,4 @@
-"""The glass, what it says, the lights and the speaker, as a test sets them."""
+"""The screen, what it says, the lights and the speaker, as a test sets them."""
 import base64
 
 DATA_CHUNK_BYTES = 240

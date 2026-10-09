@@ -12,7 +12,7 @@ use firmware::board::Board;
 firmware::image_description!();
 
 const OWN_DIRECTORY: CardDirectory = CardDirectory::new("cute-display-e2e");
-/// Made by `tools/e2e`'s `cute_display_e2e.authority`.
+/// Created by `cute_display_e2e.authority` in `tools/e2e`.
 const AUTHORITY_PEM: &str = concat!(include_str!("../../../../tools/e2e/device/ca/ca.pem"), "\0");
 
 fn main() -> Result<(), Fault> {

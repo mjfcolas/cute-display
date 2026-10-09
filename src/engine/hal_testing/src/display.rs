@@ -24,7 +24,7 @@ impl StubPanel {
         lock(&self.0).frames.last().cloned()
     }
 
-    /// The redraws asked since the last time a test took them.
+    /// The redraws asked since a test last took them.
     pub fn take_redraws(&self) -> Vec<Redraw> {
         let mut shown = lock(&self.0);
         let new: Vec<Redraw> = shown.frames.iter().skip(shown.redraws_taken).map(|(redraw, _)| *redraw).collect();

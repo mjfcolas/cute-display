@@ -1,11 +1,11 @@
-"""The time the test image asks over NTP (infrastructure::testing::to_local_stubs): the one a
-scenario sets, running on from there."""
+"""The time that the test image asks for over NTP (infrastructure::testing::to_local_stubs):
+the time that a scenario sets, running from there."""
 import socket
 import struct
 import threading
 import time
 
-# Above 1023, which a user may listen on.
+# Above 1023, so that a normal user can listen on it.
 NTP_PORT = 8123
 NTP_PACKET_BYTES = 48
 # From 1900-01-01, where NTP counts from, to 1970-01-01.
@@ -37,14 +37,15 @@ class FakeRunningTime:
 
 
 class StubTimeServer:
-    """Port 0 lets the system choose, read back from `port`."""
+    """Port 0 lets the system choose. Read the chosen port from `port`."""
 
     def __init__(self, *, port=NTP_PORT, running_time=None):
         self.time = running_time or FakeRunningTime()
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._socket.bind(('', port))
-        # On Linux, closing a socket another thread waits on leaves it bound until a
-        # datagram comes: the thread waits a little at a time, and sees it should stop.
+        # On Linux, closing a socket that another thread waits on leaves it bound until a
+        # datagram arrives. So the thread waits a short time at a time, and sees that it
+        # should stop.
         self._socket.settimeout(0.1)
         self.port = self._socket.getsockname()[1]
         self._stopping = threading.Event()

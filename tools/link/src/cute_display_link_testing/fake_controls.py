@@ -1,4 +1,4 @@
-"""The buttons and the wheel: what they are sent, kept."""
+"""The buttons and the wheel: what they are sent is recorded."""
 
 HOLD_MS_AT_MOST = 10_000
 

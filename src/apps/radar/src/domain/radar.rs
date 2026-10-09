@@ -1,5 +1,5 @@
-//! The aircraft around a place, watched only while the radar app is in front: nobody is
-//! served by fetching traffic every fifteen seconds into a screen nobody looks at.
+//! The aircraft around a place, followed only while the radar app is in the foreground:
+//! fetching traffic every fifteen seconds for a screen that nobody looks at helps nobody.
 
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -12,7 +12,8 @@ use crate::ID;
 
 pub const REFRESH_EVERY: Duration = Duration::from_secs(15);
 pub const RETRY_AFTER: Duration = Duration::from_secs(30);
-/// The nearest ones are kept; the heap has room for a busy sky, not an unbounded one.
+/// The nearest ones are kept. The heap has room for a busy sky, but not for any number of
+/// aircraft.
 pub const MAX_AIRCRAFT: usize = 60;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -24,7 +25,7 @@ pub enum Altitude {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Aircraft {
     pub callsign: Option<String>,
-    /// As painted on the airframe, `F-GKXA`.
+    /// As painted on the aircraft, `F-GKXA`.
     pub registration: Option<String>,
     pub point: GeoPoint,
     pub altitude: Option<Altitude>,
@@ -70,13 +71,13 @@ pub trait AirTrafficSource: Send {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Airport {
-    /// ICAO where it has one, `LFPG`.
+    /// The ICAO code if it has one, `LFPG`.
     pub code: String,
     pub point: GeoPoint,
     pub labelled: bool,
 }
 
-/// Read again only when the place changes, since the list is written for a place.
+/// Read again only when the place changes, because the list is written for one place.
 pub trait AirportSource: Send {
     fn airports(&mut self) -> Vec<Airport>;
 }
@@ -142,7 +143,7 @@ impl Radar {
         self.lock_state().report.clone()
     }
 
-    /// A new range is fetched at once, since what was fetched covers another radius.
+    /// A new range is fetched at once, because the last fetch covered another radius.
     pub fn set_range(&self, range: Range) {
         self.change(|state| {
             if state.report.range != range {

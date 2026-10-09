@@ -17,7 +17,7 @@ impl DirectoryCard {
         Ok(Self { root: Arc::new(root.to_path_buf()) })
     }
 
-    /// Only paths inside the card: no `..`, no root of their own.
+    /// Only paths inside the card: no `..`, and not absolute.
     fn locate(&self, path: &str) -> Result<PathBuf, Fault> {
         let relative = Path::new(path);
         if relative.components().all(|c| matches!(c, Component::Normal(_) | Component::CurDir)) {

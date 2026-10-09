@@ -1,4 +1,4 @@
-"""The line of a screen that says what is going on, coloured by its tone."""
+"""The line of a screen that says what is happening, in a colour that matches its tone."""
 from enum import Enum
 
 from textual.widgets import Static

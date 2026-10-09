@@ -1,8 +1,9 @@
-"""The certificate authority the test image trusts, made once and kept in device/ca/, and the
-certificates it signs for the stubs, at the address of the computer they run on.
+"""The certificate authority that the test image trusts, created once and kept in
+device/ca/, and the certificates it signs for the stubs, at the address of the computer they
+run on.
 
-`python -m cute_display_e2e.authority` makes it; making it again means building and
-flashing the test image again, which carries its certificate."""
+`python -m cute_display_e2e.authority` creates it. If you create it again, build and flash
+the test image again, because the image contains its certificate."""
 import ipaddress
 import sys
 from datetime import datetime, timezone
@@ -16,8 +17,8 @@ from cryptography.x509.oid import NameOID
 AUTHORITY = Path(__file__).resolve().parents[2] / 'device' / 'ca'
 CERTIFICATE = 'ca.pem'
 KEY = 'ca.key'
-# A scenario sets the clock to a day of its own, which may be before today: the certificates
-# hold from long before any scenario to long after.
+# A scenario sets the clock to its own day, which may be before today: the certificates are
+# valid from long before any scenario to long after.
 VALID_FROM = datetime(2020, 1, 1, tzinfo=timezone.utc)
 VALID_UNTIL = datetime(2099, 12, 31, tzinfo=timezone.utc)
 
@@ -53,8 +54,8 @@ def make_authority_pem():
 
 
 def issue_server_pem(authority_pem, authority_key_pem, ip_address):
-    """mbedTLS matches the URL's host against the names as text, hence the address as a
-    name too."""
+    """mbedTLS compares the URL's host with the names as text, so the address is also given
+    as a name."""
     authority = x509.load_pem_x509_certificate(authority_pem)
     authority_key = serialization.load_pem_private_key(authority_key_pem, password=None)
     key = ec.generate_private_key(ec.SECP256R1())

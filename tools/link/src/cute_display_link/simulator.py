@@ -1,4 +1,4 @@
-"""The simulator's console, on the Unix socket it listens on (`--console`)."""
+"""The simulator's console, on the Unix socket that it listens on (`--console`)."""
 import socket
 
 from .lines import Lines

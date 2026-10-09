@@ -7,7 +7,7 @@ SCRIPT = pathlib.Path(__file__).resolve().parents[1] / 'next_version.sh'
 
 
 class NextVersion(unittest.TestCase):
-    """next_version.sh in a repository holding `tags`."""
+    """next_version.sh in a repository that has `tags`."""
 
     def next_version(self, tags, month='2026.9'):
         with tempfile.TemporaryDirectory() as folder:

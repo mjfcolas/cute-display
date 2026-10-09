@@ -9,11 +9,11 @@ CONTROL, STATUS, AGING = 0x0e, 0x0f, 0x10
 
 
 class NoRegisters(Exception):
-    """The hardware test could not read them: the log says why instead."""
+    """The hardware test could not read them; the log says why."""
 
 
 def registers_in(line):
-    """The registers a log line carries; None for any other line."""
+    """The registers in a log line; None for any other line."""
     if MARK not in line:
         return None
     logged = line.split(MARK, 1)[1].strip()

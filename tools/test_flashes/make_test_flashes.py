@@ -1,11 +1,12 @@
-"""Whole-flash images, each one a case the installer meets, made from a backup of a clock
-that updated itself once (factory 1.1.0, app0 1.1.1, app1 empty), and the Cute Display
-image for the cases that hold it: `just test-bins <backup>` makes both and calls
+"""Whole-flash images, each one a case that the installer can meet. They are made from a
+backup of a clock that updated itself once (factory 1.1.0, app0 1.1.1, app1 empty), and from
+the Cute Display image for the cases that contain it. `just test-bins <backup>` makes both
+and calls
 
   uv run --project tools/installer python tools/test_flashes/make_test_flashes.py <backup> [<Cute Display image>]
 
-They go into test-bins/ beside this file, which git ignores: they hold the backup's Wi-Fi
-password.
+They go into test-bins/ next to this file. Git ignores this directory, because the images
+contain the backup's Wi-Fi password.
 """
 import hashlib
 import os
@@ -22,7 +23,7 @@ _SEGMENT_COUNT = 1
 _IMAGE_HEADER_SIZE, _SEGMENT_HEADER_SIZE = 24, 8
 _HASH_APPENDED = 23
 _CHECKSUM_SEED = 0xef
-# The checksum is the last byte of the 16-byte block the segments end in.
+# The checksum is the last byte of the 16-byte block in which the segments end.
 _CHECKSUM_ALIGN = 16
 _SHA256_SIZE = 32
 _VERSION_IN_IMAGE = slice(APP_DESC_OFFSET + APP_DESC_VERSION.start, APP_DESC_OFFSET + APP_DESC_VERSION.stop)
@@ -36,9 +37,9 @@ class NotInTable(Exception):
 
 
 def resealed(image):
-    """The app image with its checksum and SHA-256 computed again, trimmed to its end;
-    both cover the segments, so any change to them needs this before a bootloader
-    accepts the image."""
+    """The app image with its checksum and SHA-256 computed again, cut at its end. Both
+    cover the segments, so any change to the segments needs this before a bootloader accepts
+    the image."""
     image = bytearray(image)
     at, checksum = _IMAGE_HEADER_SIZE, _CHECKSUM_SEED
     for _ in range(image[_SEGMENT_COUNT]):
@@ -56,7 +57,7 @@ def resealed(image):
 
 
 def with_version(image, version):
-    """The app image saying it is `version`."""
+    """The app image, saying that it is `version`."""
     image = bytearray(image)
     image[_VERSION_IN_IMAGE] = version.encode().ljust(APP_DESC_VERSION.stop - APP_DESC_VERSION.start, b'\0')
     return resealed(image)
@@ -87,7 +88,7 @@ def habity_in(backup, slot):
 
 
 def flash_with(backup, slots=None, booting=None, table=None):
-    """The backup with some slots replaced (None erases one), otadata pointing at
+    """The backup with some slots replaced (None erases a slot), otadata pointing at
     `booting`, and another partition table."""
     flash = bytearray(backup)
     for slot, image in (slots or {}).items():

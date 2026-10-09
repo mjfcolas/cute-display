@@ -45,7 +45,8 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
 
     pub fn draw(&mut self, target: &mut D, area: Rectangle) -> Description {
         let front = self.enter_front();
-        // Read before drawing: a change another thread makes meanwhile is then drawn next.
+        // Read before drawing: a change that another thread makes while this one draws is
+        // drawn the next time.
         let version = self.version_of(front);
         let mut description = Description::default();
         description.say("front", front.name());
@@ -86,8 +87,8 @@ impl<D: DrawTarget<Color = BinaryColor>> Shell<D> {
         self.screens.iter_mut().find(|hosted| hosted.app == app)
     }
 
-    /// Tells a screen it came to the front before it is given anything else, and the one
-    /// that was there that it left.
+    /// Tells a screen that it came to the foreground, before it gets anything else, and
+    /// tells the previous screen that it left.
     fn enter_front(&mut self) -> AppId {
         let front = self.foreground.app();
         if self.entered != Some(front) {
@@ -328,7 +329,7 @@ mod tests {
         assert_eq!(shell.draw(&mut frame, visible).text(), ["front radar", "text 12 aircraft"]);
     }
 
-    /// Its version moves on while it is drawn, as when another thread changes what it shows.
+    /// Its version changes while it is drawn, as when another thread changes what it shows.
     struct StubChangingScreen(Rc<RefCell<u64>>);
 
     impl Screen for StubChangingScreen {

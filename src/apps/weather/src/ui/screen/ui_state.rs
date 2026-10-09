@@ -8,7 +8,7 @@ pub struct WeatherUiState {
     pub status: String,
 }
 
-/// `None` until a forecast has come.
+/// `None` until the first forecast arrives.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ShownPage {
     Today(Option<Box<TodayPage>>),
@@ -24,7 +24,7 @@ pub struct TodayPage {
     pub humidity: String,
     pub pressure: String,
     pub wind: String,
-    /// `None` when there is no wind to come from anywhere.
+    /// `None` when there is no wind, so no direction.
     pub wind_from: Option<CompassPoint>,
     pub sun: String,
     pub hours: Vec<HourColumn>,

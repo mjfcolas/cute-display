@@ -48,7 +48,7 @@ impl Files for FakeFiles {
     }
 }
 
-/// Checks an app's files, none at first, against `Files`' contract.
+/// Checks an app's files, empty at first, against the contract of `Files`.
 pub fn check_contract(files: &impl Files) {
     assert_eq!(files.read("alarm.conf"), Ok(None), "a file that is not there");
     assert_eq!(files.read_bytes("alarm.conf", 0, 4), Ok(None), "bytes of a file that is not there");

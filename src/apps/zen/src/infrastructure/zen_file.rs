@@ -52,7 +52,7 @@ fn encode(settings: &ZenSettings) -> String {
     ConfText::render(&[(START, start.as_str()), (HOURS, hours.as_str()), (SOUND, sound), (VOLUME, volume.as_str())])
 }
 
-/// A line missing or damaged keeps its default.
+/// A line that is missing or damaged keeps its default.
 fn decode(conf: &ConfText) -> ZenSettings {
     let default = ZenSettings::default();
     ZenSettings {

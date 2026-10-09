@@ -1,11 +1,12 @@
-"""The steps' seconds and the curves are the unit tier's; here, what the real process adds:
-its lights and its speaker following the breaths."""
+"""The unit tier tests the lengths of the steps and the curves. Here, we test what the real
+process adds: its lights and its speaker following the breaths."""
 import time
 
 from cute_display_e2e.waiting import until
 
 GENERAL_CONF = 'general.conf'
-# At the scenarios' speed, a breath of the coherence rhythm, ten seconds, lasts one.
+# At the scenarios' speed, one breath of the coherence rhythm (ten seconds) lasts one
+# second.
 WATCHED_S = 3
 
 

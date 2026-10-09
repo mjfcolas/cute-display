@@ -1,7 +1,7 @@
 //! HTTP responses kept in a directory, one file each: the URL on the first line, the body
-//! after it. A file is named after the URL's host and path, and a hash of its query, too
-//! long for a file name: recording a URL again replaces it, and the files can be told
-//! apart.
+//! after it. A file is named after the URL's host and path, and a hash of its query,
+//! because a query can be too long for a file name. So recording a URL again replaces its
+//! file, and the files have different names.
 
 use std::fs;
 use std::io::Read;
@@ -14,8 +14,8 @@ use crate::network::HostHttpClient;
 
 const EXTENSION: &str = "http";
 
-/// Answers the URLs recorded in a directory, read once at the start; any other is a fault,
-/// as an unreachable server is.
+/// Answers the URLs recorded in a directory, read once at the start. Any other URL is a
+/// fault, like a server that cannot be reached.
 pub struct RecordedWeb {
     recordings: Vec<(String, Vec<u8>)>,
 }
@@ -43,7 +43,7 @@ impl HttpClient for RecordedWeb {
     }
 }
 
-/// The computer's web, each response kept in a directory before it is read.
+/// The computer's web, with each response saved in a directory before it is read.
 pub struct RecordingWeb {
     web: HostHttpClient,
     directory: PathBuf,
@@ -91,7 +91,8 @@ fn file_name(url: &str) -> String {
     }
 }
 
-/// FNV-1a, 64 bits: the same name for the same query on any computer, any Rust.
+/// FNV-1a, 64 bits: the same name for the same query on any computer, with any Rust
+/// version.
 fn fnv1a(text: &str) -> u64 {
     text.bytes().fold(0xcbf2_9ce4_8422_2325, |hash, byte| (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3))
 }

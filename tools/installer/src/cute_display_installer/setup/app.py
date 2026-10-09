@@ -1,5 +1,5 @@
-"""The setup: back up the clock, see what it holds, install or update Cute Display, then
-answer a screen per question and write the answers onto the card."""
+"""The setup: back up the clock, see what it contains, install or update Cute Display, then
+answer one screen per question and write the answers onto the card."""
 from textual.app import App
 
 from .screens.airports import AirportsScreen
@@ -24,8 +24,8 @@ class SetupApp(App):
     BINDINGS = [('escape', 'back', 'Back'), ('ctrl+q', 'quit', 'Quit')]
 
     def __init__(self, clock, search, airports_around):
-        """`clock` is the device (`clock.UsbClock`), `search` finds places by name and
-        `airports_around` a place's airports; each may take seconds."""
+        """`clock` is the device (`clock.UsbClock`), `search` finds places by name, and
+        `airports_around` finds a place's airports. Each one may take several seconds."""
         super().__init__()
         self.clock = clock
         self.search = search
@@ -61,8 +61,9 @@ class SetupApp(App):
         self.push_screen(next(question for question in following if self._asks(question))())
 
     def _asks(self, question):
-        """The radar's airports are asked only when the radar is chosen; Habity's sounds for
-        an app, when the app is and Habity has some it lacks."""
+        """The setup asks for the radar's airports only when the radar is chosen. It asks
+        about Habity's sounds for an app only when the app is chosen and Habity has sounds
+        that it does not have."""
         if question is AirportsScreen:
             return 'radar' in self.answers.apps
         if issubclass(question, HabitySoundsScreen):

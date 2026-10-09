@@ -18,7 +18,7 @@ IMAGE = header(OURS.project, OURS.version)
 
 
 def device_reading_as(unit):
-    """The flash module's hardware calls, the device reading as `unit`."""
+    """The flash module's hardware calls, with the device read as `unit`."""
     flash = mock.Mock()
     flash.connect.return_value = nullcontext('esp')
     flash.read_device.return_value = unit

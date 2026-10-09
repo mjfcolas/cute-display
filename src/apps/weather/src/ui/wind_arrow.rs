@@ -1,5 +1,5 @@
-//! The wind as an arrow, pointing where the air goes: a wind from the south-west points
-//! north-east, as on weather maps.
+//! The wind as an arrow that points where the air goes: a wind from the south-west points
+//! to the north-east, as on weather maps.
 
 use embedded_graphics::pixelcolor::BinaryColor;
 use embedded_graphics::prelude::*;
@@ -10,7 +10,8 @@ pub(crate) fn draw<D: DrawTarget<Color = BinaryColor>>(target: &mut D, from: Com
     let (dx, dy) = downwind(from);
     let half = side as i32 / 2;
     let centre = top_left + Point::new(half, half);
-    // A diagonal runs corner to corner; its head is narrowed to look as wide as the others.
+    // A diagonal goes from corner to corner. Its head is made narrower, so that it looks as
+    // wide as the others.
     let narrowed = |r: i32| if dx != 0 && dy != 0 { r * 7 / 10 } else { r };
     let along = |r: i32| Point::new(dx * r, dy * r);
     let across = |r: i32| Point::new(-dy * narrowed(r), dx * narrowed(r));
@@ -22,7 +23,7 @@ pub(crate) fn draw<D: DrawTarget<Color = BinaryColor>>(target: &mut D, from: Com
     let _ = head.into_styled(PrimitiveStyle::with_fill(BinaryColor::On)).draw(target);
 }
 
-/// A step towards where the air goes, y down the screen.
+/// One step in the direction the air goes, with y going down the screen.
 fn downwind(from: CompassPoint) -> (i32, i32) {
     match from {
         CompassPoint::North => (0, 1),

@@ -4,7 +4,7 @@ rem command it is given, from the Command Prompt:
 rem
 rem   curl -LsSfo "%TEMP%\cute-display.cmd" https://github.com/mjfcolas/cute-display/releases/latest/download/install.cmd && "%TEMP%\cute-display.cmd"
 rem
-rem `just release` fills in the wheel: the release's on GitHub, or a snapshot's on this computer.
+rem `just release` fills in the wheel: the release's wheel on GitHub, or a snapshot's on this computer.
 setlocal
 
 set "WHEEL=@WHEEL@"

@@ -31,8 +31,8 @@ def test_a_wake_up_time_set_on_the_clock_is_kept_on_the_card(clock):
 
 
 def test_the_alarm_rings_in_front_until_snoozed_then_stopped(clock):
-    """The sunrise before and the snooze's nine minutes are the integration tier's; here,
-    what the real process adds: its speaker."""
+    """The integration tier tests the sunrise before the alarm and the nine minutes of the
+    snooze. Here, we test what the real process adds: its speaker."""
     clock.put_before_start(ALARM_CONF, 'enabled = yes\nthursday = 06:30\n')
     display = clock.start(at=A_THURSDAY_MORNING)
     display.until_front('alarm')

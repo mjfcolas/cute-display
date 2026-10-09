@@ -5,7 +5,7 @@ use hal::Fault;
 
 use crate::shared::lock;
 
-/// Joins any network at once, and keeps whether it is joined and how many times.
+/// Joins any network at once, and records whether it is joined and how many times.
 #[derive(Clone, Default)]
 pub struct StubWifiStation(Arc<Mutex<Station>>);
 

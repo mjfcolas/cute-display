@@ -51,7 +51,7 @@ fn encode(settings: &TimerSettings) -> String {
     ConfText::render(&[(MODE, mode_name(settings.mode)), (COUNTDOWN, &countdown), (POMODORO, &pomodoro), (NAP, &nap)])
 }
 
-/// A line missing or damaged keeps its default.
+/// A line that is missing or damaged keeps its default.
 fn decode(conf: &ConfText) -> TimerSettings {
     let default = TimerSettings::default();
     let length = |mode: Mode| {

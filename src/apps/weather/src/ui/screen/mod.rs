@@ -16,7 +16,7 @@ pub use ui_state::{HourColumn, ShownPage, TodayPage, WeatherUiState, WeekDay};
 
 const HOURS: usize = 12;
 const NO_FORECAST: &str = "No forecast yet";
-/// Below it, an hour's rain is not worth a number.
+/// Below this chance of rain, an hour shows no percentage.
 const LIKELY_RAIN: u8 = 10;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -83,7 +83,7 @@ impl Screen for WeatherScreen {
     }
 
     /// The report's revision, and the minutes since it was fetched: "updated 12 min ago"
-    /// has to move on by itself, and so do the hours.
+    /// must change by itself, and so must the hours.
     fn version(&self) -> u64 {
         let report = self.weather.report();
         (report.revision << 16) | (minutes_since(&report, &self.clock).unwrap_or(0) & 0xffff)

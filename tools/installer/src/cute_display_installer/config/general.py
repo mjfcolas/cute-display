@@ -1,6 +1,6 @@
-"""general.conf: what every app shares, where the device is and its time zone, and which
-apps run, as src/engine/infrastructure/src/general_file.rs reads it; the zone also by
-its name, for the installer."""
+"""general.conf: what all apps share (the device's place and its time zone) and which apps
+run, as src/engine/infrastructure/src/general_file.rs reads it. For the installer, the file
+also holds the zone's name."""
 import re
 
 from . import conf_text, place, time_zone
@@ -20,12 +20,12 @@ def place_of(text):
 
 
 def time_zone_of(text):
-    """The zone's name, when the installer wrote it."""
+    """The zone's name, if the installer wrote it."""
     return conf_text.parse(text).get('time_zone_name') or None
 
 
 def apps_of(text):
-    """The apps chosen, by name; None when the file does not say."""
+    """The chosen apps, by name; None when the file does not give them."""
     listed = conf_text.parse(text).get('apps')
     return None if listed is None else [name for name in re.split(r'[,\s]+', listed) if name]
 

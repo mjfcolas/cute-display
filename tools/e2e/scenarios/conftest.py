@@ -1,8 +1,8 @@
-"""Each scenario on a simulator of its own: headless but with `--window`, on a copy of
-cards/standard/, the web answered from web/, its time AT_THE_RECORDING unless it gives
-one. With `--device`, the scenarios marked `device` on the device plugged in, running the
-test image: its directory on the card laid out the same, the web and the time from stubs
-on this computer."""
+"""Each scenario runs on its own simulator: without a window (or with one, with `--window`),
+on a copy of cards/standard/, with the web answered from web/, at the time AT_THE_RECORDING
+unless the scenario gives its own. With `--device`, the scenarios marked `device` run on the
+device that is plugged in and runs the test image. Its directory on the card gets the same
+files, and the web and the time come from stubs on this computer."""
 import shutil
 import subprocess
 import tempfile
@@ -23,10 +23,10 @@ from cute_display_link import clock as rtc
 REPOSITORY = Path(__file__).resolve().parents[3]
 E2E = Path(__file__).resolve().parents[1]
 STANDARD_CARD = E2E / 'cards' / 'standard' / 'cute-display'
-# When web/ was recorded, so that the forecast is about the day the clock is on.
+# When web/ was recorded, so that the forecast is for the day the clock shows.
 AT_THE_RECORDING = datetime(2026, 10, 1, 12, 12, tzinfo=timezone.utc)
-# A clock minute in six seconds: time enough for a scenario to act within one, as a
-# snooze said to the minute needs. The device runs at its own pace.
+# One clock minute in six seconds: enough time for a scenario to act within one minute, as a
+# snooze checked to the minute needs. The device runs at its own speed.
 SPEED = 10
 
 
@@ -110,8 +110,8 @@ class LocalStubs:
 
 
 class DeviceClock:
-    """The device restarts at each start; its directory is laid out anew at the first, and
-    the files put before a start are written on the card then."""
+    """The device restarts at each start. Its directory gets its files at the first start,
+    and the files put before a start are written on the card at that start."""
 
     def __init__(self, device, stubs):
         self.device = device
@@ -171,7 +171,8 @@ def clock(request, device):
         yield on_the_device
         on_the_device.check_and_close()
         return
-    # A Unix socket's path is short: not under pytest's own temporary directory.
+    # A Unix socket's path must be short, so it is not under pytest's own temporary
+    # directory.
     with tempfile.TemporaryDirectory(prefix='cute-display-') as root:
         simulated = SimulatedClock(request.getfixturevalue('simulator_binary'), Path(root), request.config.getoption('--window'))
         yield simulated

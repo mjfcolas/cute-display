@@ -8,7 +8,7 @@ pub fn paris() -> Place {
     Place { name: "Paris".into(), point: GeoPoint { latitude: 48.85, longitude: 2.35 } }
 }
 
-/// Where the device is, as the test says, which it may change.
+/// The device's place, as the test sets it. The test can change it.
 #[derive(Clone)]
 pub struct StubPlace(Arc<Mutex<Option<Place>>>);
 

@@ -63,7 +63,7 @@ impl Percent {
     }
 }
 
-/// A depth of water, rain or melted snow, to a tenth of a millimetre.
+/// A depth of water (rain or melted snow), to a tenth of a millimetre.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Millimetres {
     tenths: u16,
@@ -79,7 +79,7 @@ impl Millimetres {
     }
 }
 
-/// Air pressure, brought down to sea level so that places compare.
+/// Air pressure, corrected to sea level so that places can be compared.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Hectopascals(pub u16);
 
@@ -89,11 +89,11 @@ pub struct KilometresPerHour(pub u16);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Wind {
     pub speed: KilometresPerHour,
-    /// Where it blows from.
+    /// The direction it blows from.
     pub from: CompassPoint,
 }
 
-/// The weather at the moment of the fetch; the day's range is in the week.
+/// The weather at the time of the fetch. The day's lowest and highest are in the week.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Today {
     pub sky: Sky,
@@ -110,13 +110,13 @@ pub struct DayForecast {
     pub sky: Sky,
     pub low: Degrees,
     pub high: Degrees,
-    /// The likeliest hour's.
+    /// The rain chance of the most likely hour.
     pub rain_chance: Option<Percent>,
     pub sunrise: Option<TimeOfDay>,
     pub sunset: Option<TimeOfDay>,
 }
 
-/// The place's time zone is taken to be the clock's.
+/// The place's time zone is assumed to be the clock's.
 #[derive(Clone, Debug, PartialEq)]
 pub struct HourForecast {
     pub start: LocalTime,

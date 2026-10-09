@@ -1,10 +1,9 @@
 """The Habity's flash: its partitions, which app the bootloader starts, what each app slot
-holds, where Cute Display can go and how to come back out.
+contains, where Cute Display can go, and how to go back.
 
-Everything here works on bytes read from the flash; device.py reads and writes them.
-Only otadata and the OTA slot Cute Display goes into are ever written: factory keeps the
-Habity firmware the clock was shipped with, and going back to Habity is a matter of
-otadata alone.
+Everything here works on bytes read from the flash; device.py reads and writes them. Only
+otadata and the OTA slot for Cute Display are ever written: factory keeps the Habity
+firmware that the clock was shipped with, and going back to Habity only changes otadata.
 """
 import struct
 import zlib
@@ -66,7 +65,7 @@ PARTITION_ENTRY_SIZE = 32
 PARTITION_LABEL = slice(12, 28)
 
 _IMAGE_MAGIC = 0xe9
-# esp_app_desc_t sits right after the image header and its first segment's header.
+# esp_app_desc_t comes right after the image header and the header of its first segment.
 APP_DESC_OFFSET = 0x20
 _APP_DESC_SIZE = 0x100
 _APP_DESC_MAGIC = 0xabcd5432
@@ -123,8 +122,8 @@ def partitions(table):
 
 
 def app_image(header):
-    """What an app slot holds, from its first APP_HEADER_SIZE bytes; None when it holds
-    no image."""
+    """What an app slot contains, from its first APP_HEADER_SIZE bytes; None when it
+    contains no image."""
     if len(header) < APP_HEADER_SIZE or header[0] != _IMAGE_MAGIC:
         return None
     desc = header[APP_DESC_OFFSET:]
@@ -134,7 +133,7 @@ def app_image(header):
 
 
 def image_refusals(contents):
-    """Why a file may not be installed; empty when it may."""
+    """Why a file cannot be installed; empty when it can."""
     held = app_image(contents[:APP_HEADER_SIZE])
     if held is None:
         return ['it is not an app image.']
@@ -153,8 +152,8 @@ def _c_string(field):
 
 
 def booting_slot(otadata):
-    """The slot the bootloader starts: the OTA slot of the highest valid sequence
-    number, factory without one."""
+    """The slot that the bootloader starts: the OTA slot with the highest valid sequence
+    number, or factory if there is none."""
     best = None
     for at in (0, OTADATA_SECTOR):
         seq, = struct.unpack_from('<I', otadata, at)
@@ -179,7 +178,7 @@ def _sequence_crc(seq):
 
 
 class Target(Enum):
-    """What `cute-display boot` is told to start: a firmware by its name, or a slot."""
+    """What `cute-display boot` is asked to start: a firmware by its name, or a slot."""
     HABITY = 'habity'
     FACTORY = 'factory'
     CUTE_DISPLAY = 'cute-display'
@@ -192,7 +191,8 @@ class Target(Enum):
 
 @dataclass(frozen=True)
 class Placement:
-    """Where an install writes Cute Display, and the Habity firmware it erases there, if any."""
+    """Where an install writes Cute Display, and the Habity firmware it erases there, if
+    any."""
     slot: Slot
     erases: AppImage | None = None
 
@@ -204,7 +204,7 @@ class Placement:
 
 @dataclass(frozen=True)
 class Device:
-    """What the tool reads before writing anything."""
+    """What the tool reads before it writes anything."""
     security: Security
     partitions: list[Partition]
     booting: Slot
@@ -214,19 +214,19 @@ class Device:
         return [slot for slot in among if self.slots.get(slot) and found(self.slots[slot])]
 
     def slot_lines(self):
-        """Each slot, what it holds, and which one boots, a line each."""
+        """Each slot, what it contains, and which one starts, one line each."""
         return [f'{slot.label:<8} {self.slots[slot] or "empty"}{"   <- boots" if slot == self.booting else ""}'
                 for slot in Slot]
 
     def ours(self):
-        """The OTA slot Cute Display is in; the booting one if both hold it."""
+        """The OTA slot that holds Cute Display; the one that starts, if both hold it."""
         slots = self._holding(lambda image: image.is_ours)
         return self.booting if self.booting in slots else next(iter(slots), None)
 
     def habity(self, besides=None):
-        """Where the newest Habity firmware is, `besides` left out: an OTA slot when it
-        updated itself, factory otherwise; None when there is none, or when two cannot be
-        told apart by their versions."""
+        """Where the newest Habity firmware is, not counting `besides`: an OTA slot if it
+        updated itself, factory otherwise. None if there is none, or if the versions of two
+        of them cannot be compared."""
         updated = self._holding(lambda image: image.is_stock, [s for s in OTA_SLOTS_BY_SEQUENCE if s != besides])
         if len(updated) == 2 and any(self.slots[s].release is None for s in updated):
             return None
@@ -235,7 +235,7 @@ class Device:
         return Slot.FACTORY if self.slots.get(Slot.FACTORY) and self.slots[Slot.FACTORY].is_stock else None
 
     def layout_refusals(self):
-        """Why writing otadata would not be safe; empty when it is."""
+        """Why writing otadata would not be safe; empty when it is safe."""
         refusals = []
         if self.security.secure_boot or self.security.flash_encryption:
             refusals.append('secure boot or flash encryption is on: this device only boots images '
@@ -250,8 +250,9 @@ class Device:
         return refusals
 
     def placement(self):
-        """Where Cute Display goes: the slot it is already in, else a slot without Habity's
-        firmware, else the one with the older Habity firmware. None when neither will do."""
+        """Where Cute Display goes: the slot it is already in; else a slot without Habity's
+        firmware; else the slot with the older Habity firmware. None when no slot is
+        suitable."""
         if self.ours():
             return Placement(self.ours())
         free = [slot for slot in OTA_SLOTS_BY_SEQUENCE if not (self.slots.get(slot) and self.slots[slot].is_stock)]
@@ -264,7 +265,7 @@ class Device:
         return Placement(older, erases=self.slots[older])
 
     def install_refusals(self):
-        """Why installing would not be safe; empty when it is."""
+        """Why installing would not be safe; empty when it is safe."""
         refusals = self.layout_refusals()
         placement = self.placement()
         if placement is None:
@@ -276,7 +277,7 @@ class Device:
         return refusals
 
     def slot_for(self, target):
-        """The slot `target` names on this device; None when it names none."""
+        """The slot that `target` names on this device; None when it names no slot."""
         return {
             Target.HABITY: self.habity(),
             Target.FACTORY: Slot.FACTORY,
@@ -286,7 +287,7 @@ class Device:
         }[target]
 
     def boot_refusals(self, target):
-        """Why the device should not be made to start `target`; empty when it may."""
+        """Why the device should not start `target`; empty when it can."""
         refusals = self.layout_refusals()
         slot = self.slot_for(target)
         if slot is None:

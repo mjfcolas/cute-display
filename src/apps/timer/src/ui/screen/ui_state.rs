@@ -4,7 +4,7 @@ use ui::mark::Mark;
 pub struct TimerPage {
     pub modes: [ModeTab; 3],
     pub count: Count,
-    /// What is counted down, or what it does once started.
+    /// What is counted down, or what it does once it starts.
     pub status: String,
     pub hint: &'static str,
 }
@@ -15,7 +15,8 @@ pub struct ModeTab {
     pub mark: Mark,
 }
 
-/// Seconds only over the last minute, so that the panel redraws once a minute before.
+/// Seconds only during the last minute, so that before that, the panel redraws only once a
+/// minute.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Count {
     Minutes(u16),

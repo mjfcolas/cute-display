@@ -1,5 +1,5 @@
-"""Places found by their name, from Open-Meteo's geocoding (open-meteo.com), the
-weather's own source."""
+"""Places found by name, from Open-Meteo's geocoding (open-meteo.com), which is also the
+source of the weather."""
 import json
 import urllib.parse
 from dataclasses import dataclass

@@ -5,8 +5,8 @@ use hal::Fault;
 
 use crate::steady::ScaledClock;
 
-/// The time it is in the simulated world: from where it started, on at the simulator's
-/// speed.
+/// The time in the simulated world: it starts at the start time, and runs at the
+/// simulator's speed.
 #[derive(Clone, Copy)]
 pub struct TrueTime {
     steady: ScaledClock,
@@ -28,7 +28,7 @@ impl TrueTime {
     }
 }
 
-/// The RTC: the true time, ahead or behind it once set.
+/// The RTC: the true time, plus the offset it gets when it is set.
 pub struct HostClock {
     time: TrueTime,
     ahead_seconds: i64,

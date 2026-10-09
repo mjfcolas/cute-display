@@ -1,7 +1,7 @@
-//! Paths on the card. Everything may be read; only the image's own directory may be
-//! written, so everything of an image's is in one place.
+//! Paths on the card. Everything can be read; only the image's own directory can be
+//! written, so that all the files of an image are in one place.
 
-/// A path relative to the root of the card, `""` being the root itself.
+/// A path relative to the root of the card, where `""` is the root itself.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SdPath(String);
 
@@ -22,7 +22,7 @@ impl SdPath {
     }
 
     /// Inside `directory`, and not the directory itself. A directory named `""`, or with a
-    /// '/' at either end, has nothing inside: a mistaken name writes nowhere.
+    /// '/' at either end, contains nothing: a wrong name writes nowhere.
     pub fn is_inside(&self, directory: &str) -> bool {
         self.0.strip_prefix(directory).and_then(|rest| rest.strip_prefix('/')).is_some_and(|rest| !rest.is_empty())
     }

@@ -1,5 +1,5 @@
-"""What the glass shows, as src/engine/hal/src/display.rs lays it out: 416 × 240, a row
-after another, the leftmost pixel in the most significant bit, 1 for ink."""
+"""What the screen shows, in the layout of src/engine/hal/src/display.rs: 416 × 240, one row
+after the other, the leftmost pixel in the most significant bit, 1 for ink."""
 import struct
 import sys
 import zlib
@@ -23,7 +23,7 @@ class Frame:
         return bool(self.ink[y * STRIDE + x // 8] >> (7 - x % 8) & 1)
 
     def png(self, zoom=1):
-        """Greyscale, black ink on white paper."""
+        """Greyscale: black ink on white paper."""
         raw = bytearray()
         for y in range(HEIGHT):
             row = bytearray()

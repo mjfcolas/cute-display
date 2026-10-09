@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use domain::sound::{Samples, Volume};
 
-/// The volume of the samples it is applied to, turned while they play.
+/// The volume of the samples it is applied to, which can change while they play.
 #[derive(Clone, Default)]
 pub struct VolumeKnob(Arc<AtomicU8>);
 

@@ -1,4 +1,4 @@
-"""What the setup asks, from what the card already holds to the files it writes back."""
+"""What the setup asks, from what the card already contains to the files it writes back."""
 from dataclasses import dataclass, field
 
 from ..config import airports, apps, general, habity_sounds, place, radar, wifi
@@ -6,7 +6,7 @@ from ..config.place import Place
 from ..config.wifi import Wifi
 
 CARD_FILES = [wifi.FILE, general.FILE, radar.FILE]
-# The ESP-IDF Wi-Fi driver's limits (src/engine/drivers/src/esp_wifi.rs).
+# The limits of the ESP-IDF Wi-Fi driver (src/engine/drivers/src/esp_wifi.rs).
 SSID_BYTES, PASSWORD_BYTES = 32, 64
 
 
@@ -17,14 +17,15 @@ class Answers:
     time_zone: str | None = None
     labels: list[str] = field(default_factory=list)
     apps: list[str] = field(default_factory=lambda: list(apps.TITLES))
-    # Habity's sounds each app lacks, by app, and the apps that are to have theirs copied.
+    # Habity's sounds that each app does not have yet, by app, and the apps that get their
+    # sounds copied.
     habity_sounds: dict[str, list[str]] = field(default_factory=dict)
     copied: set[str] = field(default_factory=set)
 
     @classmethod
     def from_card(cls, texts, habity_sounds=None):
-        """From the files CARD_FILES, each one's text or None when the card lacks it, and
-        Habity's sounds each app has no copy of, by app."""
+        """From the files CARD_FILES: the text of each one, or None when the card does not
+        have it, and Habity's sounds that each app has no copy of, by app."""
         def text(path):
             return texts.get(path) or ''
 
@@ -39,21 +40,22 @@ class Answers:
         )
 
     def offers(self, sounds):
-        """Whether the app of Habity's `sounds` runs and Habity has some it has no copy of."""
+        """Whether the app of Habity's `sounds` runs, and Habity has sounds that it has no
+        copy of."""
         return sounds.app in self.apps and bool(self.habity_sounds.get(sounds.app))
 
     def copied_sounds(self):
-        """The HabitySounds copied, each with Habity's names of them."""
+        """The HabitySounds copied, each with Habity's names for them."""
         return [(sounds, self.habity_sounds[sounds.app])
                 for sounds in habity_sounds.EVERY if sounds.app in self.copied and self.offers(sounds)]
 
     def copies(self):
-        """Every file the setup copies on the card, as {source: destination}."""
+        """Every file that the setup copies on the card, as {source: destination}."""
         return {source: destination for sounds, names in self.copied_sounds() for source, destination in sounds.copies(names).items()}
 
     def files(self, airports_found):
-        """Every file the setup writes: the radar's too when it is chosen, `airports_found`
-        around the place among them."""
+        """Every file that the setup writes, including the radar's when the radar is chosen,
+        with `airports_found` around the place."""
         files = {
             wifi.FILE: wifi.render(self.wifi),
             general.FILE: general.render(self.place, self.time_zone, self.apps),

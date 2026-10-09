@@ -19,9 +19,9 @@ const LEAP_UNSYNCHRONISED: u8 = 3;
 pub(crate) const TRANSMIT_TIMESTAMP: usize = 40;
 /// From 1900-01-01, where NTP counts from, to 1970-01-01.
 pub(crate) const NTP_TO_UNIX_SECONDS: i64 = 2_208_988_800;
-/// NTP seconds wrap in 2036; below this, they count from then.
+/// NTP seconds wrap around in 2036. Below this value, they count from then.
 const ERA_WRAP: u32 = 1 << 31;
-/// Of the fraction of a second, which counts in 2^-32 s.
+/// Of the fraction of a second, which counts in units of 2^-32 s.
 const HALF_A_SECOND: u32 = 1 << 31;
 
 pub struct NtpServer<D> {
@@ -38,7 +38,7 @@ impl<D: Datagrams> TimeSource for NtpServer<D> {
     fn fetch(&mut self) -> Result<UtcTime, Unavailable> {
         let mut request = [0u8; PACKET_BYTES];
         request[0] = CLIENT_REQUEST;
-        // Room for the extensions and authentication some servers add.
+        // Room for the extensions and authentication that some servers add.
         let mut answer = [0u8; 2 * PACKET_BYTES];
         let length = self.network.exchange(SERVER, PORT, &request, &mut answer)?;
         decode(answer.get(..length).unwrap_or_default())

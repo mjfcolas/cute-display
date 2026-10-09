@@ -1,9 +1,9 @@
-//! Aircraft around a point, from adsb.fi's open data (opendata.adsb.fi): free, no key,
-//! one request a second, personal and non-commercial use, attribution required. The
-//! answer follows ADS-B Exchange's v2 format, which other feeds share.
+//! Aircraft around a point, from the open data of adsb.fi (opendata.adsb.fi): free, no key,
+//! one request per second, for personal and non-commercial use, attribution required. The
+//! answer uses the v2 format of ADS-B Exchange, which other feeds also use.
 //!
-//! A busy sky is tens of kilobytes of JSON with some forty fields an aircraft, so the
-//! answer is read as it arrives and only the nearest aircraft are ever kept.
+//! In a busy sky, the answer is tens of kilobytes of JSON, with about forty fields per
+//! aircraft. So the answer is read as it arrives, and only the nearest aircraft are kept.
 
 use std::fmt;
 use std::io::{BufReader, Read};
@@ -63,8 +63,8 @@ struct Reported {
     lat: Option<f64>,
     lon: Option<f64>,
     alt_baro: Option<BarometricAltitude>,
-    // Read as f64: letting serde produce an f32 here crashes the Xtensa code generator of
-    // the `esp` toolchain (LLVM "Cannot select XtensaISD::PCREL_WRAPPER").
+    // Read as f64: if serde produces an f32 here, the Xtensa code generator of the `esp`
+    // toolchain crashes (LLVM "Cannot select XtensaISD::PCREL_WRAPPER").
     track: Option<f64>,
 }
 
@@ -123,7 +123,7 @@ impl<'de> Visitor<'de> for Answer {
     }
 }
 
-/// The `ac` list, never held at more than twice `keep`.
+/// The `ac` list, never more than twice `keep` long.
 struct Nearest {
     center: GeoPoint,
     keep: usize,
@@ -174,8 +174,8 @@ mod tests {
 
     const NOTRE_DAME: GeoPoint = GeoPoint { latitude: 48.8530, longitude: 2.3499 };
 
-    /// Shaped like a real answer: a padded callsign, one on the ground, one without a
-    /// position, and fields the radar never reads.
+    /// Like a real answer: a callsign with spaces at the end, an aircraft on the ground,
+    /// one without a position, and fields that the radar never reads.
     const ANSWER: &str = r#"{
         "ac": [
             {"hex": "39856a", "type": "adsb_icao", "flight": "AFR1234 ", "r": "F-GKXA", "t": "A320",

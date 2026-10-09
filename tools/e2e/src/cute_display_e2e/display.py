@@ -1,5 +1,5 @@
-"""The clock under test as a person meets it, through its console alone: its controls, what
-its glass says, its lights and its speaker."""
+"""The clock under test as a person uses it, only through its console: its controls, what
+its screen says, its lights and its speaker."""
 from typing import NamedTuple
 
 from cute_display_link import controls, observation
@@ -8,10 +8,10 @@ from cute_display_link.console import ConsoleError
 from .screen import Screen
 from .waiting import until
 
-# The glass refreshes in up to 7 s cold, on the device; what follows a control may take a
-# few refreshes.
+# On the device, the screen takes up to 7 s to refresh when cold. What follows a control may
+# take a few refreshes.
 SCREEN_TIMEOUT_S = 20
-# The console's answer before the first frame is shown, src/maintenance/src/console.rs.
+# The console's answer before the first frame is shown (src/maintenance/src/console.rs).
 NOTHING_SAID = 'nothing said yet'
 
 
@@ -42,7 +42,8 @@ class Display:
             return Screen(())
 
     def until_screen(self, condition, what_did_not_happen, timeout_s=SCREEN_TIMEOUT_S):
-        """The screen once `condition(screen)` holds; failing, says the last one seen."""
+        """The screen once `condition(screen)` is true. If it never is, the error gives the
+        last screen seen."""
         seen = []
 
         def holds():

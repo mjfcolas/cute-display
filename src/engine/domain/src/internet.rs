@@ -2,7 +2,8 @@ use std::io::Read;
 
 use crate::fetch::Unavailable;
 
-/// What a caller may hold whole with `get`; anything larger has to be streamed.
+/// The largest answer that a caller can hold whole with `get`. Anything larger must be
+/// streamed.
 pub const MAX_HELD_BYTES: u64 = 32 * 1024;
 
 pub type BodyReader<'a> = dyn FnMut(&mut dyn Read) -> Result<(), Unavailable> + 'a;

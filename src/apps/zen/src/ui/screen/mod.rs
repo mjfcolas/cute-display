@@ -26,7 +26,7 @@ enum Setting {
 impl Setting {
     const ALL: [Self; 3] = [Self::Start, Self::Length, Self::Sound];
 
-    /// Round and round.
+    /// After the last comes the first, and before the first comes the last.
     fn turned_by(self, detents: i32) -> Self {
         let at = Self::ALL.iter().position(|setting| *setting == self).unwrap_or(0) as i64;
         let turned = (at + i64::from(detents)).rem_euclid(Self::ALL.len() as i64);
@@ -48,7 +48,7 @@ enum Mode {
     Settings(SettingsStep),
 }
 
-/// Where the settings page is: choosing a row, or setting what is on it.
+/// The state of the settings page: choosing a row, or setting the value on it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum SettingsStep {
     Choosing { row: Setting },
@@ -62,7 +62,7 @@ pub struct ZenScreen {
     zen: ZenSessions,
     clock: Clock,
     mode: Mode,
-    /// Those to choose from, read when the choice opens.
+    /// The values to choose from, read when the choice opens.
     soundscapes: Vec<Soundscape>,
 }
 
@@ -137,8 +137,8 @@ impl ZenScreen {
         Mode::Settings(SettingsStep::Choosing { row })
     }
 
-    /// In a session every other input is ignored, so that nothing half asleep changes a
-    /// setting.
+    /// During a session, every other input is ignored, so that a person who is half asleep
+    /// cannot change a setting by mistake.
     fn on_zen_input(&mut self, input: Input) {
         match (self.zen.state(), input) {
             (ZenState::InSession { .. }, Input::Turn(detents)) => self.zen.turn_volume(detents),
@@ -286,7 +286,7 @@ fn clock_time(time: TimeOfDay) -> String {
     format!("{:02}:{:02}", time.hour(), time.minute())
 }
 
-/// A minute begun counts whole.
+/// A minute that has started counts as a whole one.
 fn minutes_left(left: Duration) -> u64 {
     left.as_secs().div_ceil(60)
 }

@@ -1,5 +1,5 @@
-"""The device on USB, running the test image (`just fw e2e`): its console, which carries its
-log too, and its restart."""
+"""The device on USB, running the test image (`just fw e2e`): its console, which also
+carries its log, and its restart."""
 import time
 
 from cute_display_link import card, clock, usb
@@ -9,7 +9,7 @@ from .log import Log
 
 OWN_DIRECTORY = 'cute-display-e2e'
 CLOCKS_WIFI_CONF = 'cute-display/wifi.conf'
-# From the reset to the console answering: about 2.5 s.
+# From the reset until the console answers: about 2.5 s.
 STARTING_TIMEOUT_S = 20
 
 

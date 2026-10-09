@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use hal::clock::{ClockReading, DateTime, RealTimeClock};
 use hal::Fault;
 
-/// One RTC for several owners: each clone reads and sets the same one, one at a time.
+/// One RTC for several owners: each clone reads and sets the same RTC, one at a time.
 pub struct SharedRtc<C>(Arc<Mutex<C>>);
 
 impl<C> SharedRtc<C> {

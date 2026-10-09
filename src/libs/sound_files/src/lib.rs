@@ -15,8 +15,8 @@ pub use crate::recording::Recording;
 pub use crate::shared_files::SharedFiles;
 pub use crate::volume::VolumeKnob;
 
-/// Reading the card stops the samples meanwhile, and the speaker holds about 30 ms of them:
-/// 16 KB took 16 ms on the device, 4 KB leave room for decoding a frame beside.
+/// Reading the card stops the samples during the read, and the speaker holds about 30 ms of
+/// them. 16 KB took 16 ms on the device; 4 KB leaves time to decode a frame as well.
 const READ_BYTES: usize = 4 * 1024;
 const EXTENSIONS: [&str; 2] = [".mp3", ".wav"];
 

@@ -1,5 +1,5 @@
-"""The app image on this computer, on a card of its own and at a time given, its console
-on a Unix socket (docs/simulator/README.md)."""
+"""The app image on this computer, on its own card and at a given time, with its console on
+a Unix socket (docs/simulator/README.md)."""
 import subprocess
 import threading
 import time

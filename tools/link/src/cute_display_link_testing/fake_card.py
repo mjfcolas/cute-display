@@ -1,5 +1,5 @@
-"""The SD card, on files in memory, under the console of an image whose own directory is
-the one it may write."""
+"""The SD card, on files in memory, behind the console of an image that can write only in
+its own directory."""
 import base64
 import zlib
 

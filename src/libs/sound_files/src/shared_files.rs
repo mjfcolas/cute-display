@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use domain::fetch::Unavailable;
 use domain::files::Files;
 
-/// An app's files, for the app and for the recording playing on the speaker's thread.
+/// An app's files, for the app and for the recording that plays on the speaker's thread.
 #[derive(Clone)]
 pub struct SharedFiles(Arc<Mutex<Box<dyn Files>>>);
 

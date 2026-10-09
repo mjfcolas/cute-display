@@ -1,4 +1,4 @@
-//! The fonts stop at 20 pixels, too small to read across a dark room.
+//! The fonts stop at 20 pixels, which is too small to read across a dark room.
 
 use domain::time::TimeOfDay;
 use embedded_graphics::pixelcolor::BinaryColor;

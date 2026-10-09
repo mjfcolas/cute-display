@@ -5,10 +5,10 @@ use hal::Fault;
 
 use crate::shared::lock;
 
-/// What a DS3231 holds at power-up: its registers' zero.
+/// What a DS3231 holds at power-up: 2000-01-01 00:00:00, the start of its range.
 pub(crate) const POWER_UP: DateTime = DateTime { year: 2000, month: 1, day: 1, hour: 0, minute: 0, second: 0 };
 
-/// An RTC that stands at the time it was set to: a test moves it by setting it.
+/// An RTC that stays at the time it was set to: a test moves it by setting it.
 #[derive(Clone)]
 pub struct FakeRtc(Arc<Mutex<Rtc>>);
 
@@ -68,8 +68,8 @@ impl RealTimeClock for FakeRtc {
     }
 }
 
-/// Checks an RTC against `RealTimeClock`'s contract. It is set, so a real one may be a
-/// second or two on when read back.
+/// Checks an RTC against the contract of `RealTimeClock`. The check sets the RTC, so a real
+/// one may be a second or two later when it is read back.
 pub fn check_contract(rtc: &mut impl RealTimeClock) {
     let time = DateTime { year: 2026, month: 9, day: 26, hour: 7, minute: 30, second: 15 };
     assert_eq!(rtc.set(time), Ok(()));

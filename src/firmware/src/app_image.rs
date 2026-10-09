@@ -1,4 +1,5 @@
-//! The app image on the board, in the directory and on the network its binary gives it.
+//! The app image on the board, in the directory and on the network that its binary gives
+//! it.
 
 use std::convert::Infallible;
 use std::io::{self, BufRead, LineWriter};
@@ -34,9 +35,10 @@ use maintenance::MaintenanceConsole;
 use crate::board::Board;
 
 const BUILD: &str = concat!("built ", env!("BUILD_TIME"));
-/// An MP3 decoded as it plays goes 7 KB deep on x86-64 in release, 21 KB in debug; not
-/// measured on the Xtensa, hence the margin. In PSRAM: internal RAM has no room left for it
-/// once the Wi-Fi is up. The thread neither writes the flash nor runs while its cache is off.
+/// Decoding an MP3 while it plays uses 7 KB of stack on x86-64 in release, and 21 KB in
+/// debug. It was not measured on the Xtensa, so there is a margin. The stack is in PSRAM,
+/// because internal RAM has no room left for it once the Wi-Fi is up. The thread never
+/// writes the flash, and never runs while the flash cache is off.
 const SPEAKER_STACK_BYTES: usize = 32 * 1024;
 
 struct Habity<Http, Udp>(PhantomData<fn() -> (Http, Udp)>);
@@ -73,7 +75,7 @@ impl<Http: HttpClient + Send + 'static, Udp: UdpClient + Send + 'static> Hardwar
 pub fn start_logging(image_name: &str) {
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
-    // The monitor re-attaches after resetting the chip; anything logged before is lost.
+    // The monitor connects again after it resets the chip; anything logged before is lost.
     FreeRtos::delay_ms(1500);
     log::info!("{image_name} {}, {BUILD}", app::image::VERSION);
 }
@@ -120,7 +122,7 @@ fn start_maintenance(
         .stack_size(16 * 1024)
         .spawn(move || {
             let mut console = MaintenanceConsole::new(card, own_directory.name(), remote, observation, rtc);
-            // A line a call, so that no other output lands in the middle of it.
+            // One line per call, so that no other output appears in the middle of it.
             let mut output = LineWriter::new(output);
             let mut line = String::new();
             loop {

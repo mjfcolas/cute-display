@@ -1,4 +1,4 @@
-//! The maintenance console on a Unix socket instead of the USB cable, one computer at a
+//! The maintenance console on a Unix socket instead of the USB cable, for one computer at a
 //! time.
 
 use std::path::Path;
@@ -15,7 +15,7 @@ pub fn listen<S: FileStorage + Send + 'static>(path: &Path, mut console: Mainten
     use std::thread;
 
     let fault = |e: std::io::Error| Fault::new(format!("console on {}: {e}", path.display()));
-    // A socket left by a simulator that stopped would refuse the bind.
+    // A socket left by a simulator that stopped would make the bind fail.
     match std::fs::symlink_metadata(path) {
         Ok(found) if found.file_type().is_socket() => std::fs::remove_file(path).map_err(fault)?,
         Ok(_) => return Err(Fault::new(format!("console on {}: a file that is not a socket is there", path.display()))),

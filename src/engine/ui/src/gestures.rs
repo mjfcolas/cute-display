@@ -1,7 +1,7 @@
-//! A click of the wheel is the system's: it is a `Gesture::System`, never an app's
-//! `Input`. The yellow and long buttons are held together to mean something of
-//! their own, so a press of either only reaches an app once it is released, and not at
-//! all when it was part of that hold.
+//! A click of the wheel belongs to the system: it is a `Gesture::System`, never an app's
+//! `Input`. Holding the yellow and long buttons together has its own meaning. So a press of
+//! either button reaches an app only when it is released, and not at all if it was part of
+//! that hold.
 
 use core::time::Duration;
 
@@ -23,8 +23,8 @@ enum ButtonState {
 }
 
 impl ButtonState {
-    /// Presses are counted as the button goes down, so presses that came and went
-    /// between two samples still show up in `presses` even though `held` never saw them.
+    /// Presses are counted when the button goes down. So presses that came and went between
+    /// two samples still show in `presses`, even though `held` never saw them.
     fn take_released_presses(&mut self, sample: ButtonSample, now: Duration) -> u32 {
         let ButtonSample { presses, held } = sample;
         let fresh = ButtonState::Pressed { since: now };
@@ -53,7 +53,7 @@ impl Default for Gestures {
 }
 
 impl Gestures {
-    /// `now` is any monotonic time, as long as it is always the same clock.
+    /// `now` is any monotonic time, as long as it always comes from the same clock.
     pub fn interpret(&mut self, sample: &ControlsSample, now: Duration) -> Vec<Gesture> {
         let mut gestures: Vec<Gesture> = (0..sample.wheel.presses).map(|_| Gesture::System).collect();
         if sample.detents != 0 {

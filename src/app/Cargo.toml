@@ -1,6 +1,6 @@
 [package]
 name = "app"
-# Not the release's: the app image takes its version from the git tag (src/image.rs).
+# Not the release version: the app image takes its version from the git tag (src/image.rs).
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"

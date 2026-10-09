@@ -8,7 +8,8 @@ pub const TIME_REGISTERS: usize = 7;
 /// Time, alarms, control and status: 0x00 to 0x0F.
 pub const CLOCK_REGISTERS: usize = 0x10;
 pub const TEMPERATURE_REGISTER: u8 = 0x11;
-/// Clock registers, then aging offset and temperature: everything the chip holds.
+/// The clock registers, then the aging offset and the temperature: everything the chip
+/// holds.
 pub const ALL_REGISTERS: usize = 0x13;
 
 pub const STATUS_REGISTER: u8 = 0x0f;
@@ -50,8 +51,8 @@ pub fn decode_clock(registers: &[u8; CLOCK_REGISTERS], alarm_raised: bool) -> Cl
     }
 }
 
-/// The time registers for `time`, in 24-hour mode. The chip counts years 2000 to 2199;
-/// its weekday counts from Monday = 1.
+/// The time registers for `time`, in 24-hour mode. The chip counts years from 2000 to 2199.
+/// Its weekday counts from Monday = 1.
 pub fn encode_time(time: &DateTime) -> [u8; TIME_REGISTERS] {
     let years_since_2000 = time.year.saturating_sub(2000).min(199);
     let century = if years_since_2000 >= 100 { CENTURY } else { 0 };
@@ -72,7 +73,8 @@ pub fn oscillator_restarted(status: u8) -> u8 {
     status & !OSCILLATOR_STOPPED
 }
 
-/// Whole degrees as a signed byte, then quarters in the top two bits of the next.
+/// Whole degrees as a signed byte, then quarters of a degree in the top two bits of the
+/// next byte.
 pub fn decode_temperature([degrees, quarters]: [u8; 2]) -> Temperature {
     Temperature { quarter_degrees_celsius: i16::from(degrees as i8) * 4 + i16::from(quarters >> 6) }
 }
@@ -113,7 +115,7 @@ mod chip {
 
     impl RealTimeClock for Ds3231Clock {
         fn read(&mut self) -> Result<ClockReading, Fault> {
-            // One transaction, so the time cannot tear across a rollover.
+            // One transaction, so that a rollover cannot happen in the middle of the read.
             let mut registers = [0u8; CLOCK_REGISTERS];
             self.bus.write_read(ADDRESS, &[SECONDS_REGISTER], &mut registers)?;
             Ok(decode_clock(&registers, self.interrupt.is_low()))

@@ -14,8 +14,8 @@ use infrastructure::general_file::{GeneralFile, NoGeneralFile};
 use infrastructure::internet::{NoInternet, SharedInternet};
 use infrastructure::speaker_sound::SpeakerSound;
 
-/// When the SD card could not be reached, apps are told so by their files, and have no
-/// Internet: the Wi-Fi's credentials are on the card.
+/// When the SD card cannot be reached, the apps see it in their files. They also have no
+/// Internet, because the Wi-Fi credentials are on the card.
 pub(crate) struct EngineServices<W, H, U, S> {
     pub foreground: Foreground,
     pub clock: Clock,

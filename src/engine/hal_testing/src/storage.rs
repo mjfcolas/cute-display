@@ -6,7 +6,7 @@ use hal::Fault;
 
 use crate::shared::lock;
 
-/// Files in memory. A directory is there while a file is under it.
+/// Files in memory. A directory exists while a file is in it.
 #[derive(Clone, Default)]
 pub struct FakeFileStorage(Arc<Mutex<BTreeMap<String, Vec<u8>>>>);
 
@@ -66,7 +66,7 @@ impl FileStorage for FakeFileStorage {
     }
 }
 
-/// Checks a storage, blank at first, against `FileStorage`'s contract.
+/// Checks a storage, empty at first, against the contract of `FileStorage`.
 pub fn check_contract(storage: &impl FileStorage) {
     const CONF: &str = "cute-display/apps/alarm/alarm.conf";
     const COPY: &str = "cute-display/apps/alarm/kept/alarm.conf";

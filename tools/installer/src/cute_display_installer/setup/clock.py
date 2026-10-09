@@ -1,5 +1,5 @@
-"""The clock on the USB cable, as the setup's screens use it: each step one call, which
-may take from seconds to minutes, and fails with `Failed` and a message for people."""
+"""The clock on the USB cable, as the setup's screens use it: one call per step. A call may
+take from seconds to minutes, and fails with `Failed` and a message for people."""
 import time
 from urllib.error import URLError
 
@@ -16,7 +16,7 @@ from ..flash.layout import image_refusals
 from . import card
 from .answers import CARD_FILES, Answers
 
-# Cute Display answers on its console a few seconds after a restart, later with a cold
+# Cute Display answers on its console a few seconds after a restart, and later with a cold
 # SD card.
 STARTING_TIMEOUT_S = 40
 
@@ -26,7 +26,7 @@ class Failed(Exception):
 
 
 def _said(error):
-    """`error` as people read it; None for one no step expects."""
+    """`error` as people read it; None for an error that no step expects."""
     if isinstance(error, (usb.NoDevice, Failed)):
         return str(error)
     if isinstance(error, device.Refused):
@@ -43,7 +43,7 @@ def _said(error):
 
 
 def _step(call):
-    """`call()`, its expected failures turned into `Failed`."""
+    """`call()`, with its expected failures turned into `Failed`."""
     try:
         return call()
     except Exception as error:
@@ -63,7 +63,7 @@ class UsbClock:
         return _step(read)
 
     def back_up(self, folder):
-        """The whole flash into a file in `folder`; its path."""
+        """Copies the whole flash into a file in `folder`, and returns its path."""
         path = device.backup_path(folder)
 
         def back_up():
@@ -74,7 +74,8 @@ class UsbClock:
         return _step(back_up)
 
     def latest(self):
-        """The latest release, its image checked: whole, and a Cute Display image that fits."""
+        """The latest release, with its image checked: complete, and a Cute Display image
+        that fits."""
         def latest():
             release = releases.latest_release(report=lambda _: None)
             refusals = image_refusals(release.image) + release.installer_refusals(versions.this_installer_version())
@@ -96,7 +97,7 @@ class UsbClock:
         return _step(start)
 
     def wait_for_cute_display(self):
-        """Until the console of the Cute Display that just started answers."""
+        """Waits until the console of the Cute Display that just started answers."""
         deadline = time.monotonic() + STARTING_TIMEOUT_S
         while True:
             try:

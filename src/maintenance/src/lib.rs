@@ -1,10 +1,10 @@
-//! A console on the serial line, or a Unix socket on the simulator, for a computer to
-//! read the SD card and put files on it, since the card does not come out of the case,
-//! and, for tests, to press the buttons and turn the wheel (`remote`), to see what the
-//! glass, the lights and the speaker do (`observation`), and to read and set the RTC.
+//! A console on the serial line, or on a Unix socket in the simulator. A computer uses it
+//! to read the SD card and put files on it, because the card cannot be taken out of the
+//! case. Tests also use it to press the buttons and turn the wheel (`remote`), to see what
+//! the screen, the lights and the speaker do (`observation`), and to read and set the RTC.
 //!
-//! Every line of it starts with `@@ <id>`; anything else on the line, the device's log
-//! above all, is ignored by both ends. The other end is `tools/link/`.
+//! Each line of the protocol starts with `@@ <id>`. Both ends ignore anything else on the
+//! line, mainly the device's log. The other end is `tools/link/`.
 
 pub mod console;
 #[cfg(test)]

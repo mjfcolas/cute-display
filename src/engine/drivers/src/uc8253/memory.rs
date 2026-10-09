@@ -1,4 +1,4 @@
-//! The controller's image memory is portrait: one row per landscape column, one bit per
+//! The controller's image memory is in portrait: one row per landscape column, one bit per
 //! landscape row, most significant bit first, 1 = white.
 
 use core::ops::RangeInclusive;

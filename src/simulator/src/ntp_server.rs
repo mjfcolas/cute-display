@@ -1,4 +1,4 @@
-//! An NTP server that answers the true time of the simulated world.
+//! An NTP server that answers with the true time of the simulated world.
 
 use core::time::Duration;
 

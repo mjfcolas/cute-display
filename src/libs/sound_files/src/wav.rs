@@ -2,7 +2,7 @@ use domain::files::Files;
 
 const CHUNK_HEADER_BYTES: u64 = 8;
 const FIRST_CHUNK: u64 = 12;
-/// Past these, a file is taken for holding no samples rather than read on.
+/// Beyond these, a file is considered to contain no samples, and reading stops.
 const MOST_CHUNKS_BEFORE_THE_SAMPLES: usize = 32;
 const PCM: u16 = 1;
 const EXTENSIBLE: u16 = 0xfffe;
@@ -22,7 +22,8 @@ impl Layout {
     }
 }
 
-/// A WAV file's 16-bit PCM samples, its channels mixed, at its own rate, round and round.
+/// The 16-bit PCM samples of a WAV file, with its channels mixed, at the file's own rate,
+/// repeated without end.
 pub(crate) struct WavSamples {
     files: Box<dyn Files>,
     name: String,
@@ -103,7 +104,8 @@ impl WavSamples {
 }
 
 impl WavSamples {
-    /// From -1 to 1; `None` once the file cannot be read or holds no samples it can play.
+    /// From -1 to 1; `None` once the file cannot be read or contains no samples it can
+    /// play.
     pub(crate) fn next_sample(&mut self) -> Option<f32> {
         match self.next_frame() {
             Ok(frame) => Some(frame),
@@ -118,7 +120,7 @@ impl WavSamples {
         self.layout.map_or(0, |layout| layout.sample_rate_hz)
     }
 
-    /// Its channels mixed.
+    /// With its channels mixed.
     #[inline]
     fn next_frame(&mut self) -> Result<f32, String> {
         let layout = self.layout()?;
@@ -161,8 +163,8 @@ pub(crate) mod tests {
 
     const RATE: u32 = 44_100;
 
-    /// A WAV of `frames`, each a sample per channel, a `JUNK` chunk before its format as
-    /// Habity's have.
+    /// A WAV of `frames`, each with one sample per channel, and a `JUNK` chunk before its
+    /// format, as Habity's files have.
     pub(crate) fn wav(channels: u16, rate: u32, bits: u16, frames: &[Vec<i16>]) -> Vec<u8> {
         let samples: Vec<u8> = frames.iter().flatten().flat_map(|sample| sample.to_le_bytes()).collect();
         let mut format = Vec::new();

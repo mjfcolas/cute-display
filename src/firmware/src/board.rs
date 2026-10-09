@@ -25,7 +25,7 @@ use drivers::uc8253::{memory, Uc8253};
 use hal::bus::I2cBus;
 use hal::Fault;
 
-/// A whole panel image in one transfer; esp-idf-hal wants a multiple of 4.
+/// A whole panel image in one transfer; esp-idf-hal needs a multiple of 4.
 const PANEL_DMA_BYTES: usize = 16 * 1024;
 const _: () = assert!(PANEL_DMA_BYTES >= memory::BYTES && PANEL_DMA_BYTES.is_multiple_of(4));
 
@@ -120,7 +120,7 @@ impl Board {
             sd_card: SdmmcCard::mount(sd_host),
             wifi: EspWifiRadio::new(peripherals.modem, EspSystemEventLoop::take().map_err(fault("event loop"))?)?,
             power: AdcPowerMonitor::new(
-                // Fed through ~340 kOhm: any internal pull would swamp it.
+                // Fed through about 340 kOhm: any internal pull would be much stronger.
                 PinDriver::input(pins.gpio1, Pull::Floating).map_err(fault("USB detect"))?,
                 AdcChannelDriver::new(battery_adc, pins.gpio2, &battery_config).map_err(fault("battery ADC"))?,
             ),

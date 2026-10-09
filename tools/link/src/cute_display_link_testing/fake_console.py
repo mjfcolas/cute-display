@@ -1,5 +1,5 @@
-"""The device's side of its console, for tests of what talks to it: each request goes to
-the part that knows its verb, and the log comes between the replies."""
+"""The device's side of its console, for tests of the code that talks to it: each request
+goes to the part that knows its verb, and the log comes between the replies."""
 
 
 class FakeConsole:

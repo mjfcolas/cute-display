@@ -6,7 +6,8 @@ use hal::steady::SteadyClock;
 
 use crate::shared::lock;
 
-/// Moves on only when slept on or advanced: time goes as the test says, never on its own.
+/// Moves forward only when a thread sleeps on it or a test advances it: time passes only as
+/// the test says.
 #[derive(Clone)]
 pub struct FakeSteadyClock(Arc<Mutex<Instant>>);
 
@@ -32,8 +33,8 @@ impl SteadyClock for FakeSteadyClock {
     }
 }
 
-/// Checks a clock against `SteadyClock`'s contract; it sleeps a few milliseconds of the
-/// clock's time.
+/// Checks a clock against the contract of `SteadyClock`. It sleeps a few milliseconds of
+/// the clock's time.
 pub fn check_contract(clock: &impl SteadyClock) {
     let pause = Duration::from_millis(5);
     let before = clock.now();

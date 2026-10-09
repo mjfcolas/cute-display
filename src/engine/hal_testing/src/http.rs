@@ -6,8 +6,8 @@ use hal::Fault;
 
 use crate::shared::lock;
 
-/// Answers the URLs it was given an answer for, by how they start, and keeps the URLs asked;
-/// any other is a fault, as an unreachable server is.
+/// Answers the URLs it was given an answer for, by the start of the URL, and records the
+/// URLs asked. Any other URL is a fault, like a server that cannot be reached.
 #[derive(Clone, Default)]
 pub struct StubHttpClient(Arc<Mutex<Web>>);
 

@@ -83,9 +83,10 @@ impl DrawTarget for Frame {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Redraw {
-    /// The whole glass, on the clean waveform: slow, flashes, leaves no ghost.
+    /// The whole panel, with the clean waveform: slow, flashes, leaves no ghost.
     Whole,
-    /// Only what changed, on the fast waveform: quick and quiet, ghosts a little.
+    /// Only what changed, with the fast waveform: quick and quiet, leaves a little
+    /// ghosting.
     Changes,
 }
 
@@ -97,7 +98,7 @@ pub enum Refreshed {
 }
 
 pub trait EpaperDisplay {
-    /// The display may redraw more than asked, never less.
+    /// The display may redraw more than it is asked to, never less.
     fn show(&mut self, frame: &Frame, redraw: Redraw) -> Result<Refreshed, Fault>;
 }
 

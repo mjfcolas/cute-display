@@ -8,8 +8,8 @@ use hal::Fault;
 use crate::clock::POWER_UP;
 use crate::shared::lock;
 
-/// An RTC whose time runs on `steady` from where it was set, as a battery-backed chip's
-/// does: time a test moves on passes on it too.
+/// An RTC whose time runs on `steady` from where it was set, as a battery-backed chip does:
+/// when a test moves time forward, this RTC moves too.
 #[derive(Clone)]
 pub struct FakeRunningRtc<S> {
     steady: S,

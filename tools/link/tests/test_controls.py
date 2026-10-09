@@ -18,7 +18,7 @@ class Controls(unittest.TestCase):
 
 
 class Late:
-    """A device that answers `answer_after_s` late, on a clock that moves a second each
+    """A device that answers `answer_after_s` late, on a clock that moves one second each
     time nothing came."""
 
     def __init__(self, answer_after_s):

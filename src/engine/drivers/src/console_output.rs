@@ -1,15 +1,15 @@
-//! The console's output, which does not wait for a computer: with nobody reading, what
-//! finds no room is dropped after one wait, and nothing waits again until a write goes
-//! through or the computer writes. The queue still holds what came while nobody read: an
-//! answer that did not wait for it to drain would be dropped.
+//! The console's output, which does not wait for a computer. When nobody reads, bytes that
+//! find no room are dropped after one wait, and no write waits again until a write succeeds
+//! or the computer writes. The queue still keeps what arrived while nobody was reading: an
+//! answer that did not wait for the queue to empty would be dropped.
 
 use std::io;
 
 /// The driver's queue of bytes to send.
 pub trait TxRing {
-    /// The most one push takes.
+    /// The most bytes that one push can take.
     const BYTES: usize;
-    /// Whether `bytes` were taken whole, waiting for room or not.
+    /// Whether all of `bytes` were taken, after waiting for room or not.
     fn push(&mut self, bytes: &[u8], wait: bool) -> bool;
 }
 
@@ -49,8 +49,8 @@ mod tests {
 
     use super::*;
 
-    /// Has room for a push or not, in the order a test sets, and room once they are over;
-    /// keeps each push's length and whether it waited.
+    /// Has room for a push or not, in the order that a test sets, then always has room.
+    /// Records the length of each push, and whether it waited.
     #[derive(Default)]
     struct StubTxRing {
         room: VecDeque<bool>,

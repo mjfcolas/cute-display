@@ -1,8 +1,8 @@
-"""What the app image logged, as it comes."""
+"""What the app image logged, as it arrives."""
 import re
 import threading
 
-# What the app image never logs unless something went badly wrong.
+# What the app image logs only when something went badly wrong.
 CRASH = re.compile(r'panicked|Guru Meditation|stack overflow|abort\(\)|Rebooting')
 # ESP-IDF colours its lines.
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')

@@ -1,7 +1,7 @@
-//! A countdown, in one of three modes: a plain timer that rings once over, pomodoro
-//! rounds of work and breaks that chime and go on to the next, or a nap that wakes with
-//! the light, then the ringing. It is kept on the steady clock: a clock set meanwhile
-//! neither shortens nor lengthens it.
+//! A countdown, in one of three modes: a simple timer that rings at the end; pomodoro
+//! rounds of work and breaks, with a chime between them; or a nap that ends with the light,
+//! then a ringing. It is timed on the steady clock: if the clock is set during the
+//! countdown, the countdown is not shorter or longer.
 
 use std::ops::RangeInclusive;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -15,10 +15,10 @@ use crate::ID;
 
 pub const SHORT_BREAK: Minutes = Minutes(5);
 pub const LONG_BREAK: Minutes = Minutes(15);
-/// Work stretches in a pomodoro, the long break after the last.
+/// Work periods in a pomodoro. The long break comes after the last one.
 pub const ROUNDS: u8 = 4;
 pub const WAKE_LIGHT_RISES_OVER: Duration = Duration::from_secs(3 * 60);
-/// Then it stops on its own.
+/// Then it stops by itself.
 pub const RING_FOR: Duration = Duration::from_secs(10 * 60);
 pub const VOLUME_RISES_OVER: Duration = Duration::from_secs(60);
 const FIRST_VOLUME: Volume = Volume::percent(10);
@@ -52,7 +52,7 @@ pub enum Mode {
 impl Mode {
     pub const ALL: [Self; 3] = [Self::Countdown, Self::Pomodoro, Self::Nap];
 
-    /// Round and round.
+    /// Goes back to the first after the last.
     pub fn next(self) -> Self {
         match self {
             Self::Countdown => Self::Pomodoro,
@@ -61,7 +61,7 @@ impl Mode {
         }
     }
 
-    /// For a pomodoro, of its work stretches.
+    /// For a pomodoro, the length of its work periods.
     pub fn lengths(self) -> RangeInclusive<Minutes> {
         match self {
             Self::Countdown => Minutes(1)..=Minutes(120),
@@ -70,8 +70,8 @@ impl Mode {
         }
     }
 
-    /// By the minute up to 10, by 5 up to an hour, by the quarter after; stops at either
-    /// end of its lengths.
+    /// One minute at a time up to 10, then 5 at a time up to one hour, then 15 at a time.
+    /// Stops at the shortest and at the longest length.
     pub fn turned(self, minutes: Minutes, detents: i32) -> Minutes {
         let step_up_from = |minutes: u16| match minutes {
             0..=9 => 1,
@@ -91,7 +91,7 @@ impl Mode {
 pub struct TimerSettings {
     pub mode: Mode,
     pub countdown: Minutes,
-    /// Of its work stretches.
+    /// The length of its work periods.
     pub pomodoro: Minutes,
     pub nap: Minutes,
 }
@@ -128,14 +128,14 @@ pub trait TimerSettingsStore: Send {
 }
 
 pub trait Ringer: Send {
-    /// Starts ringing, or goes on at `volume` when it is ringing.
+    /// Starts ringing, or continues at `volume` if it is ringing.
     fn ring(&mut self, volume: Volume);
-    /// A short phrase, over on its own.
+    /// A short phrase, which ends by itself.
     fn chime(&mut self, volume: Volume);
     fn silence(&mut self);
 }
 
-/// A stretch of time counted down; a pomodoro's rounds count from 1.
+/// A period of time that is counted down. The rounds of a pomodoro count from 1.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Stretch {
     Countdown,
@@ -147,9 +147,9 @@ pub enum Stretch {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum StretchEnd {
-    /// Chiming.
+    /// With a chime.
     Next(Stretch),
-    /// Chiming.
+    /// With a chime.
     Rest,
     Ring,
 }
@@ -171,7 +171,7 @@ pub enum TimerState {
     Set,
     Counting { stretch: Stretch, left: Duration },
     Paused { stretch: Stretch, left: Duration },
-    /// The stretch that ended.
+    /// The period that ended.
     Ringing { after: Stretch },
 }
 
@@ -224,14 +224,14 @@ impl Timer {
         self.lock().revision
     }
 
-    /// Set only.
+    /// Only when the timer is set: not counting, paused or ringing.
     pub fn choose_next_mode(&self) {
         if self.lock().phase == Phase::Set {
             self.change_settings(|settings| settings.mode = settings.mode.next());
         }
     }
 
-    /// Set only.
+    /// Only when the timer is set: not counting, paused or ringing.
     pub fn turn_length(&self, detents: i32) {
         if self.lock().phase == Phase::Set {
             self.change_settings(|settings| {
@@ -253,7 +253,7 @@ impl Timer {
         }
     }
 
-    /// A nap is not paused: getting up from one is stopping it.
+    /// A nap cannot be paused: getting up from a nap means stopping it.
     pub fn pause_or_go_on(&self) {
         let mut inner = self.lock();
         let Some(now) = inner.now else {
@@ -276,7 +276,8 @@ impl Timer {
         }
     }
 
-    /// A nap's light rises over its last minutes and shines while it rings.
+    /// During a nap, the light rises over its last minutes, and stays on while the timer
+    /// rings.
     pub fn wake_light(&self) -> Level {
         let inner = self.lock();
         match (inner.phase, inner.now) {

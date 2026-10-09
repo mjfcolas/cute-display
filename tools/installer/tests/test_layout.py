@@ -5,7 +5,8 @@ from cute_display_installer.flash.layout import (
     _OTA_IMG_INVALID, _OTA_STATE_OFFSET, APP_HEADER_SIZE, APP_SIZE, OTADATA_SECTOR, AppImage, Device, Partition,
     Placement, Security, Slot, Target, app_image, booting_slot, image_refusals, otadata_booting, partitions)
 
-# The first entry of the otadata this project's unit came with, running Habity 1.1.1 from app0.
+# The first entry of the otadata that this project's unit came with, running Habity 1.1.1
+# from app0.
 STOCK_OTADATA_ENTRY = bytes.fromhex('01000000' + 'ff' * 20 + '02000000' + '9a984347')
 
 HABITY_TABLE = [

@@ -1,8 +1,12 @@
-"""`bench`: how fast data moves between this computer and the device's SD card, each leg
-apart, so that a slow copy says where its time goes: a file put onto the card; the
-console alone, the glass sent from the device's memory; the card read through the
-console, as a backup does; a copy on the card, as Habity's sounds are copied. Read and
-copied: the largest of Habity's ringtones, else the file put."""
+"""`bench`: how fast data moves between this computer and the device's SD card. Each step is
+measured alone, so that a slow copy shows where its time goes:
+
+- a file put onto the card;
+- the console alone, sending the screen from the device's memory;
+- the card read through the console, as a backup does;
+- a copy on the card, as when Habity's sounds are copied.
+
+The file read and copied is the largest of Habity's ringtones, or else the file put."""
 import argparse
 import time
 from dataclasses import dataclass
@@ -11,15 +15,15 @@ from . import card, observation
 from .command import on_link
 from .console import ConsoleError
 
-# Under the device's own directory, removed once measured.
+# Under the device's own directory, removed after the measurement.
 BENCH_DIRECTORY = 'cute-display/bench'
 PUT = f'{BENCH_DIRECTORY}/put'
 COPIED = f'{BENCH_DIRECTORY}/copy'
-# The most a put takes, src/maintenance/'s MAX_PUT_BYTES.
+# The most that a put takes: MAX_PUT_BYTES in src/maintenance/.
 PUT_BYTES = 64 * 1024
-# A few megabytes each: read and copied whole, with little of a request's own time.
+# A few megabytes each: read and copied whole, so that a request's own time counts little.
 RINGTONES = 'sounds/alarm'
-# Read and copied as many times as it takes, the file a megabyte or less of it.
+# At least this much is read and copied: the file is read or copied again until it is.
 MOVED_BYTES = 1024 * 1024
 SCREENS = 8
 
@@ -36,7 +40,7 @@ class Leg:
 
 
 def timed(name, move, now):
-    """`move()` gives how many bytes it moved."""
+    """`move()` returns how many bytes it moved."""
     started = now()
     size = move()
     return Leg(name, size, now() - started)
@@ -48,7 +52,7 @@ def card_put(link):
 
 
 def source(link):
-    """The largest ringtone and its size, else the file put."""
+    """The largest ringtone and its size, or else the file put."""
     try:
         files = [e for e in card.entries(link, RINGTONES) if not e.is_directory]
     except ConsoleError:
@@ -60,7 +64,7 @@ def source(link):
 
 
 def console_alone(link):
-    """The glass refuses while it is drawn: only the frames that came whole count."""
+    """The screen refuses while it is being drawn: only the frames that came whole count."""
     size = 0
     for _ in range(SCREENS):
         try:
@@ -88,7 +92,7 @@ def card_copy(link, path, file_size):
 
 
 def legs(link, now=time.monotonic):
-    """Each leg as it is measured."""
+    """Each step, as it is measured."""
     try:
         yield timed('put onto the card, through the console', lambda: card_put(link), now)
         yield timed('console alone (the glass, from memory)', lambda: console_alone(link), now)

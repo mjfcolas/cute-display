@@ -2,7 +2,7 @@ import unittest
 
 from cute_display_installer.rtc import NoRegisters, describe, registers_in
 
-# 2026-09-26 11:46:44; alarm 1 at 07:30:00 every day, on and raised; alarm 2 unused.
+# 2026-09-26 11:46:44; alarm 1 at 07:30:00 every day, enabled and fired; alarm 2 not used.
 REGISTERS = bytes([0x44, 0x46, 0x11, 0x06, 0x26, 0x09, 0x26,
                    0x00, 0x30, 0x07, 0x80,
                    0x80, 0x80, 0x80,

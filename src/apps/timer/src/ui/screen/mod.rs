@@ -40,7 +40,8 @@ impl TimerScreen {
         TimerPage { modes, count, status, hint }
     }
 
-    /// Asleep, only yellow does anything, so that nothing half awake changes a setting.
+    /// During a nap, only yellow does anything, so that a person who is half awake cannot
+    /// change a setting by mistake.
     fn on_timer_input(&self, input: Input) {
         match (self.timer.state(), input) {
             (TimerState::Set, Input::Turn(detents)) => self.timer.turn_length(detents),
@@ -100,7 +101,7 @@ fn counting(stretch: Stretch) -> String {
     }
 }
 
-/// A minute or a second begun counts whole.
+/// A minute or a second that has started counts as a whole one.
 fn count_of(left: Duration) -> Count {
     let seconds = left.as_secs() + u64::from(left.subsec_nanos() > 0);
     match seconds.div_ceil(60) {

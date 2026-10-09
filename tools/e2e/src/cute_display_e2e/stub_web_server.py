@@ -1,7 +1,8 @@
-"""The web the test image asks over HTTPS (infrastructure::testing::to_local_stubs): the
-responses recorded in web/, a URL asked under its host.
+"""The web that the test image asks for over HTTPS
+(infrastructure::testing::to_local_stubs): the responses recorded in web/, each URL asked
+under its host.
 
-`python -m cute_display_e2e.stub_web_server` serves it by hand with the time, and prints
+`python -m cute_display_e2e.stub_web_server` serves it by hand, with the time, and prints
 the e2e.conf to put on the card."""
 import http.server
 import socket
@@ -20,7 +21,7 @@ HTTPS_PORT = 8443
 
 
 def recorded_web(directory=WEB):
-    """Each recording's URL, on its first line, and its body, after it: the simulator's
+    """The URL of each recording, on its first line, and its body, after it: the simulator's
     `--web` format."""
     web = {}
     for recording in sorted(directory.glob('*.http')):
@@ -30,8 +31,8 @@ def recorded_web(directory=WEB):
 
 
 def local_address():
-    """The address this computer is reached at on its local network: the one it would
-    leave from toward the Internet. Nothing is sent."""
+    """The address of this computer on its local network: the one it would send from to
+    reach the Internet. Nothing is sent."""
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
         probe.connect(('192.0.2.1', 9))
         return probe.getsockname()[0]
@@ -42,8 +43,8 @@ def e2e_conf(address, https_port, ntp_port):
 
 
 class StubWebServer:
-    """Under a certificate the test authority signs for `address`; port 0 lets the system
-    choose, read back from `port`."""
+    """With a certificate that the test authority signs for `address`. Port 0 lets the
+    system choose; read the chosen port from `port`."""
 
     def __init__(self, address, *, port=HTTPS_PORT, web=None, authority=AUTHORITY):
         self.web = recorded_web() if web is None else web
@@ -81,7 +82,7 @@ class StubWebServer:
         server = http.server.ThreadingHTTPServer(('', port), Handler)
         certificate, key = issue_server_pem((authority / CERTIFICATE).read_bytes(), (authority / KEY).read_bytes(), address)
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        # ssl reads a certificate chain from files alone.
+        # ssl reads a certificate chain only from files.
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / 'server.pem').write_bytes(certificate)
             (Path(directory) / 'server.key').write_bytes(key)

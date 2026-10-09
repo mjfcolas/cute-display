@@ -2,7 +2,7 @@ use hal::light::{Brightness, DimmableLight};
 
 use crate::bench::{eventually, let_the_speaker_settle, Image, Setup, ALARM_CONF, GENERAL_CONF, MINUTE};
 
-/// Weather in front, an alarm at seven on Saturday morning, the RTC at six.
+/// Weather in the foreground, an alarm at seven on Saturday morning, the RTC at six.
 fn waking_at_seven() -> Image {
     let setup = Setup::default()
         .with_file(GENERAL_CONF, "time_zone = UTC0\napps = weather, alarm\n")

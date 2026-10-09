@@ -6,8 +6,8 @@ from cute_display_link.card import entries, read_file
 
 
 def pull(link, directory, destination, report=print):
-    """Every file under `directory`, skipping those already there at the same size, so
-    that an interrupted copy resumes."""
+    """Every file under `directory`, except those already on the computer with the same
+    size, so that an interrupted copy continues where it stopped."""
     for entry in entries(link, directory):
         path = f'{directory}/{entry.name}' if directory else entry.name
         local = os.path.join(destination, entry.name)

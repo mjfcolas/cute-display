@@ -29,8 +29,9 @@ pub(crate) fn aircraft_triangle(at: Point, track_degrees: f32, length: i32) -> [
     [point(half, 0.0), point(-half, half * 0.8), point(-half, -half * 0.8)]
 }
 
-/// Where a label may sit around what it names, in the order they are tried: beside it
-/// first, since that reads best, then above and below, then the corners.
+/// The places where a label can go around the thing it names, in the order they are tried:
+/// next to it first, because that is easiest to read, then above and below, then the
+/// corners.
 const LABEL_SIDES: [(i32, i32); 8] = [(1, 0), (-1, 0), (0, -1), (0, 1), (1, -1), (-1, -1), (1, 1), (-1, 1)];
 
 pub(crate) struct LabelWanted {
@@ -80,8 +81,8 @@ impl Scope {
     }
 }
 
-/// What an aircraft is called on the scope: the last two letters of its registration,
-/// `F-GKXA` being `XA`, which is how the airframe is known on the radio.
+/// The name of an aircraft on the radar: the last two letters of its registration (`F-GKXA`
+/// gives `XA`). This is how the aircraft is called on the radio.
 pub(crate) fn short_registration(registration: &str) -> Option<String> {
     let letters: Vec<char> = registration.chars().filter(char::is_ascii_alphanumeric).collect();
     let tail = letters.get(letters.len().checked_sub(2)?..)?;

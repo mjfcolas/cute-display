@@ -2,8 +2,8 @@ pub mod app_image;
 pub mod board;
 
 /// The image's `esp_app_desc_t`, which ESP-IDF's bootloader and the installer read: the
-/// project and the version of `app::image`. esp-idf-sys's `esp_app_desc!` would say the
-/// Cargo package's version instead. Each image's binary invokes it once.
+/// project and the version of `app::image`. The `esp_app_desc!` of esp-idf-sys would give
+/// the Cargo package's version instead. The binary of each image invokes it once.
 #[macro_export]
 macro_rules! image_description {
     () => {
@@ -28,7 +28,7 @@ macro_rules! image_description {
             app_elf_sha256: [0; 32],
             min_efuse_blk_rev_full: esp_idf_svc::sys::CONFIG_ESP_EFUSE_BLOCK_REV_MIN_FULL as u16,
             max_efuse_blk_rev_full: esp_idf_svc::sys::CONFIG_ESP_EFUSE_BLOCK_REV_MAX_FULL as u16,
-            // log2 of CONFIG_MMU_PAGE_SIZE, 64 KB, as ESP-IDF writes it.
+            // log2 of CONFIG_MMU_PAGE_SIZE (64 KB), as ESP-IDF writes it.
             mmu_page_size: 16,
             reserv3: [0; 3],
             reserv2: [0; 18],

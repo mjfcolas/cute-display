@@ -21,7 +21,7 @@ pub fn draw<D: DrawTarget<Color = BinaryColor>>(target: &mut D, sky: Sky, top_le
             let _ = Line::new(from, to).into_styled(stroke).draw(target);
         }
     };
-    // A cloud filling the box from `x0,y0` to `x1,y1`, in percent of the icon.
+    // A cloud that fills the box from `x0,y0` to `x1,y1`, in percent of the icon.
     let cloud = |target: &mut D, x0: i32, y0: i32, x1: i32, y1: i32| {
         let (w, h) = (x1 - x0, y1 - y0);
         let puff = |target: &mut D, cx: i32, cy: i32, d: i32| {

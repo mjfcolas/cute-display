@@ -15,8 +15,8 @@ pub enum Survey {
     Found(Vec<AccessPoint>),
 }
 
-/// Scans for Wi-Fi networks every minute on a thread of its own, since a scan blocks
-/// for seconds.
+/// Scans for Wi-Fi networks every minute on its own thread, because a scan blocks for
+/// several seconds.
 pub(crate) fn spawn(mut scanner: impl WifiScanner + Send + 'static) -> Result<Latest<Survey>, Fault> {
     let latest = Latest::new(Survey::Scanning);
     let published = latest.clone();

@@ -12,10 +12,10 @@ use crate::remote::Remote;
 
 /// A put is for configuration, not for media.
 pub const MAX_PUT_BYTES: usize = 64 * 1024;
-/// The most a get sends: the computer asks again from where it stopped, so a file of any
-/// size is never held whole.
+/// The most that a get sends at once. The computer asks again from where it stopped, so a
+/// file of any size is never held whole.
 pub const GET_RANGE_BYTES: usize = 8 * 1024;
-/// Bytes per `data` line: 320 characters once in base64.
+/// Bytes per `data` line: 320 characters in base64.
 const DATA_CHUNK_BYTES: usize = 240;
 
 struct PendingPut {
@@ -46,8 +46,8 @@ impl<S: FileStorage> MaintenanceConsole<S> {
         Self { storage, own_directory, remote, observation, rtc: Box::new(rtc), put: None }
     }
 
-    /// One line from the computer. Lines that are not the protocol's are ignored; a new
-    /// request in the middle of a put abandons it.
+    /// One line from the computer. Lines that are not part of the protocol are ignored. A
+    /// new request in the middle of a put cancels the put.
     pub fn on_line(&mut self, line: &str, out: &mut impl Write) -> io::Result<()> {
         let Some((id, request)) = protocol::parse(line) else {
             return Ok(());
@@ -84,8 +84,8 @@ impl<S: FileStorage> MaintenanceConsole<S> {
         }
     }
 
-    /// A line at a time, so that neither the frame nor its lines are held whole in the
-    /// internal RAM a request would take them from.
+    /// One line at a time, so that neither the frame nor its lines are held whole in the
+    /// internal RAM that a request would take them from.
     fn send_screen(&self, id: &str, out: &mut impl Write) -> io::Result<()> {
         let mut chunk = [0; DATA_CHUNK_BYTES];
         let mut times_shown = None;

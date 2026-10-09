@@ -17,8 +17,8 @@ pub fn width(text: &str, font: &MonoFont<'_>) -> u32 {
     text.chars().count() as u32 * (font.character_size.width + font.character_spacing)
 }
 
-/// A word longer than a line is split over several, since what is lost off its end may be
-/// the part that matters (a file name).
+/// A word longer than a line is split over several lines, because the part that would be
+/// cut off may be the part that matters (a file name).
 pub fn wrap(text: &str, max_chars: usize) -> Vec<String> {
     let max_chars = max_chars.max(1);
     let pieces = text.split_whitespace().flat_map(|word| {
@@ -38,7 +38,7 @@ pub fn wrap(text: &str, max_chars: usize) -> Vec<String> {
     lines
 }
 
-/// The fonts are Latin-1: '°' and most accents draw, anything further becomes '?'.
+/// The fonts are Latin-1: '°' and most accents are drawn, and anything else becomes '?'.
 pub fn write<D: DrawTarget<Color = BinaryColor>>(
     target: &mut D,
     text: &str,

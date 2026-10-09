@@ -7,7 +7,7 @@ use domain::time_zone::TimeZone;
 
 use crate::shared::lock;
 
-/// Keeps the time it was set to, without running on: a test moves it by setting it.
+/// Keeps the time it was set to, and does not run: a test moves it by setting it.
 #[derive(Clone, Default)]
 pub struct FakeTimeKeeper(Arc<Mutex<Option<UtcTime>>>);
 
@@ -48,7 +48,7 @@ impl TimeZoneSource for StubTimeZoneSource {
     }
 }
 
-/// Checks a keeper, not yet set, against `TimeKeeper`'s contract.
+/// Checks a keeper, not yet set, against the contract of `TimeKeeper`.
 pub fn check_keeper_contract(keeper: &mut impl TimeKeeper) {
     assert_eq!(keeper.read(), None, "a keeper never set does not know the time");
     let morning = UtcTime::from_unix_seconds(1_790_407_815);

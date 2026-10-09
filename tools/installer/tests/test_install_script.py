@@ -10,7 +10,7 @@ INSTALLER = pathlib.Path(__file__).resolve().parents[1]
 JUSTFILE = INSTALLER.parents[1] / 'justfile'
 WHEEL = ('https://github.com/mjfcolas/cute-display/releases/download/v2026.9.1/'
          'cute_display_installer-2026.9.1-py3-none-any.whl')
-# A uv that records the wheel it installs, its tools in $HOME/tools.
+# A uv that records the wheel it installs, with its tools in $HOME/tools.
 FAKE_UV = '''#!/bin/sh
 case "$1 $2" in
     "tool install") echo "$5" > "$HOME/installed" ;;
@@ -27,12 +27,12 @@ def executable(path, text):
 
 
 def filled_in(script, wheel):
-    """The script as the justfile's `release` recipe fills it in."""
+    """The script, filled in as the `release` recipe of the justfile does it."""
     return script.replace('@WHEEL@', wheel)
 
 
 class InstallScript(unittest.TestCase):
-    """install.sh, filled in, run with a fake uv and no terminal of its own."""
+    """install.sh, filled in, run with a fake uv and without its own terminal."""
 
     def setUp(self):
         folder = tempfile.TemporaryDirectory()
@@ -48,7 +48,7 @@ class InstallScript(unittest.TestCase):
         self.script.write_text(filled_in((INSTALLER / 'install.sh').read_text(), WHEEL))
 
     def run_script(self, *arguments):
-        """What the installer printed, run by each shell there is."""
+        """What the installer printed, run by each shell that is installed."""
         printed = set()
         for shell in SHELLS:
             done = subprocess.run([str(self.bin / shell), str(self.script), *arguments], stdin=subprocess.DEVNULL,

@@ -28,7 +28,7 @@ pub struct Choice {
     pub current: Current,
 }
 
-/// Whether a choice is the setting's value now.
+/// Whether a choice is the setting's current value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Current {
     Yes,

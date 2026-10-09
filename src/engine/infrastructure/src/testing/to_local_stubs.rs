@@ -1,5 +1,6 @@
-//! The test image's network: the web and the time are asked of stubs on the local network,
-//! at the address in its `e2e.conf`, read at every use as the other conf files are.
+//! The test image's network: it asks stubs on the local network for the web and the time,
+//! at the address in its `e2e.conf`. Like the other conf files, the file is read at each
+//! use.
 
 use core::time::Duration;
 use std::io::Read;
@@ -78,7 +79,7 @@ impl<U: UdpClient, S: FileStorage> RedirectedUdp<U, S> {
 
 impl<U: UdpClient, S: FileStorage> UdpClient for RedirectedUdp<U, S> {
     fn exchange(&mut self, host: &str, port: u16, request: &[u8], answer: &mut [u8], timeout: Duration) -> Result<usize, Fault> {
-        // NTP alone goes over UDP.
+        // Only NTP uses UDP.
         if port != ntp::PORT {
             return Err(Fault::new(format!("{host}:{port}: no stub answers but NTP")));
         }

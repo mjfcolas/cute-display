@@ -1,12 +1,12 @@
-"""The installer on the device, one test-bins/ image after another: each is written the
-way docs/troubleshooting.md puts a backup back, then `cute-display` is run on it as
+"""The installer on the device, one test-bins/ image after another. Each image is written in
+the way docs/troubleshooting.md puts a backup back. Then `cute-display` runs on it, as
 people run it, and the device is read back.
 
   just test-bins <backup>    first, then
   just test-on-device
 
-The device ends as `updated-once` with Cute Display installed: app1 booting it. Each
-image is a whole flash, NVS included: Habity's settings and Wi-Fi go back to the backup's.
+At the end, the device is `updated-once` with Cute Display installed: app1 starts it. Each
+image is a whole flash, NVS included: Habity's settings and Wi-Fi are reset to the backup's.
 """
 import os
 import re
@@ -45,7 +45,7 @@ def cute_display(*arguments, answer=''):
 
 
 def slots():
-    """What `check` says each slot holds, and which one boots."""
+    """What `check` says that each slot contains, and which one starts."""
     printed, _ = cute_display('check')
     held, booting = {}, None
     for line in printed.splitlines():
@@ -57,7 +57,8 @@ def slots():
 
 
 def starts_cute_display():
-    """Whether the device, restarted once its port is open, logs Cute Display's first line."""
+    """Whether the device, restarted once its port is open, logs the first line of Cute
+    Display."""
     deadline = time.monotonic() + LOG_TIMEOUT_S
     while time.monotonic() < deadline:
         try:
@@ -138,7 +139,7 @@ class UpdatedTwice(OnDevice):
 
 
 class Refused(OnDevice):
-    """Cases the installer refuses: nothing is written."""
+    """Cases that the installer refuses: nothing is written."""
 
     def refuses(self, case, reason):
         put_back(case)

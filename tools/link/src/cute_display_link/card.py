@@ -8,12 +8,14 @@ from .console import ConsoleError, Request
 # A data line waits for its ack, so it only has to fit in the device's 1024-byte receive
 # buffer: 240 bytes are 320 characters of base64.
 CHUNK_BYTES = 240
-# A copy is made on the device, which answers once it is whole: seconds a megabyte.
+# A copy is made on the device, which answers once it is complete: a few seconds per
+# megabyte.
 COPY_TIMEOUT_S = 120
-# Generous, as a sound of Habity's is up to 30 megabytes.
+# Large, because one of Habity's sounds can be up to 30 megabytes.
 COPY_SECONDS_PER_MEGABYTE = 10
 MEGABYTE = 1024 * 1024
-# The console drops output nobody reads in time: a range that arrives damaged is asked again.
+# The console drops output that nobody reads in time: a range that arrives damaged is asked
+# again.
 RANGE_ATTEMPTS = 5
 
 

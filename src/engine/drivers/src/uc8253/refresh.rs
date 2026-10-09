@@ -6,7 +6,7 @@ use super::memory::{self, Image};
 
 /// Wider partial windows run the waveform and change nothing.
 const MAX_WINDOW_ROWS: usize = 320;
-/// Fast refreshes leave ghosts that only a clean one erases.
+/// Fast refreshes leave ghosts, and only a clean refresh erases them.
 const FAST_REFRESHES_BETWEEN_CLEAN: u32 = 1000;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -45,7 +45,7 @@ impl RefreshPolicy {
         }
     }
 
-    /// A reset clears the controller's memories; the glass keeps whatever it showed.
+    /// A reset clears the controller's memories, but the panel keeps what it showed.
     pub fn forget_glass(&mut self) {
         self.glass_known = false;
     }
@@ -54,8 +54,8 @@ impl RefreshPolicy {
 #[derive(Debug, PartialEq, Eq)]
 pub enum FastArea {
     Window([u8; 7]),
-    /// Without partial mode, the fast waveform drives the whole glass in the time a
-    /// window takes.
+    /// Without partial mode, the fast waveform drives the whole panel in the same time as a
+    /// window.
     WholeGlass,
 }
 
@@ -67,8 +67,8 @@ pub fn fast_area(rows: &RangeInclusive<usize>) -> FastArea {
     }
 }
 
-/// Always the full height. The last byte leaves "scan every gate line" off: on, a
-/// small window wears a full-width band into the glass.
+/// Always the full height. The last byte leaves "scan every gate line" off: when it is on,
+/// a small window wears a full-width band into the panel.
 fn partial_window(rows: &RangeInclusive<usize>) -> [u8; 7] {
     let [first_hi, first_lo] = (*rows.start() as u16).to_be_bytes();
     let [last_hi, last_lo] = (*rows.end() as u16).to_be_bytes();

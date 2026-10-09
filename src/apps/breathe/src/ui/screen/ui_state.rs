@@ -5,7 +5,7 @@ use ui::mark::Mark;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BreathePage {
-    /// Evenly over one breath of the chosen rhythm.
+    /// Spread evenly over one breath of the chosen rhythm.
     pub breath: Vec<Fullness>,
     pub rhythms: [RhythmRow; 3],
     pub session: Session,
@@ -31,7 +31,7 @@ impl Session {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RhythmRow {
     pub name: &'static str,
-    /// Its steps and their seconds: `in 4, hold 7, out 8 s`.
+    /// Its steps and their lengths: `in 4, hold 7, out 8 s`.
     pub steps: String,
     pub mark: Mark,
 }

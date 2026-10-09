@@ -25,9 +25,9 @@ pub trait FileStorage {
             contents.get(start..).unwrap_or_default().iter().take(max_bytes).copied().collect()
         }))
     }
-    /// Creates the file and the directories above it, or replaces what it held.
+    /// Creates the file and the directories above it, or replaces its content.
     fn write(&self, path: &str, contents: &[u8]) -> Result<(), Fault>;
-    /// Creates `to` and the directories above it, or replaces what it held.
+    /// Creates `to` and the directories above it, or replaces its content.
     fn copy(&self, from: &str, to: &str) -> Result<CopyOutcome, Fault> {
         let Some(contents) = self.read(from)? else {
             return Ok(CopyOutcome::NoSource);

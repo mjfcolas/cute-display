@@ -11,5 +11,5 @@ build-std = ["std", "panic_abort"]
 [env]
 MCU = "esp32s3"
 ESP_IDF_VERSION = "v5.5.3"
-# Shared under ~/.espressif, downloaded by the first build.
+# Shared in ~/.espressif, and downloaded by the first build.
 ESP_IDF_TOOLS_INSTALL_DIR = "global"

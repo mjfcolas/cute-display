@@ -1,4 +1,4 @@
-//! Buttons and a wheel a computer presses and turns through the console, for tests.
+//! Buttons and a wheel that a computer presses and turns through the console, for tests.
 
 use core::fmt;
 use core::time::Duration;
@@ -26,7 +26,7 @@ impl ButtonName {
     }
 }
 
-/// Long enough for any gesture, short enough that a hold cannot keep the console.
+/// Long enough for any gesture, short enough that a hold cannot block the console.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct HoldDuration(Duration);
 
@@ -38,13 +38,14 @@ impl HoldDuration {
     }
 }
 
-/// Real time, as the computer waiting for the answer sees it: the image takes the controls
-/// between refreshes, and a cold whole refresh lasts up to 6.9 s (docs/hardware.md); the
-/// computer stops waiting after 10 s (`REPLY_TIMEOUT_S` in tools/link).
+/// Real time, as seen by the computer that waits for the answer. The image takes the
+/// controls between refreshes, and a whole refresh lasts up to 6.9 s when cold
+/// (docs/hardware.md). The computer stops waiting after 10 s (`REPLY_TIMEOUT_S` in
+/// tools/link).
 const TAKEN_WITHIN: Duration = Duration::from_secs(8);
 
-/// A tap, a hold or a turn waits for the app image to take it; this is the answer when it
-/// did not in time.
+/// A tap, a hold or a turn waits for the app image to take it. This is the answer when the
+/// image did not take it in time.
 #[derive(Debug, PartialEq, Eq)]
 pub struct NotTaken(Duration);
 
@@ -75,13 +76,13 @@ struct TakenSignal {
 
 impl TakenSignal {
     fn notify_taken(&self) {
-        // Locked, so that a remote about to wait cannot miss it.
+        // Locked, so that a remote that is about to wait cannot miss it.
         drop(self.lock.lock().unwrap_or_else(PoisonError::into_inner));
         self.taken.notify_all();
     }
 }
 
-/// Clones share their state with the buttons and the wheel they give out.
+/// Clones share their state with the buttons and the wheel that they give out.
 #[derive(Clone)]
 pub struct Remote {
     hold_clock: Arc<dyn SteadyClock + Send + Sync>,

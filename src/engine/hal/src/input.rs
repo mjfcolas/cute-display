@@ -4,7 +4,7 @@ pub trait RotaryEncoder {
 }
 
 pub trait PushButton {
-    /// Presses are counted even while nobody asks.
+    /// Presses are counted even when nobody asks for them.
     fn take_presses(&mut self) -> u32;
     fn is_held(&self) -> bool;
 }

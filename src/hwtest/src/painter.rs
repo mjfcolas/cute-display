@@ -9,8 +9,8 @@ use crate::screen::{self, Legend, Page};
 
 pub(crate) type LastRefresh = Option<Result<Refreshed, Fault>>;
 
-/// Draws pages on a thread of its own, since a refresh blocks for up to seconds. Pages
-/// that arrive during a refresh are skipped, all but the latest.
+/// Draws pages on its own thread, because a refresh blocks for up to several seconds. Pages
+/// that arrive during a refresh are skipped, except the latest one.
 pub(crate) struct Painter {
     pages: Sender<Page>,
     last_refresh: Latest<LastRefresh>,

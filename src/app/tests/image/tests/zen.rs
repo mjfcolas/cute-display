@@ -2,7 +2,8 @@ use hal::light::{Brightness, DimmableLight};
 
 use crate::bench::{eventually, let_the_speaker_settle, Image, Setup, GENERAL_CONF, MINUTE, ZEN_CONF};
 
-/// Weather in front, a session of an hour every day at half past six, the RTC at six.
+/// Weather in the foreground, a one-hour session every day at half past six, the RTC at
+/// six.
 fn relaxing_at_half_past_six() -> Image {
     let setup = Setup::default()
         .with_file(GENERAL_CONF, "time_zone = UTC0\napps = weather, zen\n")

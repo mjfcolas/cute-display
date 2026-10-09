@@ -15,8 +15,8 @@ use crate::Service;
 
 const NETWORK_PERIOD: Duration = Duration::from_secs(1);
 
-/// One thread for everything that fetches: the requests share one Wi-Fi and take turns
-/// anyway, and each thread's stack is internal RAM.
+/// One thread for everything that fetches: the requests share one Wi-Fi and must take turns
+/// anyway, and the stack of each thread uses internal RAM.
 pub(crate) fn start<W, H, U, S, M, T>(
     clock: Clock,
     services: Vec<Service>,

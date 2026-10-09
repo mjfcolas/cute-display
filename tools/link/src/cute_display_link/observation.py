@@ -1,4 +1,4 @@
-"""What the device shows and says on its glass, and does with its lights and its speaker,
+"""What the device shows and says on its screen, and does with its lights and its speaker,
 through its console."""
 import base64
 from dataclasses import dataclass
@@ -38,7 +38,7 @@ def said(link):
 
 
 def lights(link):
-    """The front light's and the reading lamp's brightness, in percent."""
+    """The brightness of the front light and of the reading lamp, in percent."""
     front, lamp = Request(link, 'lights').expect('ok').split()
     return int(front), int(lamp)
 

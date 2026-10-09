@@ -1,5 +1,5 @@
-"""The app image answers in its own time: a control is taken at once, but the glass shows
-it once drawn, and a file is written once the change is made."""
+"""The app image answers at its own speed: it takes a control at once, but the screen shows
+the result only once it is drawn, and a file is written only once the change is made."""
 import time
 
 POLL_S = 0.05

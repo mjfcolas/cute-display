@@ -1,7 +1,7 @@
 use domain::files::Files;
 use mbop3::{Decoder, MAX_SAMPLES_PER_FRAME};
 
-/// What the decoder wants ahead of it to decode a frame whole.
+/// What the decoder needs ahead of it to decode a whole frame.
 const AHEAD_BYTES: usize = 16 * 1024;
 const ID3_HEADER_BYTES: usize = 10;
 
@@ -12,12 +12,12 @@ struct FrameFormat {
     sample_rate_hz: u32,
 }
 
-/// The file's samples, its channels mixed, at its own rate.
+/// The file's samples, with its channels mixed, at the file's own rate.
 pub(crate) struct Mp3Samples {
     files: Box<dyn Files>,
     name: String,
     decoder: Box<Decoder>,
-    /// Where the MP3 starts, past its tags; known once the file's start is read.
+    /// Where the MP3 starts, after its tags; known once the start of the file is read.
     start: Option<u64>,
     mp3: Vec<u8>,
     used: usize,
@@ -102,7 +102,7 @@ impl Mp3Samples {
         Ok(())
     }
 
-    /// Back to the start of the MP3, afresh.
+    /// Back to the start of the MP3, as new.
     fn rewind(&mut self) {
         self.decoder = Decoder::new_boxed();
         self.mp3.clear();
@@ -114,7 +114,7 @@ impl Mp3Samples {
 }
 
 impl Mp3Samples {
-    /// From -1 to 1; `None` once the file cannot be read or holds no MP3.
+    /// From -1 to 1; `None` once the file cannot be read or contains no MP3.
     pub(crate) fn next_sample(&mut self) -> Option<f32> {
         while self.next_sample >= self.frame.samples {
             if let Err(reason) = self.decode_frame() {
@@ -133,7 +133,7 @@ impl Mp3Samples {
     }
 }
 
-/// An ID3v2 tag's length, header and footer included; 0 without a tag.
+/// The length of an ID3v2 tag, including its header and footer; 0 without a tag.
 fn id3_tag_length(start: &[u8]) -> u64 {
     let Some(&[b'I', b'D', b'3', _, _, flags, s0, s1, s2, s3]) = start.get(..ID3_HEADER_BYTES) else {
         return 0;
@@ -153,7 +153,7 @@ mod tests {
     const STEREO_440_HZ: &[u8] = include_bytes!("../testdata/a440-stereo-44100.mp3");
     const MONO_1000_HZ_AT_22050: &[u8] = include_bytes!("../testdata/a1000-mono-22050.mp3");
     const RATE: u32 = 44_100;
-    /// The fixture's loudest sample, as ffmpeg decodes it.
+    /// The loudest sample of the fixture, as ffmpeg decodes it.
     const SINE_PEAK: i16 = 2752;
 
     fn recording_of(contents: Option<&[u8]>) -> Recording {
@@ -164,7 +164,7 @@ mod tests {
         Recording::new(Box::new(files), "sounds/tone.mp3".into(), RATE)
     }
 
-    /// How many times a second the samples cross zero going up.
+    /// How many times per second the samples cross zero going up.
     fn frequency_hz(samples: &[i16]) -> f32 {
         let rising = samples.windows(2).filter(|pair| pair[0] < 0 && pair[1] >= 0).count();
         rising as f32 * RATE as f32 / samples.len() as f32

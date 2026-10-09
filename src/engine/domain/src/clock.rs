@@ -75,8 +75,8 @@ impl Clock {
             state.time = time;
             state.ticked_at = Some(now);
             if let Some(reading) = zone {
-                // An unreadable zone keeps the one the clock had, rather than jumping hours
-                // to the default and back.
+                // If a zone cannot be read, the clock keeps the zone it had, rather than
+                // jumping by hours to the default and back.
                 if let Ok(chosen) = reading {
                     state.zone = chosen.unwrap_or_default();
                 }

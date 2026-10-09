@@ -22,7 +22,7 @@ const HOUR_ICON: u32 = 20;
 const WEEK_ICON: u32 = 20;
 /// "Today" and a space.
 const DAY_NAME_CHARS: i32 = 6;
-/// Heavy rain: a full bar, and anything more too.
+/// Heavy rain fills the bar, and so does any heavier rain.
 const FULL_BAR: Millimetres = Millimetres::from_tenths(40);
 const BAR_MARGIN: i32 = 6;
 

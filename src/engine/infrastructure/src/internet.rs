@@ -13,8 +13,8 @@ use hal::Fault;
 use crate::conf_file;
 
 pub const WIFI_FILE: &str = "wifi.conf";
-/// A radar asking every fifteen seconds keeps the Wi-Fi, a forecast once an hour does not,
-/// and the radio is off the rest of the night.
+/// With the radar asking every fifteen seconds, the Wi-Fi stays on. With a forecast once an
+/// hour, it does not, and the radio is off for the rest of the night.
 pub const LINGER: Duration = Duration::from_secs(60);
 pub const DATAGRAM_TIMEOUT: Duration = Duration::from_secs(3);
 
@@ -102,12 +102,12 @@ where
                 self.used();
                 Ok(())
             }
-            // The body arrived but was not what the reader wanted: the network is fine.
+            // The body arrived, but it was not what the reader wanted: the network works.
             (Err(_), Some(unavailable)) => {
                 self.used();
                 Err(unavailable)
             }
-            // The network may be what failed: start again from scratch next time.
+            // The network may be what failed: start again from the beginning next time.
             (Err(fault), None) => {
                 self.leave();
                 Err(Unavailable(fault.to_string()))
@@ -151,7 +151,7 @@ impl<W: WifiStation, H: HttpClient, U: UdpClient, S: FileStorage> SharedInternet
         Self(Arc::new(Mutex::new(internet)))
     }
 
-    /// Does nothing while a request is under way: that request is the opposite of idle.
+    /// Does nothing while a request is running: the network is not idle then.
     pub fn release_if_idle(&self) {
         if let Ok(mut internet) = self.0.try_lock() {
             internet.release_if_idle();

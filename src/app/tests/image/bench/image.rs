@@ -20,17 +20,18 @@ use ui::gestures::HOLD_TOGETHER;
 use super::hardware::TestHardware;
 use super::setup::{RtcAtStart, Setup};
 
-/// The main loop, the UI's and the network's.
+/// The main loop, the UI thread and the network thread.
 const THREADS_ON_THE_CLOCK: usize = 3;
-/// The main loop's period: what a press does reaches the apps once it has gone round.
+/// The main loop's period: a press reaches the apps after one turn of the loop.
 const MAIN_PERIOD: Duration = Duration::from_millis(100);
-/// As long as the stepped clock gives a slow machine.
+/// As long as the stepped clock waits for a slow machine (its `STUCK_AFTER`).
 const SPEAKER_ANSWERS_WITHIN: Duration = Duration::from_secs(5);
-/// Real time for the speaker's thread to take a sound the image asked for, before a
-/// test counts the sounds: it plays on the computer's time, not the clock's.
+/// Real time that the speaker's thread needs to take a sound that the image asked for,
+/// before a test counts the sounds. The speaker plays on the computer's time, not on the
+/// clock's.
 const SPEAKER_SETTLES: Duration = Duration::from_millis(50);
 
-/// The image running, and the devices it runs on, as a test acts on them and looks at them.
+/// The running image, and the devices it runs on, which a test acts on and looks at.
 pub struct Image {
     pub clock: FakeSteppedClock,
     pub rtc: FakeRunningRtc<FakeSteppedClock>,
@@ -49,7 +50,7 @@ pub struct Image {
 }
 
 impl Image {
-    /// Started, and left once all its threads are asleep: its first frame is shown.
+    /// Starts the image and returns once all its threads sleep: its first frame is shown.
     pub fn start(setup: Setup) -> Self {
         let clock = FakeSteppedClock::for_threads(THREADS_ON_THE_CLOCK);
         let rtc = match setup.rtc {
@@ -99,8 +100,9 @@ impl Image {
         image
     }
 
-    /// Another image on the same card and the same network, the RTC where this one's is,
-    /// readable: this one is left asleep, as if switched off.
+    /// Another image on the same card and the same network, with the RTC at this image's
+    /// time, or stopped if this one has none; the new RTC always answers. This image is
+    /// left asleep, as if it were switched off.
     pub fn restart(&self) -> Self {
         let rtc = self.rtc.time().map_or(RtcAtStart::Stopped, RtcAtStart::At);
         Image::start(Setup { card: self.card.clone(), rtc, udp: self.udp.clone(), http: self.http.clone() })
@@ -151,7 +153,7 @@ impl Image {
         self.advance(MAIN_PERIOD);
     }
 
-    /// As long as the gesture asks, and the main loop going round once more.
+    /// For as long as the gesture needs, plus one more turn of the main loop.
     pub fn hold_yellow_and_long_buttons(&self) {
         for button in [&self.yellow_button, &self.long_button] {
             button.press();
@@ -169,7 +171,7 @@ pub fn let_the_speaker_settle() {
     thread::sleep(SPEAKER_SETTLES);
 }
 
-/// The speaker's thread plays on the computer's time, not the clock's.
+/// The speaker's thread plays on the computer's time, not on the clock's.
 pub fn eventually(condition: impl Fn() -> bool) -> bool {
     let until = Instant::now() + SPEAKER_ANSWERS_WITHIN;
     while Instant::now() < until {

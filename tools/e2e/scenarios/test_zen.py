@@ -1,5 +1,5 @@
-"""The sessions' times, fades and lights are the integration tier's; here, what the real
-process adds: a WAV file of the card, played by its speaker."""
+"""The integration tier tests the sessions' times, fades and lights. Here, we test what the
+real process adds: a WAV file from the card, played by its speaker."""
 import math
 import struct
 
@@ -11,7 +11,7 @@ GENERAL_CONF = 'general.conf'
 ZEN_CONF = 'apps/zen/zen.conf'
 RAIN = 'apps/zen/sounds/Rain.wav'
 RATE = 44100
-# The console writes 64 KiB at most on the device.
+# On the device, the console writes 64 KiB at most.
 FRAMES = RATE // 4
 
 

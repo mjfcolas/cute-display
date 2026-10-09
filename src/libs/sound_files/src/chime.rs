@@ -4,7 +4,7 @@ use core::f32::consts::TAU;
 const PHRASE: [(Option<f32>, u32); 5] = [(Some(523.25), 150), (Some(659.25), 150), (Some(783.99), 150), (Some(1046.5), 300), (None, 700)];
 const FADE_MS: u32 = 10;
 
-/// The ringtone played without a file, at full scale, round and round.
+/// The ringtone played without a file, at full scale, repeated without end.
 pub struct Chime {
     sample_rate_hz: u32,
     note: usize,
@@ -16,7 +16,7 @@ impl Chime {
         Self { sample_rate_hz, note: 0, sample: 0 }
     }
 
-    /// The samples of the phrase and the silence after it, once round.
+    /// The samples of the phrase and of the silence after it, once.
     pub fn phrase_samples(&self) -> usize {
         PHRASE.iter().map(|&(_, ms)| self.samples_in(ms) as usize + 1).sum()
     }

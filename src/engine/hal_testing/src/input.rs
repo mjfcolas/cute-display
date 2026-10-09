@@ -51,8 +51,8 @@ impl RotaryEncoder for FakeWheel {
     }
 }
 
-/// Checks a button counts its presses as `PushButton` says; `press` presses it once and
-/// releases it.
+/// Checks that a button counts its presses as `PushButton` says. `press` presses it once
+/// and releases it.
 pub fn check_presses(button: &mut impl PushButton, press: impl Fn()) {
     assert_eq!(button.take_presses(), 0, "never pressed");
     press();
@@ -61,7 +61,7 @@ pub fn check_presses(button: &mut impl PushButton, press: impl Fn()) {
     assert_eq!(button.take_presses(), 0, "each press is taken once");
 }
 
-/// Checks a button says whether it is held; `set_held` holds it down or lets it go.
+/// Checks that a button says whether it is held. `set_held` holds it down or releases it.
 pub fn check_holding(button: &mut impl PushButton, set_held: impl Fn(bool)) {
     set_held(true);
     assert!(button.is_held(), "held down");
@@ -69,8 +69,8 @@ pub fn check_holding(button: &mut impl PushButton, set_held: impl Fn(bool)) {
     assert!(!button.is_held(), "let go");
 }
 
-/// Checks a wheel counts its detents as `RotaryEncoder` says; `turn` turns it, positive
-/// clockwise.
+/// Checks that a wheel counts its detents as `RotaryEncoder` says. `turn` turns it,
+/// positive clockwise.
 pub fn check_detents(wheel: &mut impl RotaryEncoder, turn: impl Fn(i32)) {
     assert_eq!(wheel.take_detents(), 0, "never turned");
     turn(2);

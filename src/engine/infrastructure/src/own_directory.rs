@@ -1,9 +1,9 @@
 use hal::storage::{CopyOutcome, Entry, FileStorage};
 use hal::Fault;
 
-/// A directory at the root of the card, one name with no separator, such as an image's
-/// own. In a const context, as the composition roots name it, a name that is not one
-/// directory does not build; called at run time, it would panic.
+/// A directory at the root of the card, one name with no separator, such as an image's own
+/// directory. In a const context, as the composition roots use it, a name that is not one
+/// directory does not build. Called at run time, it would panic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CardDirectory(&'static str);
 
@@ -25,9 +25,9 @@ impl CardDirectory {
     }
 }
 
-/// The card seen from an image's own directory, where everything the image keeps is: its
-/// paths are relative to it, `""` being the directory itself, and may neither be absolute
-/// nor climb out of it.
+/// The card, as seen from an image's own directory, where the image keeps all its files.
+/// Paths are relative to this directory (`""` is the directory itself). They cannot be
+/// absolute, and cannot go out of it.
 #[derive(Clone)]
 pub struct OwnDirectory<S> {
     card: S,

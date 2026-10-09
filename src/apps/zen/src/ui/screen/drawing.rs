@@ -15,7 +15,7 @@ const GAP: i32 = 12;
 const WAVE_STROKE: u32 = 2;
 const PAPER_BETWEEN_STONES: u32 = 2;
 const MOON_DIAMETER: u32 = 30;
-/// Bottom to top, each sitting on the one below.
+/// From bottom to top, each one on top of the one below.
 const STONES: [Size; 3] = [Size::new(112, 36), Size::new(80, 28), Size::new(48, 22)];
 const STONES_SINK: i32 = 4;
 const WAVES: i32 = 3;
@@ -58,7 +58,7 @@ fn draw_zen<D: DrawTarget<Color = BinaryColor>>(page: &ZenPage, target: &mut D, 
     write_hint(target, page.hint, area);
 }
 
-/// Stones piled up in the water, its waves around them, the moon above.
+/// Stones stacked in the water, with waves around them and the moon above.
 fn draw_stones_on_waves<D: DrawTarget<Color = BinaryColor>>(target: &mut D, picture: Rectangle) {
     let ink = PrimitiveStyle::with_fill(BinaryColor::On);
     let paper = PrimitiveStyle::with_fill(BinaryColor::Off);

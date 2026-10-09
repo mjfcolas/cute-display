@@ -1,6 +1,7 @@
 use hal::system::SystemMonitor;
 
-/// What the computer has left to give, from `/proc/meminfo`; nothing elsewhere than Linux.
+/// What the computer still has free, from `/proc/meminfo`; nothing on systems other than
+/// Linux.
 pub struct HostSystem;
 
 impl SystemMonitor for HostSystem {
@@ -8,7 +9,7 @@ impl SystemMonitor for HostSystem {
         std::fs::read_to_string("/proc/meminfo").ok().and_then(|meminfo| available_bytes(&meminfo)).unwrap_or(0)
     }
 
-    /// A computer's memory is not fragmented the way the ESP32's heap is.
+    /// A computer's memory is not fragmented in the way the ESP32's heap is.
     fn largest_free_block_bytes(&self) -> u32 {
         self.free_heap_bytes()
     }

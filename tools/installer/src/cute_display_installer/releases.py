@@ -1,6 +1,6 @@
-"""Cute Display's releases on GitHub: the latest one's image, checked against its SHA-256
-before anything is written, what to know before updating to it, and the oldest installer
-that may install it. docs/releasing.md says what a release carries."""
+"""Cute Display's releases on GitHub: the image of the latest release, checked against its
+SHA-256 before anything is written, what to know before updating to it, and the oldest
+installer that can install it. docs/releasing.md says what a release contains."""
 import hashlib
 import json
 import re
@@ -15,7 +15,7 @@ LATEST = f'https://api.github.com/repos/{REPOSITORY}/releases/latest'
 PAGE = f'https://github.com/{REPOSITORY}/releases'
 _IMAGE_NAME = re.compile(r'^cute-display-.+\.bin$')
 OLDEST_INSTALLER = 'oldest-installer.txt'
-# A line of sha256sum: the digest, then the file's name, `*` before it in binary mode.
+# A line of sha256sum: the digest, then the file's name, with `*` before it in binary mode.
 _CHECKSUM_LINE = re.compile(r'^([0-9a-fA-F]{64}) [ *](\S+)\s*$')
 
 
@@ -31,7 +31,7 @@ class Release:
     oldest_installer: str | None = None
 
     def installer_refusals(self, installer_version):
-        """A developer's installer, between releases, is never refused."""
+        """A developer's installer, between two releases, is never refused."""
         if self.oldest_installer is None:
             return []
         oldest, this = versions.release(self.oldest_installer), versions.release(installer_version)
@@ -42,7 +42,7 @@ class Release:
 
 
 def image_assets(release):
-    """The image's and its checksum's download URLs, from a release as GitHub's API
+    """The download URLs of the image and of its checksum, from a release as GitHub's API
     describes it."""
     assets = {asset['name']: asset['browser_download_url'] for asset in release.get('assets', [])}
     images = [name for name in assets if _IMAGE_NAME.match(name)]
@@ -53,7 +53,7 @@ def image_assets(release):
 
 
 def checked(name, contents, checksum_file):
-    """`contents` if the checksum file, as sha256sum writes it, vouches for it."""
+    """`contents`, if the checksum file, in sha256sum's format, matches it."""
     line = _CHECKSUM_LINE.match(checksum_file.decode(errors='replace'))
     if not line:
         raise ReleaseError(f'{name}.sha256 does not read as a checksum')
@@ -66,8 +66,8 @@ def checked(name, contents, checksum_file):
 
 
 def latest_release(fetch=fetch_from_web, report=print):
-    """The latest release's image, checked, its UPDATING.md's entries and its oldest
-    installer, none in a release made before they were attached."""
+    """The latest release's image, checked, the entries of its UPDATING.md, and its oldest
+    installer. A release made before these files were attached has none of them."""
     try:
         release = json.loads(fetch(LATEST))
     except HTTPError as error:

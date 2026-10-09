@@ -25,7 +25,7 @@ impl DimmableLight for FakeLight {
     }
 }
 
-/// Checks a light against `DimmableLight`'s contract.
+/// Checks a light against the contract of `DimmableLight`.
 pub fn check_contract(light: &mut impl DimmableLight) {
     for brightness in [Brightness::FULL, Brightness::percent(30), Brightness::OFF] {
         assert_eq!(light.set_brightness(brightness), Ok(()));

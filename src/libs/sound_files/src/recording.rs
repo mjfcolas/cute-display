@@ -6,38 +6,38 @@ use crate::wav::WavSamples;
 /// "RIFF", the size, "WAVE".
 const RIFF_HEADER_BYTES: usize = 12;
 
-/// A file's samples at its own rate, its channels mixed, at full scale, round and round;
-/// matched rather than boxed, as a call through a vtable for every sample counts on the
-/// speaker's thread.
+/// A file's samples at the file's own rate, with its channels mixed, at full scale,
+/// repeated without end. An enum, not a boxed trait object, because a call through a vtable
+/// for every sample is costly on the speaker's thread.
 enum Decoder {
     Mp3(Mp3Samples),
     Wav(WavSamples),
 }
 
-/// A sound file, MP3 or WAV by what it holds, round and round, in mono at the speaker's
-/// rate and at full scale, decoded as it plays. Ends when the file cannot be read or holds
-/// no sound it can play.
+/// A sound file, MP3 or WAV depending on its content, repeated without end, in mono, at the
+/// speaker's rate and at full scale, decoded while it plays. It ends when the file cannot
+/// be read or contains no sound that it can play.
 pub struct Recording {
     decoded: Option<Decoder>,
     files: Option<Box<dyn Files>>,
     name: String,
     sample_rate_hz: u32,
-    /// Where the next sample falls between `before` and `after`, two of the file's.
+    /// Where the next sample falls between `before` and `after`, two samples of the file.
     phase: f32,
     file_rate_hz: u32,
-    /// How far the phase moves each sample: the file's rate over the speaker's.
+    /// How far the phase moves for each sample: the file's rate divided by the speaker's.
     step: f32,
     before: f32,
     after: f32,
 }
 
 impl Recording {
-    /// Reads nothing yet: the file is read as it plays, where it plays.
+    /// Reads nothing yet: the file is read while it plays, on the thread that plays it.
     pub fn new(files: Box<dyn Files>, name: String, sample_rate_hz: u32) -> Self {
         Self { decoded: None, files: Some(files), name, sample_rate_hz, phase: 1.0, file_rate_hz: 0, step: 1.0, before: 0.0, after: 0.0 }
     }
 
-    /// Reads the file's start once, to know how it is decoded.
+    /// Reads the start of the file once, to know how to decode it.
     fn open(&mut self) {
         if let Some(files) = self.files.take() {
             self.decoded = match files.read_bytes(&self.name, 0, RIFF_HEADER_BYTES) {

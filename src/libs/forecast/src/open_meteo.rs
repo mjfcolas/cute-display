@@ -13,8 +13,8 @@ use crate::{
 };
 
 const DAYS: usize = 7;
-/// Counted from the hour under way; a day's worth, so that an old forecast still has hours
-/// ahead.
+/// Counted from the current hour. A full day of hours, so that an old forecast still has
+/// hours ahead.
 const HOURS: usize = 24;
 
 pub struct OpenMeteo<I> {
@@ -64,7 +64,7 @@ struct Current {
     wind_direction_10m: f64,
 }
 
-/// A column per value, a row per hour.
+/// One column per value, one row per hour.
 #[derive(Deserialize)]
 struct Hourly {
     time: Vec<String>,
@@ -74,7 +74,7 @@ struct Hourly {
     precipitation: Vec<Option<f64>>,
 }
 
-/// A column per value, a row per day.
+/// One column per value, one row per day.
 #[derive(Deserialize)]
 struct Daily {
     time: Vec<String>,
@@ -133,7 +133,7 @@ fn read_forecast(body: &[u8]) -> Result<Forecast, Unavailable> {
     Ok(Forecast { today, hours, week })
 }
 
-/// Where the sun neither rises nor sets, Open-Meteo gives both at the same midnight.
+/// Where the sun does not rise or set, Open-Meteo gives both at the same midnight.
 fn sun_times(rise: Option<&Option<String>>, set: Option<&Option<String>>) -> (Option<TimeOfDay>, Option<TimeOfDay>) {
     let read = |time: Option<&Option<String>>| time?.as_deref().and_then(|time| time_of(time).ok());
     match (read(rise), read(set)) {
@@ -178,7 +178,7 @@ fn time_of(text: &str) -> Result<LocalTime, Unavailable> {
     Ok(LocalTime { date: date_of(date)?, time_of_day: time_of_day.ok_or_else(unreadable)?, second: 0 })
 }
 
-/// WMO weather interpretation codes, as Open-Meteo documents them.
+/// WMO weather interpretation codes, as documented by Open-Meteo.
 fn sky_of(code: u16) -> Result<Sky, Unavailable> {
     Ok(match code {
         0 => Sky::Clear,
@@ -200,7 +200,7 @@ mod tests {
 
     use super::*;
 
-    /// Shaped like a real answer, trimmed of the fields not asked for.
+    /// Like a real answer, without the fields that were not asked for.
     const ANSWER: &str = include_str!("../testdata/open-meteo.json");
 
     fn paris() -> Place {

@@ -33,7 +33,8 @@ RUNNING = habity(booting=Slot.APP1, slots=slots(HABITY_1_1_1, AppImage('cute-dis
 
 
 class FakeClock:
-    """A clock holding `unit` and a card with `answers`, remembering what it was asked."""
+    """A clock that holds `unit` and a card with `answers`, and records what it was asked.
+    """
 
     def __init__(self, unit=RUNNING, answers=None, unplugged=False, updating=()):
         self.unit, self.answers, self.unplugged, self.updating = unit, answers or Answers(), unplugged, updating
@@ -94,7 +95,8 @@ async def type_into(pilot, selector, text):
 
 
 async def to_the_questions(pilot):
-    """From the start, the backup skipped, on a clock running an up-to-date Cute Display."""
+    """From the start, without the backup, on a clock that runs an up-to-date Cute Display.
+    """
     await settle(pilot)
     await press(pilot, 'no')
     await press(pilot, 'next')

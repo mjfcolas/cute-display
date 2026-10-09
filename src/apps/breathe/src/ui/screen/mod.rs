@@ -45,7 +45,7 @@ impl Screen for BreatheScreen {
         self.page()
     }
 
-    /// By the minute: the lights, not the glass, follow each breath.
+    /// Once a minute: the lights follow each breath, not the screen.
     fn version(&self) -> u64 {
         let minutes = match self.breathing.state() {
             BreathingState::Breathing { since, .. } => Some(since.as_secs() / 60),

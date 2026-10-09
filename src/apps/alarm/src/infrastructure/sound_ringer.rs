@@ -18,7 +18,7 @@ impl SoundRinger {
         Self { sound, files: SharedFiles::new(files), volume: VolumeKnob::default(), ringing: None }
     }
 
-    /// A recording that cannot be played gives way to the chime: the alarm rings anyway.
+    /// If a recording cannot be played, the chime plays instead: the alarm always rings.
     fn samples_of(&self, ringtone: &Ringtone) -> Samples {
         let rate = self.sound.sample_rate_hz();
         let samples: Samples = match ringtone {

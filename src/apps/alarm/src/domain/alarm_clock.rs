@@ -1,7 +1,8 @@
-//! An alarm rings when the clock goes past its time between two readings: a clock set
-//! forward over it by less than [`RING_FOR`] still rings it, and a time set, or the alarm
-//! switched on, after it passed does not. Nothing is caught up at start, and a clock set
-//! back over an alarm that rang rings it again.
+//! An alarm rings when the clock passes its time between two readings. If the clock is set
+//! forward past the alarm time by less than [`RING_FOR`], the alarm still rings. If the
+//! time is set, or the alarm is switched on, after the alarm time has passed, it does not
+//! ring. At start, an alarm missed while the device was off does not ring. If the clock is
+//! set back past an alarm that rang, the alarm rings again.
 
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
@@ -16,7 +17,8 @@ use crate::ID;
 
 pub const SUNRISE: Duration = Duration::from_secs(30 * 60);
 pub const SNOOZE: Duration = Duration::from_secs(9 * 60);
-/// Also how far behind the clock an alarm it jumped over may be and still ring.
+/// Also the longest time by which the clock can jump past an alarm, and the alarm still
+/// rings.
 pub const RING_FOR: Duration = Duration::from_secs(15 * 60);
 pub const VOLUME_RISES_OVER: Duration = Duration::from_secs(60);
 const FIRST_VOLUME: Volume = Volume::percent(10);
@@ -25,7 +27,7 @@ const PREVIEW_VOLUME: Volume = Volume::percent(30);
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AlarmSchedule {
     pub enabled: bool,
-    /// Monday first; `None` sleeps in.
+    /// Monday first; `None` means no alarm that day.
     times: [Option<TimeOfDay>; 7],
 }
 
@@ -40,7 +42,7 @@ impl AlarmSchedule {
         }
     }
 
-    /// Whether enabled or not.
+    /// Ignores whether the alarm is enabled.
     pub fn next_from(&self, from: LocalTime) -> Option<LocalTime> {
         let from_seconds = from.seconds_since_epoch();
         (0..=7).find_map(|days| {
@@ -54,7 +56,7 @@ impl AlarmSchedule {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum Ringtone {
-    /// Played without a file, so there is always one.
+    /// Played without a file, so there is always a ringtone.
     #[default]
     Chime,
     /// One of the alarm's files, by its name.
@@ -73,9 +75,9 @@ pub trait AlarmSettingsStore: Send {
 }
 
 pub trait Ringer: Send {
-    /// The names of the files it can ring.
+    /// The names of the files it can play as a ringtone.
     fn recordings(&self) -> Vec<String>;
-    /// Starts `ringtone`, or goes on with it at `volume` when it is the one ringing.
+    /// Starts `ringtone`, or continues it at `volume` if it is the one ringing.
     fn ring(&mut self, ringtone: &Ringtone, volume: Volume);
     fn silence(&mut self);
 }
@@ -90,7 +92,7 @@ pub enum AlarmState {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Phase {
     Waiting,
-    /// Waiting, the ringtone playing softly meanwhile.
+    /// Waiting, while the ringtone plays softly.
     Previewing,
     Ringing { since: LocalTime },
     Snoozed { until: LocalTime },
@@ -126,13 +128,13 @@ impl AlarmClock {
         self.lock().settings.ringtone.clone()
     }
 
-    /// The chime first, always there.
+    /// The chime first, because it is always there.
     pub fn ringtones(&self) -> Vec<Ringtone> {
         let recordings = self.lock().ringer.recordings();
         std::iter::once(Ringtone::Chime).chain(recordings.into_iter().map(Ringtone::Recorded)).collect()
     }
 
-    /// Previewing, the new one plays at once.
+    /// During a preview, the new ringtone plays at once.
     pub fn set_ringtone(&self, ringtone: Ringtone) {
         self.change_settings(|settings| settings.ringtone = ringtone);
         self.lock().sound();

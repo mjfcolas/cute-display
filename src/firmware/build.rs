@@ -4,7 +4,8 @@ fn main() {
     embuild::espidf::sysenv::output();
 
     println!("cargo:rustc-env=BUILD_TIME={}Z", run("date", &["-u", "+%m-%d %H:%M"]));
-    // A file that never exists: reruns this script on every build, so the stamp is fresh.
+    // A file that never exists: this script runs again on every build, so the stamp is
+    // always new.
     println!("cargo:rerun-if-changed=.force-build-stamp");
 }
 

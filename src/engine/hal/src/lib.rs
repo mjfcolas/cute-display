@@ -1,7 +1,7 @@
 //! Contracts between the application and the hardware of the Habity bedside clock.
 //!
-//! Every contract is blocking and single-owner: scheduling work on threads is the
-//! caller's business, not the hardware's.
+//! Every contract is blocking and has a single owner: the caller decides how to spread the
+//! work over threads, not the hardware.
 
 pub mod audio;
 pub mod bus;

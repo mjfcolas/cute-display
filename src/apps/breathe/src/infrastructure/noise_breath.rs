@@ -3,7 +3,7 @@ use sound_files::{BrownNoise, VolumeKnob};
 
 use crate::domain::breathing::{Breath, Volume};
 
-/// Brown noise, turned up and down: a breath like the sea's.
+/// Brown noise, turned up and down: it sounds like the breath of the sea.
 pub struct NoiseBreath {
     sound: Box<dyn Sound>,
     volume: VolumeKnob,

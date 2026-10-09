@@ -9,5 +9,5 @@ def read(link):
 
 
 def set_to(link, when):
-    """`when` knows its time zone."""
+    """`when` must include its time zone."""
     Request(link, f'clock set {int(when.timestamp())}').expect('ok')

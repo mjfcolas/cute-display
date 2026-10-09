@@ -1,4 +1,4 @@
-"""What the link's commands share: the link they open, the device's or a simulator's, and
+"""What the link's commands share: the link they open (to the device or to a simulator), and
 what they say when it fails."""
 import sys
 
@@ -10,7 +10,8 @@ from .simulator import NoSimulator, SimulatorLink
 
 
 def on_link(simulator, act):
-    """`act(link)` on the simulator's socket, or on the device without one."""
+    """Runs `act(link)` on the simulator's socket, or on the device if there is no socket.
+    """
     try:
         with SimulatorLink(simulator) if simulator else usb.open_link() as link:
             act(link)

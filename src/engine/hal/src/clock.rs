@@ -59,15 +59,15 @@ fn civil_from_days(days: i64) -> (i64, i64, i64) {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ClockReading {
     pub time: DateTime,
-    /// The oscillator stopped since the time was last set, so `time` is meaningless.
+    /// The oscillator stopped after the time was last set, so `time` means nothing.
     pub oscillator_stopped: bool,
-    /// An alarm fired and holds the interrupt line until acknowledged.
+    /// An alarm fired, and holds the interrupt line until it is acknowledged.
     pub alarm_raised: bool,
 }
 
 pub trait RealTimeClock {
     fn read(&mut self) -> Result<ClockReading, Fault>;
-    /// From then on the time counts from `time`, and the oscillator is no longer stopped.
+    /// From then on, the time counts from `time`, and the oscillator is no longer stopped.
     fn set(&mut self, time: DateTime) -> Result<(), Fault>;
 }
 

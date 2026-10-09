@@ -1,6 +1,6 @@
 use hal::system::SystemMonitor;
 
-/// Plenty of memory, never less.
+/// Plenty of memory, always.
 pub struct StubSystemMonitor;
 
 impl SystemMonitor for StubSystemMonitor {

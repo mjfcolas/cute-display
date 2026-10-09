@@ -1,6 +1,6 @@
 use std::fmt;
 
-/// Why the outside world gave nothing, in words a person can act on.
+/// Why nothing came from the outside world, in words that tell a person what to do.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Unavailable(pub String);
 

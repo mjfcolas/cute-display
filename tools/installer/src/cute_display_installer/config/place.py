@@ -1,4 +1,4 @@
-"""Where the device is, as src/engine/infrastructure/src/general_file.rs reads it."""
+"""The device's place, as src/engine/infrastructure/src/general_file.rs reads it."""
 from dataclasses import dataclass
 
 from . import conf_text

@@ -5,15 +5,16 @@ use std::sync::Arc;
 use domain::sound::{Samples, Sound};
 use hal::audio::Speaker;
 
-/// Of full scale, for the loudest a sound may be. The amplifier is loud: the hardware
-/// test's chime is comfortable at 0.08, a pure tone at 0.25 already hurts.
+/// A fraction of full scale: the loudest a sound can be. The amplifier is loud: the
+/// hardware test's chime is comfortable at 0.08, and a pure tone at 0.25 already hurts.
 const LOUDEST: f32 = 0.2;
 
 #[derive(Clone)]
 pub struct SpeakerSound {
     sample_rate_hz: u32,
-    /// Moves on at every play and every stop: a sound plays while it is its own. 32 bits,
-    /// the most the ESP32-S3 has atomics for; wrapping round is harmless.
+    /// Increases at every play and every stop: a sound plays while the turn is still its
+    /// own. 32 bits, the largest atomic that the ESP32-S3 has. Wrapping around does no
+    /// harm.
     turn: Arc<AtomicU32>,
     next: Sender<(u32, Samples)>,
 }

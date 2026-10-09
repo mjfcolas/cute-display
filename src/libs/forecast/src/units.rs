@@ -12,7 +12,7 @@ pub fn pressure(pressure: Hectopascals) -> String {
     format!("{} hPa", pressure.0)
 }
 
-/// Its speed; where it blows from is drawn.
+/// Its speed. The direction it blows from is drawn.
 pub fn wind_speed(speed: KilometresPerHour) -> String {
     if speed.0 == 0 {
         return "calm".into();

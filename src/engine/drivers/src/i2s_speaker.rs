@@ -12,7 +12,8 @@ const FRAMES_PER_WRITE: usize = 441;
 /// 16-bit left, then 16-bit right.
 const BYTES_PER_FRAME: usize = 4;
 const AMPLIFIER_WAKE_MS: u32 = 60;
-/// Flushes the DMA ring before the amplifier goes off, so its last buffer is not looped.
+/// Empties the DMA ring before the amplifier turns off, so that its last buffer does not
+/// loop.
 const TRAILING_SILENCE_WRITES: usize = 6;
 
 pub struct I2sSpeaker {

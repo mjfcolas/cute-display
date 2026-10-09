@@ -1,8 +1,8 @@
 #!/bin/sh
-# The version the next release would take: `<year>.<month>.<n>`, n one past this month's
-# highest release tag, 0 in a month without one. Only tags `v<year>.<month>.<n>`, with no
-# leading zero, count. `just release` names a snapshot after it. The month may be given,
-# as `<year>.<month>`; it is this one otherwise.
+# The version of the next release: `<year>.<month>.<n>`, where n is one more than this
+# month's highest release tag, or 0 if the month has none. Only tags `v<year>.<month>.<n>`,
+# with no leading zero, count. `just release` names a snapshot after it. The month can be
+# given as `<year>.<month>`; otherwise it is the current month.
 set -eu
 
 month=${1:-$(date +%Y.%-m)}

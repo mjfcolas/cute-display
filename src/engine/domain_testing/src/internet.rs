@@ -5,7 +5,7 @@ use domain::internet::{BodyReader, Internet};
 
 use crate::shared::lock;
 
-/// Gives every request the same answer, and keeps the URLs asked.
+/// Gives every request the same answer, and records the URLs it was asked for.
 #[derive(Clone)]
 pub struct StubInternet {
     answer: Result<Vec<u8>, Unavailable>,

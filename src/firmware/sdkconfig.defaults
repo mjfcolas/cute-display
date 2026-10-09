@@ -1,24 +1,24 @@
-# The main task only brings the board up and runs light work; everything heavy has a
-# thread of its own. Stacks are internal RAM, which Wi-Fi and DMA need.
+# The main task only starts the board and runs light work; everything heavy has its own
+# thread. Stacks use internal RAM, which Wi-Fi and DMA also need.
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=24576
 CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096
 CONFIG_FREERTOS_IDLE_TASK_STACKSIZE=4096
 CONFIG_PTHREAD_TASK_STACK_SIZE_DEFAULT=4096
 
-# The USB cable is the only console: UART0 is sealed in the case, and its RX pin
-# (GPIO44) is the long button.
+# The USB cable is the only console: UART0 cannot be reached inside the case, and its RX
+# pin (GPIO44) is the long button.
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
 # esp-idf-hal always compiles the legacy I2C driver next to the new one.
 CONFIG_I2C_SKIP_LEGACY_CONFLICT_CHECK=y
 
-# FatFs silently mangles long names to 8.3 without this.
+# Without this, FatFs silently shortens long names to 8.3 names.
 CONFIG_FATFS_LFN_HEAP=y
 CONFIG_FATFS_MAX_LFN=255
 
-# 8 MB of octal PSRAM in the chip's package (eFuse PSRAM_CAP), in the heap. Small
-# allocations still go to internal RAM first and fall back on it; TLS, Wi-Fi and lwIP
-# buffers live there, leaving internal RAM to stacks and DMA.
+# 8 MB of octal PSRAM in the chip's package (eFuse PSRAM_CAP), added to the heap. Small
+# allocations still go to internal RAM first, and use PSRAM when internal RAM is full. The
+# TLS, Wi-Fi and lwIP buffers are in PSRAM, so internal RAM stays free for stacks and DMA.
 CONFIG_SPIRAM=y
 CONFIG_SPIRAM_MODE_OCT=y
 CONFIG_SPIRAM_SPEED_80M=y
@@ -30,9 +30,9 @@ CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
 # leaves it unchanged, writing from it puts garbage on the card. So we disable it.
 CONFIG_ESP_SYSTEM_ALLOW_RTC_FAST_MEM_AS_HEAP=n
 
-# Nothing of ours is in NVS: the PHY recalibrates at every boot instead of caching there.
+# We keep nothing in NVS: the PHY calibrates again at every boot instead of storing it there.
 CONFIG_ESP_PHY_CALIBRATION_AND_DATA_STORAGE=n
 
-# The images' description (firmware::image_description!) carries no compile time: its
-# version says which build it is.
+# The images' description (firmware::image_description!) has no compile time: its version
+# says which build it is.
 CONFIG_APP_COMPILE_TIME_DATE=n

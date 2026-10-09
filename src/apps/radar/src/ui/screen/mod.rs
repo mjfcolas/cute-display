@@ -97,7 +97,7 @@ fn listed(aircraft: &Aircraft, center: GeoPoint) -> ListedAircraft {
     ListedAircraft { identity: identity(aircraft), whereabouts: whereabouts(aircraft, aircraft.point.distance_km(center)) }
 }
 
-/// Its two letters first, as on the scope, so the line and the mark can be matched.
+/// Its two letters first, as on the radar, so that the line and the mark can be matched.
 fn identity(aircraft: &Aircraft) -> String {
     let letters = aircraft.registration.as_deref().and_then(short_registration).unwrap_or_default();
     format!("{letters:<2} {}", aircraft.callsign.as_deref().unwrap_or("?"))

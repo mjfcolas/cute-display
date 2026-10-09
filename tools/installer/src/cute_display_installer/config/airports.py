@@ -1,5 +1,6 @@
-"""The airports the radar draws around its place, from OurAirports (ourairports.com,
-public domain), as src/apps/radar/src/infrastructure/airports_file.rs reads them."""
+"""The airports that the radar draws around its place, from OurAirports (ourairports.com,
+public domain), in the format that src/apps/radar/src/infrastructure/airports_file.rs reads.
+"""
 import csv
 import math
 import os
@@ -30,7 +31,7 @@ class Airport:
 
 
 def ourairports(report):
-    """Every airport of the world, downloaded once and kept in CACHE."""
+    """Every airport in the world, downloaded once and kept in CACHE."""
     if not os.path.exists(CACHE):
         report('Downloading the airports of the world from OurAirports, once...')
         os.makedirs(os.path.dirname(CACHE), exist_ok=True)

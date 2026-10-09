@@ -15,13 +15,13 @@ pub struct TimeZone {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct SummerTime {
     offset: UtcOffset,
-    /// On the wall, in standard time.
+    /// Local time, in standard time.
     starts: Transition,
-    /// On the wall, in summer time.
+    /// Local time, in summer time.
     ends: Transition,
 }
 
-/// The `week`th `weekday` of `month`, 5 being the last, `seconds` after its midnight.
+/// The `week`th `weekday` of `month` (5 is the last one), `seconds` after its midnight.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Transition {
     month: u8,

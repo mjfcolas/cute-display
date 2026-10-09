@@ -70,8 +70,9 @@ fn number(verb: &str, word: &str) -> Result<u64, String> {
     word.parse::<u64>().map_err(|_| format!("{verb}: a number is missing"))
 }
 
-/// A path comes last and runs to the end of the line, since names on the card have spaces.
-/// The two paths of a copy are apart by a tab, which no name on a FAT card holds.
+/// A path comes last and goes to the end of the line, because names on the card can contain
+/// spaces. The two paths of a copy are separated by a tab, which no name on a FAT card
+/// contains.
 fn parse_card(verb: &str, rest: &str) -> Option<Result<CardRequest, String>> {
     let path = |text: &str| SdPath::parse(text).map_err(str::to_owned);
     Some(match verb {
@@ -170,8 +171,8 @@ pub fn ready(id: &str) -> String {
     format!("{PREFIX} {id} ready")
 }
 
-/// A data line was taken in: the next may come. The console drops what arrives faster
-/// than it reads, so the computer waits for this.
+/// A data line was received: the next one can come. The console drops what arrives faster
+/// than it can read, so the computer waits for this.
 pub fn ack(id: &str) -> String {
     format!("{PREFIX} {id} ack")
 }

@@ -1,4 +1,4 @@
-# The device's flash and SD card go through the installer, tools/installer/;
+# The recipes for the device's flash and SD card use the installer, tools/installer/.
 # docs/hardware.md explains the flash layout.
 # `just --list` shows the comment line right above each recipe.
 
@@ -15,7 +15,7 @@ sim_console := justfile_directory() / "target/simulator.sock"
 default:
     @just --list
 
-# run the host tests: the crates, the installer and its link, the end-to-end harness, the test images' maker, the release's version
+# run the host tests: the crates, the installer and its link, the end-to-end harness, the test image maker, the release version script
 test:
     cargo test --workspace
     uv run --quiet --project tools/installer python -m unittest discover --start-directory tools/installer/tests --quiet
@@ -29,21 +29,21 @@ lint:
     cargo clippy --workspace --all-targets
     cd src/firmware && source ~/export-esp.sh && cargo clippy --release
 
-# render an app screen to a PNG, a screen `main` names in src/simulator/examples/app_screen.rs
+# draw an app screen into a PNG; the screens are the ones `main` names in src/simulator/examples/app_screen.rs
 preview screen="system" zoom="2":
     cargo run --quiet -p simulator --example app_screen -- /tmp/cute-display.fb {{screen}}
     uv run --quiet --project tools/link python -m cute_display_link.frame /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
     xdg-open /tmp/cute-display.png >/dev/null 2>&1 &
 
-# run the app image on this computer, the SD card being a directory, its console for `just remote-sim`; flags in docs/simulator/README.md
+# run the app image on this computer, with a directory as the SD card and a console for `just remote-sim`; flags in docs/simulator/README.md
 sim *args:
     cargo run --quiet -p simulator -- --console {{sim_console}} {{args}}
 
-# the same on the simulator `just sim` started
+# the same on the simulator started by `just sim`
 remote-sim *args:
     uv run --quiet --project {{justfile_directory()}}/tools/link remote --simulator {{sim_console}} {{args}}
 
-# the end-to-end scenarios on `simulator`, each on its own, or those marked device on the `device`: the test image built and flashed, played with the stubs on this computer, then the app image flashed back whatever they gave; pytest's arguments, `-k alarm` for one
+# the end-to-end scenarios on `simulator`, each on its own simulator, or the ones marked device on `device`: builds and flashes the test image, plays them with the stubs on this computer, then flashes the app image again whatever the result; takes pytest's arguments, such as `-k alarm`
 e2e on *args:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -59,20 +59,20 @@ e2e on *args:
             exit 2 ;;
     esac
 
-# render the hardware test's report page to a PNG (`pattern` for the checkerboard)
+# draw the hardware test's report page into a PNG (`pattern` for the checkerboard)
 preview-hwtest page="" zoom="2":
     cargo run --quiet -p hwtest --example report_page -- /tmp/cute-display.fb {{page}}
     uv run --quiet --project tools/link python -m cute_display_link.frame /tmp/cute-display.fb /tmp/cute-display.png {{zoom}}
     xdg-open /tmp/cute-display.png >/dev/null 2>&1 &
 
-# build + flash + monitor an image: `app` (default) or `hwtest`
+# build, flash and monitor an image: `app` (default) or `hwtest`
 fw bin="app": (fw-build bin) (fw-flash bin) (fw-monitor bin)
 
 # build an image (release): `app` or `hwtest`
 fw-build bin="app":
     cd src/firmware && source ~/export-esp.sh && cargo build --release --bin {{bin}}
 
-# flash an image into an OTA slot and boot it, once the device is checked
+# check the device, then flash an image into an OTA slot and start it
 fw-flash bin="app":
     espflash save-image --chip esp32s3 {{elf_dir}}/{{bin}} {{app_bin}}
     {{cute_display}} install {{app_bin}}
@@ -96,7 +96,7 @@ release:
     elif [ -n "$(git status --porcelain)" ]; then
         echo "Uncommitted changes go into the release, which still says $version." >&2
     fi
-    # Forced: the builds would otherwise say git describe's -<n>-g<hash> or -dirty.
+    # Set here, because otherwise the builds would give git describe's -<n>-g<hash> or -dirty.
     export CUTE_DISPLAY_VERSION=$version SETUPTOOLS_SCM_PRETEND_VERSION=$wheel_version
     just fw-build app
     mkdir -p {{release_dir}}
@@ -130,11 +130,11 @@ release:
 fw-monitor bin="app":
     espflash monitor --baud 115200 --elf {{elf_dir}}/{{bin}}
 
-# list a directory of the SD card (the root without one); close the monitor first
+# list a directory of the SD card (the root if none is given); close the monitor first
 sd-ls dir="":
     {{cute_display}} card ls {{dir}}
 
-# copy a file off the SD card (to the terminal without a destination)
+# copy a file from the SD card (to the terminal if no destination is given)
 sd-get path dest="":
     {{cute_display}} card get {{path}} {{dest}}
 
@@ -150,7 +150,7 @@ sd-rm path:
 remote *args:
     uv run --quiet --project {{justfile_directory()}}/tools/link remote {{args}}
 
-# how fast a put, the console, the card read through it and a copy on the card go (monitor closed)
+# measure how fast a put, the console, a card read through the console and a copy on the card are (monitor closed)
 bench *args:
     uv run --quiet --project {{justfile_directory()}}/tools/link bench {{args}}
 
@@ -158,23 +158,23 @@ bench *args:
 setup:
     {{cute_display}} setup
 
-# put the airports within 100 km of general.conf's place on the device (from OurAirports)
+# write the airports within 100 km of general.conf's place to the device (from OurAirports)
 radar-airports:
     {{cute_display}} radar-airports
 
-# boot habity (its newest firmware), factory (as shipped), cute-display, or a slot: app0, app1
+# start habity (its newest firmware), factory (the shipped firmware), cute-display, or a slot: app0, app1
 fw-boot target:
     {{cute_display}} boot {{target}}
 
-# what each app slot holds, which one boots, and where Cute Display would go
+# show what each app slot contains, which one starts, and where Cute Display would go
 fw-check:
     {{cute_display}} check
 
-# dump the whole 16 MB flash into backup/ (gitignored)
+# copy the whole 16 MB flash into backup/ (ignored by git)
 backup:
     {{cute_display}} backup {{backup_dir}}
 
-# make whole-flash test images into tools/test_flashes/test-bins/, one per case the installer meets, from a backup
+# make whole-flash test images in tools/test_flashes/test-bins/ from a backup, one for each case the installer can meet
 test-bins backup bin="app":
     espflash save-image --chip esp32s3 {{elf_dir}}/{{bin}} {{app_bin}}
     uv run --quiet --project tools/installer python tools/test_flashes/make_test_flashes.py {{backup}} {{app_bin}}
@@ -183,11 +183,11 @@ test-bins backup bin="app":
 test-flash name:
     uvx --quiet --from "esptool>=5.1,<6" esptool --chip esp32s3 write-flash 0x0 tools/test_flashes/test-bins/{{name}}.bin
 
-# run the installer on the device against each test image (`just test-bins` first); NVS goes back to the backup's
+# run the installer on the device with each test image (`just test-bins` first); NVS is reset to the backup's
 test-on-device:
     uv run --quiet --project tools/installer python tools/test_flashes/on_device.py
 
-# copy the whole SD card into backup/sd/, resuming where it stopped (app image, monitor closed)
+# copy the whole SD card into backup/sd/, continuing where it stopped (app image, monitor closed)
 backup-sd:
     {{cute_display}} card pull "" {{backup_dir}}/sd
 

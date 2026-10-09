@@ -5,8 +5,8 @@ use std::time::Instant;
 
 use hal::steady::SteadyClock;
 
-/// The computer's steady time, `speed` times as fast from the start: the app image's
-/// periods, the glass, the speaker and the RTC all run on it, the network does not.
+/// The computer's steady time, `speed` times faster from the start. The app image's
+/// periods, the panel, the speaker and the RTC all run on it; the network does not.
 #[derive(Clone, Copy)]
 pub struct ScaledClock {
     started: Instant,

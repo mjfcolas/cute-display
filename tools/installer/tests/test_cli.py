@@ -16,7 +16,8 @@ class Install(unittest.TestCase):
     """cli.install against a fake flash: it writes only what the rules allow."""
 
     def run_install(self, unit, yes=False, answer='n', updating=(), oldest_installer=None):
-        """cli.install with the real checks, against a device that only reads as `unit`."""
+        """cli.install with the real checks, against a device that is always read as `unit`.
+        """
         flash = mock.Mock()
         flash.connect.return_value = nullcontext('esp')
         flash.read_device.return_value = unit

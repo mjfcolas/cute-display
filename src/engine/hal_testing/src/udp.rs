@@ -6,7 +6,7 @@ use hal::Fault;
 
 use crate::shared::lock;
 
-/// Gives every request the same answer, or none, and keeps the hosts asked.
+/// Gives every request the same answer, or none, and records the hosts asked.
 #[derive(Clone)]
 pub struct StubUdpClient(Arc<Mutex<Exchanges>>);
 
@@ -16,7 +16,8 @@ struct Exchanges {
 }
 
 impl StubUdpClient {
-    /// A server that answers `datagram`, an NTP one `infrastructure::testing::ntp_server::answer`.
+    /// A server that answers `datagram`; for an NTP server, see
+    /// `infrastructure::testing::ntp_server::answer`.
     pub fn answering(datagram: impl Into<Vec<u8>>) -> Self {
         Self::new(Some(datagram.into()))
     }

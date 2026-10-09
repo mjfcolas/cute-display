@@ -1,4 +1,4 @@
-"""A step of the setup that is a question and its buttons, not a form."""
+"""A step of the setup that is a question with buttons, not a form."""
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Static
@@ -20,7 +20,7 @@ class ChoiceScreen(Screen):
         yield Footer()
 
     def show_buttons(self, *buttons):
-        """Buttons as (label, id), the first one the likely answer."""
+        """Buttons as (label, id). The first one is the likely answer."""
         row = self.query_one('#buttons', Horizontal)
         row.remove_children()
         row.mount_all([Button(label, id=button_id, variant='primary' if i == 0 else 'default')
@@ -32,7 +32,8 @@ class ChoiceScreen(Screen):
         self.query_one(Message).say(text, tone)
 
     def work(self, call, then, failed):
-        """`call()` away from the screen, then `then(result)` or `failed(Failed)` on it."""
+        """Runs `call()` on a worker thread, then `then(result)` or `failed(Failed)` on the
+        app's thread."""
         def run():
             try:
                 result = call()

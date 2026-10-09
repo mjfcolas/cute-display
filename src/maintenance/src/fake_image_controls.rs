@@ -1,5 +1,5 @@
-//! The app image's controls for the remote's tests: in a thread of their own, they take
-//! what the remote does until dropped.
+//! The app image's controls for the remote's tests: on their own thread, they take what the
+//! remote does, until they are dropped.
 
 use core::time::Duration;
 use std::sync::atomic::{AtomicBool, Ordering};

@@ -1,4 +1,4 @@
-//! What the tests run the image on, start it with, and look at it through.
+//! What the tests run the image on, how they start it, and how they look at it.
 
 mod hardware;
 mod image;

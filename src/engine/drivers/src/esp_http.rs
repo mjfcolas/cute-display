@@ -11,7 +11,7 @@ use crate::or_fault::OrFault;
 
 pub(crate) const TIMEOUT: Duration = Duration::from_secs(15);
 
-/// HTTP and HTTPS, trusting the certificate authorities ESP-IDF bundles.
+/// HTTP and HTTPS, trusting the certificate authorities that ESP-IDF includes.
 pub struct EspHttpsClient;
 
 struct Body<'a>(&'a mut EspHttpConnection);

@@ -1,3 +1,4 @@
-"""The apps a release of Cute Display holds, by the name the device knows them by, in the
-order the system app offers them, with their titles: src/catalog/'s, as its test checks."""
+"""The apps that a release of Cute Display contains, by the name the device uses for them,
+in the order the system app shows them, with their titles. They are the apps of
+src/catalog/, and its test checks this."""
 TITLES = {'alarm': 'Alarm clock', 'weather': 'Weather', 'radar': 'Radar', 'zen': 'Zen', 'timer': 'Timer', 'breathe': 'Breathe'}

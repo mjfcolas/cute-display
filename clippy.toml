@@ -1,5 +1,5 @@
-# In tests a panic is the failure report. Clippy finds this file from every crate,
-# the firmware included.
+# In tests, a panic is how a failure is reported. Clippy finds this file from every crate,
+# including the firmware.
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true

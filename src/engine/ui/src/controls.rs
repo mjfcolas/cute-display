@@ -26,8 +26,8 @@ impl ControlsSample {
     }
 }
 
-/// By convention a press of the long button confirms, and one of the yellow button goes
-/// back.
+/// By convention, a press of the long button confirms, and a press of the yellow button
+/// goes back.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Input {
     Turn(i32),

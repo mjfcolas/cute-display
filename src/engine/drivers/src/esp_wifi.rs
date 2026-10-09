@@ -11,7 +11,7 @@ pub struct EspWifiRadio {
 }
 
 impl EspWifiRadio {
-    /// Without NVS: the credentials come from the SD card at every connection.
+    /// Without NVS: the credentials come from the SD card at each connection.
     pub fn new(modem: Modem<'static>, events: EspSystemEventLoop) -> Result<Self, Fault> {
         let wifi = EspWifi::new(modem, events.clone(), None).or_fault("Wi-Fi driver")?;
         Ok(Self { wifi: BlockingWifi::wrap(wifi, events).or_fault("Wi-Fi driver")? })
@@ -53,7 +53,7 @@ impl WifiStation for EspWifiRadio {
     }
 
     fn disconnect(&mut self) -> Result<(), Fault> {
-        // Fails when Wi-Fi was never started; stopping ends any association anyway.
+        // Fails if Wi-Fi was never started; stopping ends any association anyway.
         let _ = self.wifi.disconnect();
         self.wifi.stop().or_fault("stopping Wi-Fi")
     }

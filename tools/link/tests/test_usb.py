@@ -41,7 +41,7 @@ class Explain(unittest.TestCase):
 
 
 class StubLineSerial(LineSerial):
-    """Not opened: hands out what a test says came in, a read at a time."""
+    """Not opened: returns what a test says came in, one read at a time."""
 
     def __init__(self, *received):
         self.received = list(received)

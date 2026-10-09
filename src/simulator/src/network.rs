@@ -9,7 +9,7 @@ use hal::Fault;
 use crate::ntp_server::SimulatedNtpServer;
 use crate::recordings::{RecordedWeb, RecordingWeb};
 
-/// The computer is already on a network; offline, it joins none.
+/// The computer is already on a network. Offline, it joins none.
 pub struct HostWifi {
     reach: Reach,
 }

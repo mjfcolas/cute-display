@@ -26,7 +26,7 @@ pub(crate) struct Presentation<E, B, P, R, T> {
     pub panel: P,
     pub read_out: R,
     pub steady: T,
-    /// Where the gestures count their time from.
+    /// The time from which the gestures count.
     pub started: Instant,
 }
 

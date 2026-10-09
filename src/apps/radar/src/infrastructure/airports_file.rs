@@ -1,5 +1,5 @@
-//! Which airports are named on the scope is in `radar.conf`, since `airports.conf` is
-//! written again whenever the place changes.
+//! The airports that show their code on the radar are listed in `radar.conf`, because
+//! `airports.conf` is written again each time the place changes.
 
 use conf_text::ConfText;
 use domain::files::Files;

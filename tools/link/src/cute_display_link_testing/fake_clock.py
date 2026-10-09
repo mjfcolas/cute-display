@@ -1,4 +1,4 @@
-"""The RTC, stopped at the time a test gives, or it was set to."""
+"""The RTC, stopped at the time that a test gives, or that it was set to."""
 
 
 class FakeClock:

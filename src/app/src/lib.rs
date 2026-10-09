@@ -58,10 +58,10 @@ pub trait Hardware {
     type System: SystemMonitor + Send + 'static;
     type Steady: SteadyClock + Clone + Send + 'static;
 
-    /// The network thread's stack, most of it for what `Http`'s TLS needs.
+    /// The network thread's stack. Most of it is for the TLS of `Http`.
     const NETWORK_STACK_BYTES: usize;
 
-    /// Starts the speaker's thread, where the samples played may be made as they play, and
+    /// Starts the speaker's thread. On it, the samples are computed while they play, and
     /// read from the card.
     fn spawn_speaker(play: impl FnOnce() + Send + 'static) -> Result<(), Fault>;
 }
@@ -86,7 +86,7 @@ pub struct Devices<H: Hardware> {
 
 type Service = (AppId, Arc<dyn AppService>);
 
-/// `read_out` hears each frame's lines once the frame is shown.
+/// `read_out` receives the lines of each frame, once the frame is shown.
 pub fn run<H: Hardware>(
     devices: Devices<H>,
     own_directory: CardDirectory,

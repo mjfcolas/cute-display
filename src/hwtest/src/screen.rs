@@ -1,5 +1,5 @@
-//! The report is framed by the visible edge of the glass, so a missing side means the
-//! geometry is wrong.
+//! The report has a frame at the visible edge of the panel, so a missing side means that
+//! the geometry is wrong.
 
 use embedded_graphics::mono_font::ascii::{FONT_6X10, FONT_7X13, FONT_9X18_BOLD};
 use embedded_graphics::mono_font::{MonoFont, MonoTextStyle};

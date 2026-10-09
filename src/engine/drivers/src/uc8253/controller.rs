@@ -26,21 +26,20 @@ mod command {
     pub const TEMPERATURE: u8 = 0xe5;
 }
 
-/// Black/white, waveforms from OTP, gate scan not mirrored, all 416 gate lines. The
-/// geometry lives in the undocumented second byte, which is why there is no resolution
-/// command.
+/// Black and white, waveforms from OTP, gate scan not mirrored, all 416 gate lines. The
+/// geometry is in the undocumented second byte. This is why there is no resolution command.
 const PANEL_SETTING: [u8; 2] = [0x17, 0x0d];
-/// Bit 0 of the panel setting: held low, the controller stays in soft reset.
+/// Bit 0 of the panel setting: while it is low, the controller stays in soft reset.
 const RUNNING: u8 = 0x01;
 
-/// The waveforms are picked by temperature: forcing one selects the fast bank.
+/// The waveforms are chosen by temperature: forcing a temperature selects the fast bank.
 const TEMPERATURE_FROM_SENSOR: u8 = 0x00;
 const TEMPERATURE_FROM_REGISTER: u8 = 0x02;
 const FAST_WAVEFORM_TEMPERATURE: u8 = 0x6e;
 const VCOM_CLEAN: u8 = 0x97;
 const VCOM_FAST: u8 = 0xd7;
 
-/// The panel maker's reference driver's timings, not measured minimums.
+/// The timings of the panel maker's reference driver, not measured minimums.
 const RESET_LEVEL_MS: u32 = 20;
 const SOFT_RESET_MS: u32 = 10;
 const POLL_MS: u32 = 10;
@@ -82,7 +81,7 @@ pub struct Uc8253 {
     reset: PinDriver<'static, Output>,
     /// Low while the controller is working.
     busy: PinDriver<'static, Input>,
-    /// Every refresh swaps which image memory holds what is on the glass.
+    /// Each refresh swaps which image memory holds what is on the panel.
     memories_swapped: bool,
     on_glass: Box<Image>,
     wanted: Box<Image>,
@@ -95,8 +94,8 @@ struct Memories {
 }
 
 impl Uc8253 {
-    /// The SPI device has no chip select of its own: the controller needs it held
-    /// across a command and its data, so it is driven here.
+    /// The SPI device has no chip select of its own: the controller needs it held low
+    /// during a command and its data, so this code drives it.
     pub fn new(
         spi: SpiDeviceDriver<'static, SpiDriver<'static>>,
         data_not_command: PinDriver<'static, Output>,
@@ -147,8 +146,8 @@ impl Uc8253 {
     fn refresh_whole(&mut self) -> Result<Refreshed, Fault> {
         let Memories { holding_glass, receiving } = self.memories();
         self.power_on()?;
-        // Pixels identical in both memories are not driven, so the image held has to be
-        // what is really on the glass, or the old ink stays.
+        // Pixels that are the same in both memories are not driven. So the image held must
+        // be what is really on the panel, or the old ink stays.
         self.bus.command(holding_glass, &self.on_glass[..])?;
         self.bus.command(receiving, &self.wanted[..])?;
         let took = self.refresh();
@@ -164,7 +163,8 @@ impl Uc8253 {
         let Memories { holding_glass, receiving } = self.memories();
         self.power_on()?;
         match &area {
-            // Each memory in its own partial block: sharing one spills outside the window.
+            // Each memory in its own partial block: sharing one block writes outside the
+            // window.
             FastArea::Window(window) => {
                 for (memory, image) in [(holding_glass, &self.on_glass), (receiving, &self.wanted)] {
                     self.bus.command(command::PARTIAL_IN, &[])?;
@@ -191,8 +191,8 @@ impl Uc8253 {
         if let FastArea::Window(_) = area {
             self.bus.command(command::PARTIAL_OUT, &[])?;
         }
-        // The forced temperature persists and would select the fast bank for every
-        // later refresh.
+        // The forced temperature stays, and would select the fast bank for every later
+        // refresh.
         self.bus.command(command::TEMPERATURE_SOURCE, &[TEMPERATURE_FROM_SENSOR])?;
         self.bus.command(command::VCOM_AND_DATA_INTERVAL, &[VCOM_CLEAN])?;
         self.power_off()?;
@@ -234,8 +234,8 @@ impl Uc8253 {
         Ok(start.elapsed())
     }
 
-    /// Without this, a wait straight after a command sees idle before the controller
-    /// has picked the command up.
+    /// Without this, a wait right after a command sees the controller idle before the
+    /// controller has taken the command.
     fn wait_until_busy(&self, timeout: Duration) -> Option<Duration> {
         let start = Instant::now();
         while self.busy.is_high() {

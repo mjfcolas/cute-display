@@ -13,7 +13,8 @@ def _described(place):
 
 
 class PlaceScreen(Screen):
-    """Where the weather and the radar are about; choosing it also suggests its time zone."""
+    """The place that the weather and the radar show. Choosing it also suggests its time
+    zone."""
 
     def compose(self):
         yield Header()

@@ -1,10 +1,10 @@
-/// How much of each new step the walk takes; the rest keeps it from drifting off.
+/// How much of each new step the walk takes; the rest keeps it from drifting away.
 const STEP: f32 = 0.02;
-/// Brings the walk, which keeps within about ±0.3, up to full scale.
+/// Scales the walk, which stays within about ±0.3, up to full scale.
 const GAIN: f32 = 3.5;
 
-/// Noise falling 6 dB an octave, a deep hush like a far waterfall: the sound played
-/// without a file, at full scale, never ending.
+/// Noise that falls by 6 dB per octave, a deep sound like a far waterfall. It is the sound
+/// played without a file, at full scale, without end.
 pub struct BrownNoise {
     random: u32,
     walk: f32,
@@ -15,7 +15,7 @@ impl BrownNoise {
         Self { random: 0x9e37_79b9, walk: 0.0 }
     }
 
-    /// From -1 to 1, evenly: xorshift.
+    /// From -1 to 1, evenly spread: xorshift.
     fn white(&mut self) -> f32 {
         self.random ^= self.random << 13;
         self.random ^= self.random >> 17;
@@ -54,7 +54,7 @@ mod tests {
     }
 
     #[test]
-    /// White noise steps further than its level, about 4/3 of it.
+    /// White noise moves further than its level, about 4/3 of it.
     fn it_is_deep_each_sample_close_to_the_last() {
         let samples: Vec<i32> = BrownNoise::new().take(A_SECOND).map(i32::from).collect();
         let mean_step = samples.windows(2).map(|pair| (pair[1] - pair[0]).abs()).sum::<i32>() / A_SECOND as i32;

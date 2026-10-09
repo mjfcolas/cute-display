@@ -21,8 +21,8 @@ impl EspHttpsClientTrustingOneAuthority {
 
 impl HttpClient for EspHttpsClientTrustingOneAuthority {
     fn fetch(&mut self, url: &str, read: &mut dyn FnMut(&mut dyn Read) -> Result<(), Fault>) -> Result<(), Fault> {
-        // ESP-IDF names it the server's certificate; esp-tls checks the server's chain
-        // against it, as an authority, and the server's name against the URL's host.
+        // ESP-IDF calls it the server's certificate. esp-tls checks the server's chain
+        // against it, as an authority, and checks the server's name against the URL's host.
         let configuration = Configuration {
             timeout: Some(TIMEOUT),
             server_certificate: Some(X509::pem(self.authority_pem)),

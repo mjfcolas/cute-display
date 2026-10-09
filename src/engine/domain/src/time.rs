@@ -19,7 +19,7 @@ impl UtcTime {
     }
 }
 
-/// How far the clocks on the wall are ahead of UTC; behind in the west.
+/// How far local time is ahead of UTC; negative in the west.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct UtcOffset(i32);
 
@@ -30,7 +30,7 @@ impl UtcOffset {
         Self(seconds)
     }
 
-    /// POSIX counts the other way: `5` is New York, five hours behind.
+    /// POSIX counts the other way: `5` is New York, five hours behind UTC.
     pub const fn from_posix_west(seconds: i32) -> Self {
         Self(-seconds)
     }

@@ -2,8 +2,8 @@ use core::fmt;
 
 use crate::mark::Mark;
 
-/// What a screen shows, in words: a line for each thing a person reads, in the screen's
-/// order. Values are said with single spaces, however they are laid out.
+/// What a screen shows, in words: one line for each thing that a person reads, in the
+/// screen's order. Values are separated by single spaces, whatever their layout.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Description(Vec<Line>);
 

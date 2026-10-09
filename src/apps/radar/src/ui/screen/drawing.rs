@@ -20,7 +20,8 @@ const TICK: i32 = 4;
 impl DrawWithin for RadarUiState {
     fn draw_within<D: DrawTarget<Color = BinaryColor>>(&self, target: &mut D, area: Rectangle) {
         let diameter = (area.size.height as i32).min(area.size.width as i32 * 3 / 5);
-        // An odd diameter, so the circle and its ticks land on the same pixels either side.
+        // An odd diameter, so that the circle and its ticks fall on the same pixels on each
+        // side.
         let radius = (diameter - 1) / 2;
         let scope = Scope { center: area.top_left + Point::new(radius, radius), radius_px: radius, range_km: f64::from(self.range_km) };
         draw_scope(target, &scope, self);
@@ -44,7 +45,7 @@ fn draw_scope<D: DrawTarget<Color = BinaryColor>>(target: &mut D, scope: &Scope,
     for (dx, dy) in [(0, -1), (1, 0), (0, 1), (-1, 0)] {
         let edge = scope.center + Point::new(dx * r, dy * r);
         let _ = Line::new(edge, edge - Point::new(dx * TICK, dy * TICK)).into_styled(stroke).draw(target);
-        // The place itself is a small cross, so it is never taken for an airport.
+        // The place is a small cross, so that it never looks like an airport.
         let arm = scope.center + Point::new(dx * HOME_ARM, dy * HOME_ARM);
         let _ = Line::new(scope.center, arm).into_styled(stroke).draw(target);
     }
@@ -74,7 +75,7 @@ fn draw_scope<D: DrawTarget<Color = BinaryColor>>(target: &mut D, scope: &Scope,
     obstacles.extend(airports.iter().map(|&(_, at)| mark(at, AIRPORT_DIAMETER)));
     obstacles.push(mark(scope.center, (2 * HOME_ARM + 1) as u32));
 
-    // Named airports first, since somebody asked for them.
+    // Named airports first, because someone asked for them.
     let labels: Vec<(&String, Point)> = airports.iter().chain(&aircraft).filter_map(|&(label, at)| Some((label?, at))).collect();
     let wanted: Vec<LabelWanted> = labels.iter().map(|(text, at)| LabelWanted { near: *at, size: label_size(text) }).collect();
     let placed = place_labels(&wanted, &obstacles, scope, LABEL_CLEARANCE);
@@ -90,7 +91,7 @@ fn label_size(text: &str) -> Size {
     Size::new(text.chars().count() as u32 * advance + 2, HINT.character_size.height + 2)
 }
 
-/// On a patch of paper, so a ring running through it does not cross its letters out.
+/// On a white background, so that a ring that crosses it does not cross out its letters.
 fn draw_label<D: DrawTarget<Color = BinaryColor>>(target: &mut D, text: &str, spot: Rectangle) {
     let _ = spot.into_styled(PrimitiveStyle::with_fill(BinaryColor::Off)).draw(target);
     text::write(target, text, spot.top_left + Point::new(1, 1), spot.size.width, &HINT);

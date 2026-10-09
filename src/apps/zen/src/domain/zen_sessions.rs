@@ -1,7 +1,8 @@
-//! A session plays a sound for whole hours, rising at its start and falling at its end,
-//! while the lights dim. It starts at the time set when the clock goes past it between two
-//! readings, as the alarm rings, or at once when asked. A session's length is kept on the
-//! steady clock: a clock set meanwhile neither shortens nor lengthens it.
+//! A session plays a sound for a whole number of hours, while the lights dim. The sound
+//! rises at the start and falls at the end. A session starts at its set time when the clock
+//! passes that time between two readings, in the same way as the alarm, or at once when
+//! asked. A session's length is timed on the steady clock: if the clock is set during a
+//! session, the session is not shorter or longer.
 
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -16,11 +17,12 @@ use crate::ID;
 pub const FADE_IN: Duration = Duration::from_secs(60);
 pub const FADE_OUT: Duration = Duration::from_secs(5 * 60);
 pub const STOP_FADE: Duration = Duration::from_secs(2);
-/// The lights go out over this, or over the session when it is shorter.
+/// The lights go off over this time, or over the session if it is shorter.
 pub const DUSK: Duration = Duration::from_secs(30 * 60);
-/// How far behind the clock a start time it jumped over may be and still start.
+/// The longest time by which the clock can jump past a start time, and the session still
+/// starts.
 pub const STARTS_WITHIN: Duration = Duration::from_secs(15 * 60);
-/// Enough to see by while falling asleep, too little to keep anyone awake.
+/// Enough to see while falling asleep, too little to keep anyone awake.
 const DUSK_LIGHT: Level = Level::percent(30);
 const PREVIEW_VOLUME: Volume = Volume::percent(30);
 const VOLUME_STEP: u8 = 5;
@@ -40,7 +42,7 @@ impl SessionLength {
         self.0
     }
 
-    /// Stops at either end.
+    /// Stops at the shortest and at the longest length.
     pub fn turned_by(self, detents: i32) -> Self {
         let hours = (i32::from(self.0) + detents).clamp(i32::from(Self::SHORTEST.0), i32::from(Self::LONGEST.0));
         Self(u8::try_from(hours).unwrap_or(self.0))
@@ -59,7 +61,7 @@ impl Default for SessionLength {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum Soundscape {
-    /// Played without a file, so there is always one.
+    /// Played without a file, so there is always a sound.
     #[default]
     BrownNoise,
     /// One of the app's files, by its name.
@@ -68,7 +70,7 @@ pub enum Soundscape {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ZenSettings {
-    /// `None` starts no session on its own.
+    /// `None`: no session starts by itself.
     pub starts_at: Option<TimeOfDay>,
     pub length: SessionLength,
     pub soundscape: Soundscape,
@@ -89,7 +91,7 @@ pub trait ZenSettingsStore: Send {
 pub trait Player: Send {
     /// The names of the files it can play.
     fn recordings(&self) -> Vec<String>;
-    /// Starts `soundscape`, or goes on with it at `volume` when it is the one playing.
+    /// Starts `soundscape`, or continues it at `volume` if it is the one playing.
     fn play(&mut self, soundscape: &Soundscape, volume: Volume);
     fn silence(&mut self);
 }
@@ -103,7 +105,7 @@ pub enum ZenState {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Phase {
     Resting,
-    /// Resting, the sound playing softly meanwhile.
+    /// Resting, while the sound plays softly.
     Previewing,
     InSession { since: Instant },
     Stopping { since: Instant, from: Volume },
@@ -136,7 +138,7 @@ impl ZenSessions {
         self.lock().settings.clone()
     }
 
-    /// Brown noise first, always there.
+    /// Brown noise first, because it is always there.
     pub fn soundscapes(&self) -> Vec<Soundscape> {
         let recordings = self.lock().player.recordings();
         std::iter::once(Soundscape::BrownNoise).chain(recordings.into_iter().map(Soundscape::Recorded)).collect()
@@ -164,13 +166,13 @@ impl ZenSessions {
         self.change_settings(|settings| settings.length = length);
     }
 
-    /// Previewing, the new one plays at once.
+    /// During a preview, the new sound plays at once.
     pub fn set_soundscape(&self, soundscape: Soundscape) {
         self.change_settings(|settings| settings.soundscape = soundscape);
         self.lock().sound();
     }
 
-    /// In a session, heard at once.
+    /// During a session, the new volume is heard at once.
     pub fn turn_volume(&self, detents: i32) {
         let percent = i32::from(self.settings().volume.as_percent()) + detents * i32::from(VOLUME_STEP);
         let volume = Volume::percent(u8::try_from(percent.clamp(i32::from(VOLUME_STEP), 100)).unwrap_or(100));
@@ -203,7 +205,7 @@ impl ZenSessions {
         }
     }
 
-    /// The sound fades out quickly, the lights go out at once.
+    /// The sound fades out quickly, and the lights go off at once.
     pub fn stop(&self) {
         let mut inner = self.lock();
         if let (Phase::InSession { since }, Some(now)) = (inner.phase, inner.now) {
@@ -266,7 +268,7 @@ impl Inner {
         self.revision = self.revision.wrapping_add(1);
     }
 
-    /// The volume chosen, risen to over the start and fallen from over the end.
+    /// The chosen volume, faded in at the start of the session and faded out at its end.
     fn session_volume(&self, played: Duration) -> Volume {
         let left = self.settings.length.duration().saturating_sub(played);
         let share = fraction(played, FADE_IN).min(fraction(left, FADE_OUT));
@@ -296,7 +298,8 @@ impl Inner {
     }
 }
 
-/// Whether the clock went past `time` from `previous` to `now`, by less than [`STARTS_WITHIN`].
+/// Whether the clock passed `time` from `previous` to `now`, by less than
+/// [`STARTS_WITHIN`].
 fn passed(time: TimeOfDay, previous: LocalTime, now: LocalTime) -> bool {
     let today = LocalTime { date: now.date, time_of_day: time, second: 0 };
     let latest = if today.seconds_since_epoch() <= now.seconds_since_epoch() { today } else { LocalTime { date: now.date.plus_days(-1), ..today } };
@@ -370,7 +373,7 @@ mod tests {
         LocalTime { date, time_of_day: TimeOfDay::new(hour, minute).unwrap(), second }
     }
 
-    /// The steady clock and the wall clock, moving on together.
+    /// The steady clock and the wall clock, moving forward together.
     struct Bench {
         zen: ZenSessions,
         player: StubPlayer,

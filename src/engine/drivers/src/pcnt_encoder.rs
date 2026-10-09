@@ -1,5 +1,5 @@
-//! A quadrature encoder counted by the PCNT peripheral, so no detent is missed however
-//! seldom it is read.
+//! A quadrature encoder counted by the PCNT peripheral, so that no detent is missed,
+//! however rarely it is read.
 
 use core::time::Duration;
 

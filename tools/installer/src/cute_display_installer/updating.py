@@ -1,5 +1,5 @@
-"""What to know before updating, from a release's UPDATING.md: the entries an update from
-one version to another goes through."""
+"""What to know before updating, from a release's UPDATING.md: the entries between one
+version and another."""
 import re
 from dataclasses import dataclass
 
@@ -20,16 +20,16 @@ class Entry:
 
 
 def entries(text):
-    """Each `## <version>` section, in the file's order; a section whose heading is not a
-    release's version is not one."""
+    """Each `## <version>` section, in the file's order. A section whose heading is not a
+    release version is not included."""
     parts = _HEADING.split(text)[1:]
     found = (Entry(version, body.strip()) for version, body in zip(parts[::2], parts[1::2]))
     return tuple(entry for entry in found if entry.release is not None)
 
 
 def to_know(among, installed, latest):
-    """The entries `among` after `installed` up to `latest`, oldest first, with no bound on
-    a side whose version is not a release's."""
+    """The entries of `among` after `installed` and up to `latest`, oldest first. If a
+    side's version is not a release version, there is no limit on that side."""
     since, until = installed.release, latest.release
     return tuple(sorted((entry for entry in among
                          if (since is None or entry.release > since) and (until is None or entry.release <= until)),

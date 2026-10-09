@@ -1,4 +1,4 @@
-//! What the app image does with its glass, its lights and its speaker, for a computer that
+//! What the app image does with its screen, its lights and its speaker, for a computer that
 //! tests it.
 
 use core::ops::DerefMut;
@@ -25,15 +25,15 @@ struct Glass {
     said: Option<Said>,
 }
 
-/// What a frame said, a line for each thing a person reads, and how many frames had been
-/// shown with it.
+/// What a frame said, one line for each thing that a person reads, and how many frames had
+/// been shown at that time.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Said {
     pub times_shown: u64,
     pub lines: Vec<String>,
 }
 
-/// Clones share their state with the glass, the lights and the speaker they observe.
+/// Clones share their state with the screen, the lights and the speaker that they observe.
 #[derive(Clone, Default)]
 pub struct Observation {
     glass: Arc<Mutex<Glass>>,
@@ -43,7 +43,7 @@ pub struct Observation {
 }
 
 impl Observation {
-    /// `last_frame` is given, so that the board can keep it in PSRAM.
+    /// `last_frame` is given as a parameter, so that the board can keep it in PSRAM.
     pub fn panel<P: EpaperDisplay>(
         &self,
         panel: P,
@@ -55,8 +55,8 @@ impl Observation {
         ObservedPanel { panel, glass: self.glass.clone() }
     }
 
-    /// Tagged with the frames shown so far: called right after the frame's `show`, on the
-    /// same thread.
+    /// Tagged with the number of frames shown so far. Called right after the frame's
+    /// `show`, on the same thread.
     pub fn said(&self, lines: Vec<String>) {
         if let Ok(mut glass) = self.glass.lock() {
             glass.said = Some(Said { times_shown: glass.times_shown, lines });
@@ -73,9 +73,9 @@ impl Observation {
         ObservedSpeaker { speaker, playing: self.playing.clone() }
     }
 
-    /// Copies the bytes of the last frame shown from `offset` into `part`, laid out as
-    /// `Frame::as_bytes` does, and gives how many times the app has shown something. Nothing
-    /// before it did, or for a part outside the frame.
+    /// Copies the bytes of the last frame shown, from `offset`, into `part`, in the layout
+    /// of `Frame::as_bytes`, and returns how many times the app has shown something. Copies
+    /// nothing before the app has shown something, or for a part outside the frame.
     pub fn copy_screen(&self, offset: usize, part: &mut [u8]) -> Option<u64> {
         let glass = self.glass.lock().ok()?;
         let last_frame = glass.last_frame.as_ref().filter(|_| glass.times_shown > 0)?;
@@ -113,8 +113,8 @@ impl<P: EpaperDisplay> EpaperDisplay for ObservedPanel<P> {
         let refreshed = self.panel.show(frame, redraw)?;
         if let Ok(mut glass) = self.glass.lock() {
             if let Some(last_frame) = glass.last_frame.as_mut() {
-                // Not `**last_frame = *frame.as_bytes()`: that goes through the stack in
-                // debug builds, and overflowed the simulator's UI thread.
+                // Not `**last_frame = *frame.as_bytes()`: in debug builds, that goes
+                // through the stack, and it overflowed the simulator's UI thread.
                 last_frame.copy_from_slice(frame.as_bytes());
             }
             glass.times_shown += 1;

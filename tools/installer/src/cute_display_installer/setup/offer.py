@@ -1,4 +1,4 @@
-"""What the setup offers about Cute Display, from what the clock holds and the latest
+"""What the setup offers about Cute Display, from what the clock contains and the latest
 release."""
 from dataclasses import dataclass
 from enum import Enum
@@ -25,8 +25,8 @@ class Offer:
 
 
 def offer(unit, latest, updating_entries=()):
-    """`unit` the clock as read, holding Cute Display or able to take it; `latest` the
-    latest release's image, `updating_entries` its UPDATING.md's."""
+    """`unit` is the clock as read, which holds Cute Display or can take it. `latest` is the
+    latest release's image, and `updating_entries` the entries of its UPDATING.md."""
     slot = unit.ours()
     if slot is None:
         return Offer(Offering.INSTALL, latest, placement=unit.placement())

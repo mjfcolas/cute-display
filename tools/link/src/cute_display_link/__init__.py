@@ -1,1 +1,1 @@
-"""A computer's end of the console the app image serves on the USB cable."""
+"""The computer's side of the console that the app image serves on the USB cable."""

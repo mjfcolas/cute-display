@@ -1,5 +1,5 @@
-"""`remote`: tap, hold and turn the controls of the device, or of a simulator, from this
-computer; see its glass and read what it says, see its lights and its speaker; read and
+"""`remote`: from this computer, tap, hold and turn the controls of the device or of a
+simulator; see its screen and read what it says; see its lights and its speaker; read and
 set its clock."""
 import argparse
 from datetime import datetime

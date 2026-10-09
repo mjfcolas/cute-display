@@ -1,8 +1,8 @@
-//! For tests only: test doubles of the contracts the domain needs from the outside world,
-//! and the checks every implementation of one passes, so that a test on a double says
+//! For tests only: test doubles of the contracts that the domain needs from the outside
+//! world, and the checks that every implementation must pass. So a test on a double shows
 //! what the infrastructure would do.
 //!
-//! A double that a test acts on or looks into is a handle: its clones share one state.
+//! A double that a test acts on or looks at is a handle: its clones share one state.
 
 pub mod files;
 pub mod internet;

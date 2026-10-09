@@ -7,7 +7,7 @@ pub struct DetentCounter {
 }
 
 impl DetentCounter {
-    /// A half-turned detent stays in the count until it completes.
+    /// A detent that is half turned stays in the count until it is complete.
     pub fn detents_at(&mut self, count: i32) -> i32 {
         let detents = count.saturating_sub(self.counted) / COUNTS_PER_DETENT;
         self.counted = self.counted.saturating_add(detents * COUNTS_PER_DETENT);

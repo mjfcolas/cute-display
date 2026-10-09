@@ -1,6 +1,6 @@
-"""Requests to the device's console, src/maintenance/, whose lib.rs describes the lines,
-on any link that writes, flushes and reads lines as pyserial does: `readline` gives
-`b''` when nothing came in time."""
+"""Requests to the device's console (src/maintenance/, whose lib.rs describes the lines), on
+any link that writes, flushes and reads lines as pyserial does: `readline` returns `b''`
+when nothing came in time."""
 import random
 import time
 
@@ -8,11 +8,11 @@ REPLY_TIMEOUT_S = 10
 
 
 class ConsoleError(Exception):
-    """The device refused a request, or did not answer it whole."""
+    """The device refused a request, or did not answer it completely."""
 
 
 class Request:
-    """One request and its replies, told apart from the others' by a random id."""
+    """One request and its replies, told apart from the others by a random id."""
 
     def __init__(self, link, words, timeout_s=REPLY_TIMEOUT_S):
         self.link = link
@@ -29,8 +29,8 @@ class Request:
         deadline = time.monotonic() + self.timeout_s
         while time.monotonic() < deadline:
             line = self.link.readline().decode(errors='replace').strip()
-            # The device's console does not wait for a log line being written: a reply may
-            # come in the middle of one, the id telling it apart.
+            # The device's console does not wait for a log line to be fully written: a reply
+            # may appear in the middle of a log line, and the id identifies it.
             at = line.find(prefix)
             if at >= 0:
                 deadline = time.monotonic() + self.timeout_s
@@ -48,8 +48,9 @@ class Request:
 
 
 class KeepingLog:
-    """A link that keeps the lines that are not the console's, the device's log, for a
-    diagnostic and to catch a crash or a restart; they come in as requests are answered."""
+    """A link that keeps the lines that are not the console's (the device's log), for a
+    diagnostic and to detect a crash or a restart. They arrive while requests are answered.
+    """
 
     def __init__(self, link):
         self.link = link

@@ -1,7 +1,7 @@
-//! A steady clock for the whole app image in a test: its threads sleep on it, and the
-//! test moves time on. Once they are all asleep, only one of them runs at a time, woken
-//! in the order of their deadlines, so a test sees the same interleaving every run; until
-//! then, they start as the system schedules them.
+//! A steady clock for the whole app image in a test: its threads sleep on it, and the test
+//! moves time forward. Once all the threads sleep, only one of them runs at a time, woken
+//! in the order of their deadlines, so a test sees the same order of events on every run.
+//! Before that, they start as the system schedules them.
 
 use core::time::Duration;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
@@ -9,8 +9,8 @@ use std::time::Instant;
 
 use hal::steady::SteadyClock;
 
-/// Real time the threads are given to be all asleep, before the test fails: long enough
-/// for a slow machine, short enough to report a thread stuck elsewhere.
+/// Real time that the threads have to all fall asleep, before the test fails: long enough
+/// for a slow machine, short enough to report a thread that is stuck somewhere else.
 const STUCK_AFTER: Duration = Duration::from_secs(5);
 
 #[derive(Clone)]
@@ -18,11 +18,12 @@ pub struct FakeSteppedClock(Arc<Timeline>);
 
 struct Timeline {
     state: Mutex<State>,
-    /// Told when a thread falls asleep: the test, moving time on, waits on it.
+    /// Notified when a thread falls asleep: the test waits on it while it moves time
+    /// forward.
     asleep: Condvar,
 }
 
-/// Handed out in the order the sleeps come, which breaks ties between equal deadlines.
+/// Given out in the order of the sleeps. It decides the order between equal deadlines.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct Ticket(u64);
 
@@ -38,26 +39,26 @@ struct State {
 struct Sleeper {
     deadline: Instant,
     ticket: Ticket,
-    /// Its own, so that waking it wakes no other.
+    /// One per thread, so that waking this thread wakes no other one.
     woken: Arc<Condvar>,
 }
 
 impl FakeSteppedClock {
-    /// Exactly the threads that sleep on it: one fewer is reported stuck, one more is
-    /// refused.
+    /// Exactly the number of threads that sleep on it: with one fewer, one thread is
+    /// reported stuck; with one more, a thread is refused.
     pub fn for_threads(threads: usize) -> Self {
         let state = State { now: Instant::now(), threads, stuck_after: STUCK_AFTER, sleepers: Vec::new(), next_ticket: Ticket(0), running: None };
         Self(Arc::new(Timeline { state: Mutex::new(state), asleep: Condvar::new() }))
     }
 
-    /// For a test of a thread meant to get stuck, so that it fails quickly.
+    /// For a test of a thread that is meant to get stuck, so that the test fails quickly.
     pub fn stuck_after(self, real_time: Duration) -> Self {
         self.lock().stuck_after = real_time;
         self
     }
 
-    /// Wakes each thread whose deadline falls within `by`, earliest first, and waits until
-    /// it sleeps again, then leaves the time at the end of `by`.
+    /// Wakes each thread whose deadline is within `by`, earliest first, and waits until it
+    /// sleeps again. Then it sets the time to the end of `by`.
     pub fn advance(&self, by: Duration) {
         let mut state = self.lock();
         let target = later(state.now, by);
@@ -113,7 +114,8 @@ impl SteadyClock for FakeSteppedClock {
         let deadline = later(state.now, duration);
         let woken = Arc::new(Condvar::new());
         state.sleepers.push(Sleeper { deadline, ticket, woken: woken.clone() });
-        // The others are asleep, the count being exact: this sleep ends the running one's turn.
+        // The other threads sleep, because the count is exact: this sleep ends the turn of
+        // the running thread.
         state.running = None;
         self.0.asleep.notify_one();
         drop(woken.wait_while(state, |state| state.running != Some(ticket)).unwrap_or_else(PoisonError::into_inner));
@@ -131,7 +133,7 @@ mod tests {
 
     type Heard = Arc<Mutex<Vec<(u128, &'static str)>>>;
 
-    /// How many of `every`'s threads ran at once, at most.
+    /// The largest number of `every`'s threads that ran at the same time.
     #[derive(Clone, Default)]
     struct Running {
         now: Arc<AtomicUsize>,
@@ -154,7 +156,7 @@ mod tests {
         heard.iter().filter(|(_, heard)| *heard == name).count()
     }
 
-    /// Three threads paced as the app image's are.
+    /// Three threads with the same periods as the app image's threads.
     fn app_like(clock: &FakeSteppedClock) -> (Heard, Running) {
         let (heard, running) = (Heard::default(), Running::default());
         every(clock, Duration::from_millis(20), "ui", &heard, &running);

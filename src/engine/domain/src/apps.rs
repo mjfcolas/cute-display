@@ -46,8 +46,8 @@ pub trait AppService: Send + Sync {
         false
     }
 
-    /// The apps fetch one after another, so a fetch keeps its requests few and bounded,
-    /// and holds nothing its screen waits for meanwhile.
+    /// The apps fetch one after the other. So a fetch keeps its requests few and limited in
+    /// size, and holds nothing that its screen waits for in the meantime.
     fn fetch(&self, _now: Instant) {}
 
     fn light(&self) -> Level {

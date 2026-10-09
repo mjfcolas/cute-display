@@ -1,10 +1,11 @@
-"""Lines cut from what came in, whatever it came in: pyserial's own readline reads a byte
-at a time, which caps the cable at about 200 KB/s."""
+"""Lines cut from what came in, however it came in: pyserial's own readline reads one byte
+at a time, which limits the cable to about 200 KB/s."""
 
 
 class Lines:
-    """`readline` gives a whole line, or `b''` when none came in time, and keeps what came
-    of one for the next; `receive()` gives what came in, `b''` when nothing did in time."""
+    """`readline` returns a whole line, or `b''` when no line came in time, and keeps a
+    partial line for the next call. `receive()` returns what came in, or `b''` when nothing
+    came in time."""
 
     def __init__(self, receive):
         self.receive = receive

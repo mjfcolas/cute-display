@@ -3,11 +3,12 @@ use std::process::Command;
 
 const VERSION_VARIABLE: &str = "CUTE_DISPLAY_VERSION";
 
-/// The app image's version is the release's git tag, `v` left out: `2026.9.1` on a tagged
-/// commit, `2026.9.1-3-gabc1234` after it, `-dirty` with uncommitted changes as they were
-/// when this script last ran: a commit, a new tag or staging reruns it, editing alone
-/// does not. `CUTE_DISPLAY_VERSION` set when building says the version instead: `just
-/// release` gives the tag's, or a snapshot's.
+/// The app image's version is the release's git tag, without the `v`: `2026.9.1` on a
+/// tagged commit, `2026.9.1-3-gabc1234` after it, with `-dirty` if there were uncommitted
+/// changes when this script last ran. A commit, a new tag or staging runs this script
+/// again; editing a file alone does not. If `CUTE_DISPLAY_VERSION` is set at build time, it
+/// gives the version instead: `just release` sets it to the tag's version, or to a
+/// snapshot's.
 fn main() {
     println!("cargo:rerun-if-env-changed={VERSION_VARIABLE}");
     let manifest = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_default();
@@ -24,7 +25,8 @@ fn main() {
     let branch = git(&manifest, &["symbolic-ref", "-q", "HEAD"]);
     let watched = ["HEAD", "index", "packed-refs", "refs/tags"].into_iter().map(str::to_owned).chain(branch);
     for path in watched.filter_map(|name| git(&manifest, &["rev-parse", "--path-format=absolute", "--git-path", &name])) {
-        // A path that does not exist would rerun this script, and rebuild the crate, on every build.
+        // A path that does not exist would run this script again, and rebuild the crate, on
+        // every build.
         if Path::new(&path).exists() {
             println!("cargo:rerun-if-changed={path}");
         }

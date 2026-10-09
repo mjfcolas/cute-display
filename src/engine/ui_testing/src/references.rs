@@ -1,8 +1,8 @@
-//! Rendering references: a frame is compared with the PNG a person looked at and kept.
+//! Rendering references: a frame is compared with a PNG that a person looked at and kept.
 //!
-//! `UPDATE_REFERENCES=1 cargo test` writes the frames drawn as the new references, to be
-//! looked at before they are committed. A frame that differs from its reference fails
-//! the test and is written beside it as `<name>.seen.png`.
+//! `UPDATE_REFERENCES=1 cargo test` writes the frames drawn as the new references. Look at
+//! them before you commit them. A frame that differs from its reference fails the test, and
+//! is written next to it as `<name>.seen.png`.
 
 use std::fs;
 use std::path::Path;
@@ -14,11 +14,11 @@ const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', b'\r', b'\n', 0x1a, b'\n'];
 const GREYSCALE: u8 = 0;
 const ONE_BIT: u8 = 1;
 const NO_FILTER: u8 = 0;
-/// What a stored deflate block holds at most.
+/// The most that a stored deflate block holds.
 const STORED_BLOCK_BYTES: usize = 0xffff;
 
-/// Compares `frame` with `references/<name>.png` in the crate at `crate_dir`, which a
-/// test gives as `env!("CARGO_MANIFEST_DIR")`.
+/// Compares `frame` with `references/<name>.png` in the crate at `crate_dir`. A test gives
+/// `crate_dir` as `env!("CARGO_MANIFEST_DIR")`.
 pub fn check(frame: &Frame, crate_dir: &str, name: &str) {
     let references = Path::new(crate_dir).join("references");
     let (reference, seen) = (references.join(format!("{name}.png")), references.join(format!("{name}.seen.png")));
@@ -38,7 +38,7 @@ pub fn check(frame: &Frame, crate_dir: &str, name: &str) {
     assert!(same, "the frame differs from {}: see {}; if the change is meant, run with {UPDATE}=1", reference.display(), seen.display());
 }
 
-/// Ink is black, paper white, the whole frame, hidden columns included.
+/// Ink is black, paper is white, for the whole frame, including the hidden columns.
 fn png(frame: &Frame) -> Vec<u8> {
     let row_bytes = usize::from(WIDTH) / 8;
     let mut rows = Vec::with_capacity((row_bytes + 1) * usize::from(HEIGHT));
@@ -66,7 +66,8 @@ fn chunk(png: &mut Vec<u8>, kind: &[u8; 4], data: &[u8]) {
     png.extend(crc.to_be_bytes());
 }
 
-/// Uncompressed: the same frame always gives the same bytes, and nothing to depend on.
+/// Not compressed: the same frame always gives the same bytes, and there is nothing to
+/// depend on.
 fn zlib_stored(data: &[u8]) -> Vec<u8> {
     let mut out = vec![0x78, 0x01];
     let blocks: Vec<&[u8]> = if data.is_empty() { vec![data] } else { data.chunks(STORED_BLOCK_BYTES).collect() };

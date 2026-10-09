@@ -14,8 +14,8 @@ from make_test_flashes import NotInTable, cases, resealed, with_partition, with_
 
 
 def image(project, version):
-    """A small app image as ESP-IDF builds them: one segment, its description first,
-    checksum and SHA-256 appended."""
+    """A small app image, as ESP-IDF builds them: one segment, its description first, and
+    the checksum and SHA-256 added at the end."""
     desc = (struct.pack('<I', 0xabcd5432) + b'\0' * 12 + version.encode().ljust(32, b'\0')
             + project.encode().ljust(32, b'\0')).ljust(256, b'\0') + bytes(range(256))
     header = bytes([0xe9, 1, 2, 0x2f]) + struct.pack('<I', 0x40380000) + b'\xee\0\0\0\0\0\0\0\0\0\0\0\0\0\0\1'
@@ -34,7 +34,7 @@ HABITY_TABLE = [
 
 
 def habity_table():
-    """The table ESP-IDF writes: the entries, then one holding their MD5."""
+    """The table that ESP-IDF writes: the entries, then one entry that holds their MD5."""
     rows = b''.join(b'\xaa\x50' + bytes([t, s]) + struct.pack('<II', o, n) + label.encode().ljust(16, b'\0') + b'\0' * 4
                     for label, t, s, o, n in HABITY_TABLE)
     return (rows + b'\xeb\xeb' + b'\xff' * 14 + hashlib.md5(rows).digest()).ljust(PARTITION_TABLE_SIZE, b'\xff')

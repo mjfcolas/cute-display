@@ -1,5 +1,5 @@
-"""The counts, the rounds and the nap's light are the integration tier's; here, what the
-real process adds: a countdown over, brought to the front, on its speaker."""
+"""The integration tier tests the counts, the rounds and the nap's light. Here, we test what
+the real process adds: a finished countdown, brought to the foreground, on its speaker."""
 from cute_display_e2e.waiting import until
 
 GENERAL_CONF = 'general.conf'

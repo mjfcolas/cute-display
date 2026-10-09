@@ -16,7 +16,7 @@ use crate::steady::ScaledClock;
 const WHOLE_REFRESH: Duration = Duration::from_millis(2600);
 const FAST_REFRESH: Duration = Duration::from_millis(350);
 
-/// Every clone shows the same glass; only the one the app draws with refreshes it.
+/// Every clone shows the same panel; only the clone that the app draws with refreshes it.
 #[derive(Clone)]
 pub struct SimulatedPanel {
     glass: Arc<Mutex<Frame>>,
@@ -89,8 +89,8 @@ impl EpaperDisplay for SimulatedPanel {
     }
 }
 
-/// What the glass goes through on the clean waveform: the old image inverted, a few
-/// flashes of the whole glass to ink and back to paper, the new image inverted.
+/// What the panel shows during the clean waveform: the old image inverted, a few flashes of
+/// the whole panel to ink and back to paper, then the new image inverted.
 fn whole_refresh(on_glass: &Frame, wanted: &Frame) -> Vec<Frame> {
     let solid = |color| {
         let mut frame = Frame::blank();

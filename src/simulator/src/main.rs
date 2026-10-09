@@ -59,7 +59,7 @@ impl Hardware for Computer {
     type System = HostSystem;
     type Steady = ScaledClock;
 
-    /// Rust's own default: rustls, unoptimised, needs far more than the ESP32's TLS.
+    /// Rust's default size: rustls, not optimised, needs far more than the ESP32's TLS.
     const NETWORK_STACK_BYTES: usize = 2 * 1024 * 1024;
 
     fn spawn_speaker(play: impl FnOnce() + Send + 'static) -> Result<(), Fault> {
@@ -67,7 +67,7 @@ impl Hardware for Computer {
     }
 }
 
-/// The window has the main thread: some systems deliver its events on no other.
+/// The window gets the main thread: some systems give its events to no other thread.
 fn main() -> Result<(), Fault> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     let options = Options::parse(std::env::args().skip(1)).map_err(Fault::new)?;
@@ -132,7 +132,7 @@ fn main() -> Result<(), Fault> {
     }
 }
 
-/// The Internet asks the card for a network to join; the computer is already on one.
+/// The Internet asks the card for a network to join, but the computer is already on one.
 fn with_wifi(card: DirectoryCard) -> Result<DirectoryCard, Fault> {
     let own = OwnDirectory::new(card.clone(), OWN_DIRECTORY);
     if own.read(WIFI_FILE)?.is_none() {

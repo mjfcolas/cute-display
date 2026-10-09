@@ -1,6 +1,6 @@
-//! Breathing to a rhythm until stopped: the lights rise as one breathes in, stay up while
-//! one holds, fall as one breathes out; a breath of sound rises and falls with each
-//! breath in and each breath out, silent while one holds. Kept on the steady clock.
+//! Breathing to a rhythm until stopped. The lights rise as one breathes in, stay on while
+//! one holds, and go down as one breathes out. A soft sound rises and falls with each
+//! breath in and each breath out, and is silent while one holds. Timed on the steady clock.
 
 use std::f32::consts::PI;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -34,7 +34,7 @@ pub enum Rhythm {
 impl Rhythm {
     pub const ALL: [Self; 3] = [Self::Coherence, Self::FourSevenEight, Self::Square];
 
-    /// With their seconds.
+    /// Each step with its length in seconds.
     pub fn steps(self) -> Vec<(Step, u8)> {
         let [breathe_in, hold_in, breathe_out, hold_out] = match self {
             Self::Coherence => [5, 0, 5, 0],
@@ -53,7 +53,7 @@ impl Rhythm {
         Self::ALL.get(turned as usize).copied().unwrap_or(self)
     }
 
-    /// Round and round, however long since the start.
+    /// Repeats without end, however long ago it started.
     pub fn fullness_at(self, since_start: Duration) -> Fullness {
         let share = match self.step_at(since_start) {
             (Step::BreatheIn, into) => into.eased(),
@@ -82,7 +82,7 @@ impl Rhythm {
     }
 }
 
-/// How full of air one is, from empty to full.
+/// How full of air the lungs are, from empty to full.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Fullness(u8);
 
@@ -104,12 +104,12 @@ impl Progress {
         Self((part as f32 / whole.max(1) as f32).clamp(0.0, 1.0))
     }
 
-    /// Slow at both ends, as a breath is.
+    /// Slow at both ends, like a breath.
     fn eased(self) -> f32 {
         (1.0 - (self.0 * PI).cos()) / 2.0
     }
 
-    /// Up and down again over the step.
+    /// Up, then down again, during the step.
     fn swelling(self) -> f32 {
         (self.0 * PI).sin()
     }
@@ -133,7 +133,7 @@ pub trait BreathingSettingsStore: Send {
 }
 
 pub trait Breath: Send {
-    /// Starts the breath of sound, or goes on with it at `volume`.
+    /// Starts the breath sound, or continues it at `volume`.
     fn sound_at(&mut self, volume: Volume);
     fn silence(&mut self);
 }
@@ -178,14 +178,14 @@ impl Breathing {
         self.lock().revision
     }
 
-    /// Resting only.
+    /// Only when not breathing.
     pub fn turn_rhythm(&self, detents: i32) {
         if self.lock().started.is_none() {
             self.change_settings(|settings| settings.rhythm = settings.rhythm.turned_round_by(detents));
         }
     }
 
-    /// Never silent; heard at once.
+    /// Never down to silence. The new volume is heard at once.
     pub fn turn_volume(&self, detents: i32) {
         let percent = i32::from(self.settings().volume.as_percent()) + detents * i32::from(VOLUME_STEP);
         let volume = Volume::percent(u8::try_from(percent.clamp(i32::from(VOLUME_STEP), 100)).unwrap_or(100));
@@ -243,7 +243,7 @@ impl Inner {
         Some(self.now?.saturating_duration_since(self.started?))
     }
 
-    /// Rising and falling over each breath, so that it sounds like one.
+    /// Rises and falls during each breath, so that it sounds like one.
     fn sound(&mut self) {
         let Some(elapsed) = self.elapsed() else {
             return;

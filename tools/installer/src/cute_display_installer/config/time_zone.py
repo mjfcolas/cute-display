@@ -1,4 +1,4 @@
-"""Time zones by their IANA name, turned into the POSIX rule the device keeps: the last
+"""Time zones by their IANA name, turned into the POSIX rule that the device keeps: the last
 line of the zone's TZif file (RFC 8536), from the tzdata package."""
 from importlib.resources import files
 from zoneinfo import available_timezones

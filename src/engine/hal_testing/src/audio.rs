@@ -5,7 +5,7 @@ use hal::Fault;
 
 use crate::shared::lock;
 
-/// Keeps every sample as it is played, so a test can watch a sound while it plays.
+/// Keeps every sample as it is played, so that a test can watch a sound while it plays.
 #[derive(Clone, Default)]
 pub struct StubSpeaker(Arc<Mutex<Recording>>);
 
@@ -27,7 +27,7 @@ impl StubSpeaker {
         lock(&self.0).samples.len()
     }
 
-    /// The sounds started, including one playing.
+    /// The sounds started, including one that is playing.
     pub fn sounds_played(&self) -> usize {
         lock(&self.0).sounds
     }
@@ -47,8 +47,8 @@ impl Speaker for StubSpeaker {
     }
 }
 
-/// Hears the first second of each sound and moves on, so that a sound that lasts until it
-/// is stopped, a ringing alarm, does not keep its thread busy.
+/// Listens to the first second of each sound, then moves on, so that a sound that lasts
+/// until it is stopped, such as a ringing alarm, does not keep its thread busy.
 #[derive(Clone, Default)]
 pub struct StubBriefSpeaker(Arc<Mutex<Heard>>);
 
@@ -65,7 +65,7 @@ impl StubBriefSpeaker {
         lock(&self.0).sounds
     }
 
-    /// The sounds started whose first second was not silence.
+    /// The sounds started whose first second was not silent.
     pub fn sounds_heard(&self) -> usize {
         lock(&self.0).audible
     }

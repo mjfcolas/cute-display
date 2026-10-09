@@ -1,4 +1,4 @@
-//! Push buttons wired as switches to ground: high released, low pressed.
+//! Push buttons wired as switches to ground: high when released, low when pressed.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Edge {
@@ -76,8 +76,8 @@ mod sampled {
         }
     }
 
-    /// A thread of their own counts a press even while whoever reads them is blocked. The
-    /// pins must be pulled up.
+    /// Their own thread counts a press even while the thread that reads them is blocked.
+    /// The pins must be pulled up.
     pub fn watch<const N: usize>(pins: [PinDriver<'static, Input>; N]) -> Result<[Button; N], Fault> {
         let tallies: [Arc<Tally>; N] = core::array::from_fn(|_| Arc::default());
         let mut sampled: Vec<_> = pins

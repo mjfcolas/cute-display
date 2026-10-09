@@ -6,8 +6,8 @@ pub const PROJECT: &str = "cute-display";
 pub const OWN_DIRECTORY: CardDirectory = CardDirectory::new("cute-display");
 pub const VERSION: &str = env!("CUTE_DISPLAY_VERSION");
 
-/// In a const context, as the images' description uses it, a `text` that leaves no room
-/// for the NUL does not build; called at run time, it would panic.
+/// In a const context, as in the images' description, a `text` that leaves no room for the
+/// NUL does not build. Called at run time, it would panic.
 pub const fn c_text<const N: usize>(text: &str) -> [c_char; N] {
     let mut array = [0; N];
     assert!(text.len() < N, "the text does not fit the C array");

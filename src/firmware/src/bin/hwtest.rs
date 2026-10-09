@@ -11,7 +11,7 @@ const BUILD: &str = concat!("built ", env!("BUILD_TIME"));
 fn main() -> Result<(), Fault> {
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
-    // The monitor re-attaches after resetting the chip; anything logged before is lost.
+    // The monitor connects again after it resets the chip; anything logged before is lost.
     FreeRtos::delay_ms(1500);
     log::info!("Cute Display {} hardware test, {BUILD}", app::image::VERSION);
 

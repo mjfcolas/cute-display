@@ -7,8 +7,9 @@ pub struct GeoPoint {
 }
 
 impl GeoPoint {
-    /// Kilometres east and north of `origin`. A flat projection around `origin`: off by
-    /// well under a percent at the hundred kilometres the device ever looks at.
+    /// Kilometres east and north of `origin`, on a flat projection around `origin`. The
+    /// error is well under one percent at the hundred kilometres that the device ever looks
+    /// at.
     pub fn offset_from(self, origin: GeoPoint) -> (f64, f64) {
         let east_degrees = (self.longitude - origin.longitude + 540.0).rem_euclid(360.0) - 180.0;
         let mid_latitude = ((self.latitude + origin.latitude) / 2.0).to_radians();
@@ -53,7 +54,7 @@ impl CompassPoint {
         Self::CLOCKWISE.get(point as usize).copied().unwrap_or(Self::North)
     }
 
-    /// The nearest point to the way of something `east` and `north` of here.
+    /// The nearest direction to something that is `east` and `north` of here.
     pub fn toward(east: f64, north: f64) -> Self {
         let bearing = east.atan2(north).to_degrees().rem_euclid(360.0);
         Self::from_degrees(bearing.round() as u16 % 360)

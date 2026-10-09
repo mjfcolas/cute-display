@@ -7,7 +7,7 @@ from cute_display_link_testing.fake_controls import FakeControls
 
 
 class StubLink:
-    """Gives the lines a test sets, whatever is written."""
+    """Returns the lines that a test sets, whatever is written."""
 
     def __init__(self, *lines):
         self.lines = list(lines)

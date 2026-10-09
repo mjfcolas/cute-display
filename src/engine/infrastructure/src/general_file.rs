@@ -13,7 +13,7 @@ const APPS: &str = "apps";
 
 pub struct GeneralFile<S> {
     storage: S,
-    /// The time zone last warned about, so that a lasting mistake is logged once.
+    /// The time zone of the last warning, so that a mistake that lasts is logged only once.
     unreadable: Option<String>,
 }
 

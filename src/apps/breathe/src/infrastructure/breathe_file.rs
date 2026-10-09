@@ -49,7 +49,7 @@ fn encode(settings: &BreathingSettings) -> String {
     ConfText::render(&[(RHYTHM, rhythm_name(settings.rhythm)), (VOLUME, &volume)])
 }
 
-/// A line missing or damaged keeps its default.
+/// A line that is missing or damaged keeps its default.
 fn decode(conf: &ConfText) -> BreathingSettings {
     let default = BreathingSettings::default();
     BreathingSettings {

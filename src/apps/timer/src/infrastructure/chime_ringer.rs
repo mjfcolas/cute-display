@@ -3,7 +3,7 @@ use sound_files::{Chime, VolumeKnob};
 
 use crate::domain::timer::{Ringer, Volume};
 
-/// Phrases of the chime between two stretches of a pomodoro.
+/// Phrases of the chime between two periods of a pomodoro.
 const CHIME_PHRASES: usize = 2;
 
 pub struct ChimeRinger {
@@ -40,7 +40,8 @@ impl Ringer for ChimeRinger {
         self.ringing = false;
     }
 
-    /// A chime is left to end: stopping the speaker after it would stop whatever plays next.
+    /// A chime is left to end by itself: stopping the speaker after it would stop whatever
+    /// plays next.
     fn silence(&mut self) {
         if std::mem::take(&mut self.ringing) {
             self.sound.stop();

@@ -1,6 +1,6 @@
 use std::io::{self, Read, Write};
 
-/// Through `chunk`, so a file of any size is never held whole.
+/// Copies through `chunk`, so that a file of any size is never held whole.
 pub fn copy_in_chunks(source: &mut impl Read, destination: &mut impl Write, chunk: &mut [u8]) -> io::Result<()> {
     loop {
         let read = source.read(chunk)?;

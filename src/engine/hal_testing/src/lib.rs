@@ -1,9 +1,9 @@
-//! For tests only: test doubles of the HAL's contracts, and the checks every
-//! implementation of a contract passes, so that a test on a double says what the
-//! hardware would do.
+//! For tests only: test doubles of the HAL's contracts, and the checks that every
+//! implementation of a contract must pass. So a test on a double shows what the hardware
+//! would do.
 //!
-//! A double is a handle: its clones share one device, one handed to the code under test,
-//! another kept by the test to act on it and see what it was told.
+//! A double is a handle: its clones share one device. One clone is given to the code under
+//! test. The test keeps another one, to act on the device and to see what it was told.
 
 pub mod audio;
 pub mod clock;
