@@ -25,6 +25,10 @@ CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_SPIRAM_USE_MALLOC=y
 CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
 CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+# When enabled, the heap may put a buffer in RTC fast memory (8 KB). The SD host's DMA
+# cannot reach it, and the driver does not check: reading the card into such a buffer
+# leaves it unchanged, writing from it puts garbage on the card. So we disable it.
+CONFIG_ESP_SYSTEM_ALLOW_RTC_FAST_MEM_AS_HEAP=n
 
 # Nothing of ours is in NVS: the PHY recalibrates at every boot instead of caching there.
 CONFIG_ESP_PHY_CALIBRATION_AND_DATA_STORAGE=n

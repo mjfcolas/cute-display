@@ -22,6 +22,9 @@ What changes from one release to the next, for whoever owns the clock.
   instead of two hours.
 - The card, reached from the computer, answers its first request too: after the clock
   had been left alone a while, the first one often got "no answer from the device".
+- The chosen alarm ringtone plays: often the chime played instead, or the same short beep
+  again and again. Files read from or written to the card were sometimes wrong in the
+  same way; this is fixed too.
 
 ## 2026.10.0
 
