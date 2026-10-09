@@ -3,24 +3,29 @@ process adds: a WAV file of the card, played by its speaker."""
 import math
 import struct
 
+import pytest
+
 from cute_display_e2e.waiting import until
 
 GENERAL_CONF = 'general.conf'
 ZEN_CONF = 'apps/zen/zen.conf'
 RAIN = 'apps/zen/sounds/Rain.wav'
 RATE = 44100
+# The console writes 64 KiB at most on the device.
+FRAMES = RATE // 4
 
 
-def a_second_of_stereo_tone():
+def a_quarter_second_of_stereo_tone():
     frames = b''.join(struct.pack('<hh', sample, sample)
-                      for sample in (int(8000 * math.sin(2 * math.pi * 220 * n / RATE)) for n in range(RATE)))
+                      for sample in (int(8000 * math.sin(2 * math.pi * 220 * n / RATE)) for n in range(FRAMES)))
     fmt = struct.pack('<HHIIHH', 1, 2, RATE, RATE * 4, 4, 16)
     chunks = b'fmt ' + struct.pack('<I', len(fmt)) + fmt + b'data' + struct.pack('<I', len(frames)) + frames
     return b'RIFF' + struct.pack('<I', 4 + len(chunks)) + b'WAVE' + chunks
 
 
+@pytest.mark.device
 def test_a_session_started_plays_a_wav_of_the_card_until_stopped(clock):
-    clock.put_before_start(RAIN, a_second_of_stereo_tone())
+    clock.put_before_start(RAIN, a_quarter_second_of_stereo_tone())
     clock.put_before_start(ZEN_CONF, 'sound = Rain.wav\n')
     clock.put_before_start(GENERAL_CONF, 'time_zone = CET-1CEST,M3.5.0,M10.5.0/3\napps = zen\n')
     display = clock.start()

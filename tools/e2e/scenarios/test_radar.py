@@ -1,3 +1,7 @@
+import pytest
+
+
+@pytest.mark.device
 def test_the_recorded_aircraft_are_on_the_scope_the_nearest_listed(display):
     display.until_front('alarm')
     display.tap('wheel')

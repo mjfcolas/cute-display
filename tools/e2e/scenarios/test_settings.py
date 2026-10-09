@@ -1,3 +1,5 @@
+import pytest
+
 from cute_display_e2e.waiting import until
 
 SETTINGS_CONF = 'settings.conf'
@@ -11,6 +13,7 @@ def open_reading_lamp_setting(display):
     return display.until_screen(lambda screen: (screen.chosen() or '').startswith('setting Reading lamp'), 'the reading lamp not chosen')
 
 
+@pytest.mark.device
 def test_the_reading_lamp_set_in_the_system_app_shines_and_is_kept_across_a_restart(clock):
     display = clock.start()
     assert open_reading_lamp_setting(display).chosen() == 'setting Reading lamp off'
