@@ -5,11 +5,11 @@ the device too, through its [console](../../docs/maintenance/README.md) alone: t
 controls, what the glass says, the lights, the speaker, the clock and the card. Where
 they stand among the tests: [the pyramid](../../docs/testing/README.md).
 
-- `just e2e`: every scenario, each on a simulator of its own; `just e2e -k alarm` for
-  some.
-- `just e2e --window`: each simulator in its window, to watch what a scenario does; the
+- `just e2e simulator`: every scenario, each on a simulator of its own;
+  `just e2e simulator -k alarm` for some.
+- `just e2e simulator --window`: each simulator in its window, to watch what a scenario does; the
   keyboard and the mouse are best left alone meanwhile.
-- `just e2e-device`: the scenarios marked `device`, [on the device](#on-the-device).
+- `just e2e device`: the scenarios marked `device`, [on the device](#on-the-device).
 - A scenario fails on what the glass said last, and the simulator's or the device's log
   comes with it; a panic in the log fails it too.
 - A scenario reads the card and the RTC through `clock`, which knows the image's
@@ -27,11 +27,11 @@ alone.
 
 - Before: the device plugged in, on the same network as this computer, no serial monitor
   open; this computer reachable on 8443/tcp and 8123/udp.
-- `just e2e-device [pytest arguments]` builds the test image and the app image, flashes
+- `just e2e device [pytest arguments]` builds the test image and the app image, flashes
   the test image, plays the scenarios, then flashes the app image back, whether they
   passed, failed or were stopped.
-- `just e2e --device [pytest arguments]` plays them alone, on a device already running the
-  test image (`just fw e2e`).
+- `uv run --project tools/e2e pytest tools/e2e/scenarios --device [pytest arguments]`
+  plays them alone, on a device already running the test image (`just fw e2e`).
 - `--stubs-address` when the device reaches this computer at another address than the
   one it leaves from.
 - Each scenario empties `cute-display-e2e/`, copies the clock's `cute-display/wifi.conf`

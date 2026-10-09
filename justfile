@@ -43,17 +43,21 @@ sim *args:
 remote-sim *args:
     uv run --quiet --project {{justfile_directory()}}/tools/link remote --simulator {{sim_console}} {{args}}
 
-# the end-to-end scenarios on simulators of their own; pytest's arguments, `-k alarm` for one
-e2e *args:
-    uv run --quiet --project tools/e2e pytest tools/e2e/scenarios {{args}}
-
-# the scenarios marked device on the device: the test image built and flashed, the scenarios played with the stubs on this computer, then the app image flashed back whatever they gave; pytest's arguments
-e2e-device *args: (fw-build "e2e") (fw-build "app")
+# the end-to-end scenarios on `simulator`, each on its own, or those marked device on the `device`: the test image built and flashed, played with the stubs on this computer, then the app image flashed back whatever they gave; pytest's arguments, `-k alarm` for one
+e2e on *args:
     #!/usr/bin/env bash
     set -uo pipefail
-    just fw-flash e2e || exit
-    trap 'just fw-flash app' EXIT
-    uv run --quiet --project tools/e2e pytest tools/e2e/scenarios --device {{args}}
+    case {{on}} in
+        simulator)
+            exec uv run --quiet --project tools/e2e pytest tools/e2e/scenarios {{args}} ;;
+        device)
+            just fw-build e2e && just fw-build app && just fw-flash e2e || exit
+            trap 'just fw-flash app' EXIT
+            uv run --quiet --project tools/e2e pytest tools/e2e/scenarios --device {{args}} ;;
+        *)
+            echo "just e2e simulator or just e2e device, not {{on}}" >&2
+            exit 2 ;;
+    esac
 
 # render the hardware test's report page to a PNG (`pattern` for the checkerboard)
 preview-hwtest page="" zoom="2":

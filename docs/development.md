@@ -52,8 +52,8 @@ just sd-ls           # list the SD card; also sd-get, sd-put, sd-rm (monitor clo
 just remote tap yellow  # the device's controls, lights, speaker, RTC: just remote --help (monitor closed)
 just remote-sim tap yellow  # the same on `just sim`'s simulator
 just bench           # how fast the card and the console move data, each leg apart (monitor closed)
-just e2e             # the end-to-end scenarios on the simulator (testing/README.md)
-just e2e-device      # those marked device, on the device: the test image flashed, then the app image back (testing/README.md)
+just e2e simulator   # the end-to-end scenarios on the simulator (testing/README.md)
+just e2e device      # those marked device, on the device: the test image flashed, then the app image back (testing/README.md)
 just release         # the app image of a release, in release/ (releasing.md)
 just                 # every recipe
 ```
