@@ -57,6 +57,9 @@ the device keeps running.
 
 ### 5. Documentation works by reference
 
+- Docs and comments are written in plain English: short sentences, common words, no
+  idioms or literary turns. Many readers are not native speakers, and idioms make the
+  text harder for them to understand.
 - Small files, one subject each, linked from where they are needed; never one large
   file. `README.md` and `DESIGN.md` at the root are indexes that point to the details.
 - Each app (`docs/apps/<app>/`), the maintenance console, the hardware test and the
