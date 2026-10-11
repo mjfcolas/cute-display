@@ -5,7 +5,7 @@ update loses or changes for people who own the clock. Everything else that chang
 the [changelog](CHANGELOG.md). Before it updates, the installer shows the entries after
 the installed version, up to the version it installs.
 
-## Unreleased
+## 2026.10.1
 
 - Zen, the timer and Breathe are new apps. They run only if you choose them: if you
   chose your apps before, answer the setup's question again.

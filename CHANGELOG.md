@@ -3,7 +3,7 @@
 What changes from one release to the next, for people who own the clock.
 [Releasing](docs/releasing.md) says how a release is made.
 
-## Unreleased
+## 2026.10.1
 
 - [Zen](docs/apps/zen/README.md): plays a sound to relax or fall asleep to, for 1 to 12
   hours, while the lights dim. It starts every day at a set time, or when you start it.
